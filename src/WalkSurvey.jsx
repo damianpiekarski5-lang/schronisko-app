@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { X, Save, CheckCircle } from "lucide-react";
+import { X, CheckCircle } from "lucide-react";
 
-// WAŻNE: Ten sam URL co w DashboardView.jsx i DogWorkEditor.jsx
-const API_URL = "/api/gs";// ← ZMIEŃ!
+// Proxy na Vercelu (omija CORS do Apps Script)
+const API_URL = "/api/gs";
 
 const styles = {
   overlay: {
@@ -236,6 +236,13 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
       return;
     }
 
+    // bezpieczeństwo: jeśli dog/id jest puste
+    const dogId = dog?.id ?? dog?.dogId ?? dog?.ID;
+    if (!dogId) {
+      setMessage({ type: "error", text: "❌ Brak ID psa (dog.id)" });
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
 
@@ -245,34 +252,42 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "recordWalk",
-          dogId: dog.id,
-          volunteer: "Wolontariusz", // Można dodać logowanie
+          dogId: String(dogId),
+          volunteer: "Wolontariusz",
           responses: {
             contact: contact.join(", "),
             walking: walking.join(", "),
-            dogs: dogs,
-            people: people,
-            traffic: traffic,
-            emotionalState: emotionalState,
-            notes: notes,
+            dogs,
+            people,
+            traffic,
+            emotionalState,
+            notes,
           },
         }),
       });
 
       const result = await response.json();
 
-    if (result?.ok && result?.data?.success) {
-  setMessage({ type: "success", text: "✅ Spacer zapisany!" });
-  setTimeout(() => {
-    onSave && onSave();
-    onClose();
-  }, 1500);
-} else {
-  setMessage({
-    type: "error",
-    text: "❌ Błąd: " + (result?.error || "Nieznany błąd"),
-  });
-}
+      if (result?.ok && result?.data?.success) {
+        setMessage({ type: "success", text: "✅ Spacer zapisany!" });
+        setTimeout(() => {
+          onSave && onSave();
+          onClose && onClose();
+        }, 1500);
+      } else {
+        setMessage({
+          type: "error",
+          text: "❌ Błąd: " + (result?.error || "Nieznany błąd"),
+        });
+      }
+    } catch (err) {
+      console.error(err);
+      setMessage({ type: "error", text: "❌ Błąd połączenia" });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return (
     <div style={styles.overlay}>
       <div style={styles.container}>
@@ -283,7 +298,7 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               <div>
                 <h2 style={styles.title}>🚶 Ankieta spaceru</h2>
                 <p style={styles.subtitle}>
-                  {dog.name} ({dog.id})
+                  {dog?.name} ({dog?.id})
                 </p>
               </div>
               <button onClick={onClose} style={styles.closeButton}>
