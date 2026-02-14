@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 
 const API_URL =
-  "https://script.google.com/macros/s/AKfycbyWmOXNM6cx6j5LpIE5DECDDT15pYoL24ENjthWGeJEPvzZyEMkIm4Cf5FEUDlgsHHU/exec";
+  "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
 
 const styles = {
   pageContainer: {
@@ -480,3 +480,4 @@ const DogCard = ({
 };
 
 export default DashboardView;
+
