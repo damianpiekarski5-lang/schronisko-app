@@ -261,18 +261,15 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
 
       const result = await response.json();
 
-      if (result.success) {
-        setMessage({ type: "success", text: "✅ Spacer zapisany!" });
-        setTimeout(() => {
-          onSave && onSave();
-          onClose();
-        }, 1500);
-      } else {
-        setMessage({
-          type: "error",
-          text: "❌ Błąd: " + (result.error || "Nieznany błąd"),
-        });
-      }
+      if (result?.ok && result?.data?.success) {
+  setMessage({ type: "success", text: "✅ Spacer zapisany!" });
+  onSave && onSave();
+} else {
+  setMessage({
+    type: "error",
+    text: "❌ Nie udało się zapisać ankiety: " + (result?.error || "brak info"),
+  });
+}
     } catch (err) {
       console.error("Błąd zapisu:", err);
       setMessage({ type: "error", text: "❌ Błąd połączenia" });
@@ -592,6 +589,7 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
 };
 
 export default WalkSurvey;
+
 
 
 
