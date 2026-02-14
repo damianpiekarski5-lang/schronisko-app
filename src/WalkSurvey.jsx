@@ -594,3 +594,4 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
 
 export default WalkSurvey;
 
+
