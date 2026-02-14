@@ -2,8 +2,7 @@ import React, { useState } from "react";
 import { X, Save, CheckCircle } from "lucide-react";
 
 // WAŻNE: Ten sam URL co w DashboardView.jsx i DogWorkEditor.jsx
-const API_URL =
-  "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec"; // ← ZMIEŃ!
+const API_URL = "/api/gs";
 
 const styles = {
   overlay: {
@@ -593,5 +592,6 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
 };
 
 export default WalkSurvey;
+
 
 
