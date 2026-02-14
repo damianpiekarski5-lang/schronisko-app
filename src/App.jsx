@@ -1,0 +1,1758 @@
+import React, { useState, useEffect } from "react";
+import {
+  ArrowLeft,
+  AlertCircle,
+  MapPin,
+  Search,
+  X,
+  Calendar,
+  Hash,
+  Home,
+  ExternalLink,
+  Clock,
+  Briefcase,
+  FileText,
+  CheckCircle,
+} from "lucide-react";
+import DashboardView from "./DashboardView";
+import WalkSurvey from "./WalkSurvey";
+import DogWorkEditor from "./DogWorkEditor";
+import HomeView from "./HomeView";
+
+// Mobile-optimized styles
+const styles = {
+  // Layout
+  pageContainer: {
+    minHeight: "100vh",
+    backgroundColor: "#f9fafb",
+    paddingBottom: "80px",
+  },
+  header: {
+    backgroundColor: "white",
+    borderBottom: "1px solid #e5e7eb",
+    position: "sticky",
+    top: 0,
+    zIndex: 100,
+    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+  },
+  headerContent: {
+    padding: "1rem",
+  },
+  title: {
+    fontSize: "1.5rem",
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: "0.25rem",
+  },
+  subtitle: {
+    color: "#6b7280",
+    fontSize: "0.875rem",
+  },
+  searchContainer: {
+    marginTop: "1rem",
+    position: "relative",
+  },
+  searchInput: {
+    width: "100%",
+    paddingLeft: "3rem",
+    paddingRight: "3rem",
+    paddingTop: "1rem",
+    paddingBottom: "1rem",
+    backgroundColor: "white",
+    border: "2px solid #e5e7eb",
+    borderRadius: "0.75rem",
+    fontSize: "1rem",
+    outline: "none",
+  },
+  searchIcon: {
+    position: "absolute",
+    left: "1rem",
+    top: "50%",
+    transform: "translateY(-50%)",
+    color: "#9ca3af",
+  },
+  clearButton: {
+    position: "absolute",
+    right: "1rem",
+    top: "50%",
+    transform: "translateY(-50%)",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    color: "#9ca3af",
+    padding: "0.5rem",
+  },
+  content: {
+    padding: "1rem",
+  },
+  card: {
+    backgroundColor: "white",
+    borderRadius: "1rem",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+    padding: "1.25rem",
+    marginBottom: "1.5rem",
+  },
+  mapContainer: {
+    backgroundColor: "#eff6ff",
+    borderRadius: "0.75rem",
+    padding: "0.5rem",
+    overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
+  },
+  dogPhoto: {
+    width: "100%",
+    aspectRatio: "1 / 1",
+    objectFit: "cover",
+    borderRadius: "0.75rem",
+    backgroundColor: "#f3f4f6",
+  },
+  dogPhotoLarge: {
+    width: "100%",
+    maxWidth: "500px",
+    aspectRatio: "1 / 1",
+    objectFit: "cover",
+    borderRadius: "1rem",
+    marginLeft: "auto",
+    marginRight: "auto",
+    display: "block",
+    backgroundColor: "#f3f4f6",
+  },
+  dogCard: {
+    backgroundColor: "white",
+    border: "2px solid #e5e7eb",
+    borderRadius: "1rem",
+    padding: "1.25rem",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    minHeight: "140px",
+  },
+  dogCardHover: {
+    boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+    borderColor: "#3b82f6",
+    transform: "translateY(-2px)",
+  },
+  boxCard: {
+    padding: "1.5rem 1rem",
+    borderRadius: "1rem",
+    border: "2px solid",
+    cursor: "pointer",
+    textAlign: "center",
+    transition: "all 0.2s",
+    minHeight: "120px",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  boxCardEmpty: {
+    backgroundColor: "#f9fafb",
+    borderColor: "#e5e7eb",
+  },
+  boxCardFull: {
+    backgroundColor: "white",
+    borderColor: "#86efac",
+  },
+  badgeGreen: {
+    display: "inline-block",
+    padding: "0.5rem 1rem",
+    borderRadius: "9999px",
+    fontSize: "0.75rem",
+    fontWeight: "700",
+    backgroundColor: "#dcfce7",
+    color: "#166534",
+  },
+  badgeYellow: {
+    display: "inline-block",
+    padding: "0.5rem 1rem",
+    borderRadius: "9999px",
+    fontSize: "0.75rem",
+    fontWeight: "700",
+    backgroundColor: "#fef3c7",
+    color: "#92400e",
+  },
+  backButton: {
+    display: "flex",
+    alignItems: "center",
+    color: "#2563eb",
+    backgroundColor: "transparent",
+    border: "none",
+    cursor: "pointer",
+    fontSize: "1rem",
+    padding: "0.75rem",
+    marginLeft: "-0.75rem",
+    marginBottom: "0.5rem",
+    borderRadius: "0.5rem",
+    transition: "background-color 0.2s",
+  },
+  walkButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    padding: "1rem",
+    backgroundColor: "#22c55e",
+    color: "white",
+    border: "none",
+    borderRadius: "0.75rem",
+    fontSize: "1.125rem",
+    fontWeight: "700",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    boxShadow: "0 2px 4px rgba(34, 197, 94, 0.3)",
+    marginBottom: "1rem",
+  },
+  walkButtonDisabled: {
+    backgroundColor: "#9ca3af",
+    cursor: "not-allowed",
+    boxShadow: "none",
+  },
+  bottomNav: {
+    position: "fixed",
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: "white",
+    borderTop: "1px solid #e5e7eb",
+    padding: "0.75rem 0.25rem",
+    display: "flex",
+    justifyContent: "space-around",
+    alignItems: "center",
+    zIndex: 100,
+    boxShadow: "0 -2px 10px rgba(0,0,0,0.1)",
+  },
+  bottomNavButton: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    background: "none",
+    border: "none",
+    cursor: "pointer",
+    padding: "0.5rem",
+    color: "#6b7280",
+    fontSize: "0.75rem",
+    minWidth: "60px",
+    flex: 1,
+  },
+  bottomNavButtonActive: {
+    color: "#2563eb",
+    fontWeight: "600",
+  },
+  infoBox: {
+    backgroundColor: "#f9fafb",
+    borderRadius: "0.75rem",
+    padding: "1rem",
+    border: "1px solid #e5e7eb",
+    marginBottom: "0.75rem",
+  },
+  infoLabel: {
+    fontSize: "0.875rem",
+    fontWeight: "600",
+    color: "#6b7280",
+    marginBottom: "0.5rem",
+  },
+  infoValue: {
+    color: "#111827",
+    fontSize: "1rem",
+  },
+  sectionBlue: {
+    borderLeft: "4px solid #3b82f6",
+    backgroundColor: "#eff6ff",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionGreen: {
+    borderLeft: "4px solid #22c55e",
+    backgroundColor: "#f0fdf4",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionPurple: {
+    borderLeft: "4px solid #a855f7",
+    backgroundColor: "#faf5ff",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionRed: {
+    borderLeft: "4px solid #ef4444",
+    backgroundColor: "#fef2f2",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionGray: {
+    borderLeft: "4px solid #6b7280",
+    backgroundColor: "#f9fafb",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionYellow: {
+    borderLeft: "4px solid #eab308",
+    backgroundColor: "#fefce8",
+    padding: "1rem",
+    borderRadius: "0 0.75rem 0.75rem 0",
+    marginBottom: "1rem",
+  },
+  sectionTitle: {
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: "0.5rem",
+    display: "flex",
+    alignItems: "center",
+    fontSize: "1rem",
+  },
+  statCard: {
+    backgroundColor: "white",
+    borderRadius: "1rem",
+    boxShadow: "0 1px 3px 0 rgba(0, 0, 0, 0.1)",
+    padding: "1.5rem",
+    textAlign: "center",
+  },
+  statNumber: {
+    fontSize: "2.5rem",
+    fontWeight: "bold",
+  },
+  statLabel: {
+    color: "#6b7280",
+    marginTop: "0.5rem",
+    fontSize: "0.875rem",
+  },
+  loadingContainer: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    backgroundColor: "#f9fafb",
+  },
+  spinner: {
+    border: "4px solid #f3f4f6",
+    borderTop: "4px solid #2563eb",
+    borderRadius: "50%",
+    width: "4rem",
+    height: "4rem",
+    animation: "spin 1s linear infinite",
+  },
+};
+
+const pavilionConfig = {
+  R: {
+    x: -37,
+    y: 110,
+    width: 110,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  P: {
+    x: -38,
+    y: 135,
+    width: 110,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  Y: {
+    x: 523,
+    y: 144,
+    width: 125,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  T: {
+    x: -41,
+    y: 176,
+    width: 25,
+    height: 110,
+    type: "dog",
+    rotation: 35,
+    special: "zewnętrzne",
+  },
+  V: {
+    x: -19,
+    y: 191,
+    width: 25,
+    height: 110,
+    type: "dog",
+    rotation: 35,
+    special: "zewnętrzne",
+  },
+  X: {
+    x: -54,
+    y: 398,
+    width: 150,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  N: {
+    x: -12,
+    y: 465,
+    width: 110,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  U: {
+    x: -13,
+    y: 492,
+    width: 110,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  L: {
+    x: -53,
+    y: 426,
+    width: 150,
+    height: 25,
+    type: "dog",
+    special: "zewnętrzne",
+  },
+  F: {
+    x: 153,
+    y: 147,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  G: {
+    x: 199,
+    y: 147,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  E: {
+    x: 153,
+    y: 267,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  H: {
+    x: 198,
+    y: 267,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  ZF: {
+    x: 284,
+    y: 146,
+    width: 45,
+    height: 180,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  ZG: {
+    x: 330,
+    y: 146,
+    width: 45,
+    height: 180,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  B: {
+    x: 412,
+    y: 150,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  C: {
+    x: 458,
+    y: 149,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  A: {
+    x: 411,
+    y: 269,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  D: {
+    x: 458,
+    y: 269,
+    width: 45,
+    height: 120,
+    type: "dog",
+    special: "wewnętrzne",
+  },
+  ZE: {
+    x: 284,
+    y: 326,
+    width: 45,
+    height: 60,
+    type: "dog",
+    special: "szczeniaki",
+  },
+  ZH: {
+    x: 330,
+    y: 326,
+    width: 45,
+    height: 60,
+    type: "dog",
+    special: "szczeniaki",
+  },
+};
+
+const infrastructure = [
+  {
+    id: "path_1",
+    type: "area",
+    label: "Wybiegi",
+    points: [
+      [139, 160],
+      [99, 160],
+      [-51, 380],
+      [139, 380],
+      [139, 160],
+    ],
+    color: "#d4edda",
+    strokeColor: "#475569",
+  },
+  {
+    id: "element_2",
+    type: "building",
+    label: "Wybiegi",
+    x: 529,
+    y: 188,
+    width: 50,
+    height: 149,
+    color: "#d4edda",
+    strokeColor: "#475569",
+  },
+  {
+    id: "element_3",
+    type: "building",
+    label: "Szpital",
+    x: 580,
+    y: 239,
+    width: 50,
+    height: 150,
+    color: "#f08f8f",
+    strokeColor: "#475569",
+  },
+];
+
+const DogPhoto = ({ photo, name, size = "normal" }) => {
+  const [imgError, setImgError] = useState(false);
+  const hasValidPhoto = typeof photo === "string" && photo.trim().length > 5;
+  const photoStyle = size === "large" ? styles.dogPhotoLarge : styles.dogPhoto;
+
+  if (!hasValidPhoto || imgError) {
+    return (
+      <div
+        style={{
+          ...photoStyle,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: size === "large" ? "6rem" : "4rem",
+          marginBottom: size === "large" ? "0" : "1rem",
+        }}
+      >
+        🐕
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photo}
+      alt={name}
+      style={{ ...photoStyle, marginBottom: size === "large" ? "0" : "1rem" }}
+      onError={() => setImgError(true)}
+    />
+  );
+};
+
+const formatLastWalkDate = (dateString) => {
+  if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!") {
+    return null;
+  }
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return null;
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${day}.${month}.${year}, ${hours}:${minutes}`;
+  } catch (e) {
+    return null;
+  }
+};
+
+const MapView = ({
+  dogs,
+  searchTerm,
+  setSearchTerm,
+  setSelectedPavilion,
+  setCurrentView,
+  setSelectedDog,
+  hoveredCard,
+  setHoveredCard,
+}) => {
+  const getFilteredDogs = () => {
+    if (!searchTerm) return dogs;
+    return dogs.filter(
+      (dog) =>
+        dog.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dog.breed?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dog.pavilion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        dog.id?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  };
+
+  const countDogsInPavilion = (pavilion) => {
+    return dogs.filter((dog) => dog.pavilion === pavilion).length;
+  };
+
+  return (
+    <div style={styles.pageContainer}>
+      <style>{`
+        @keyframes spin { to { transform: rotate(360deg); }}
+        input:focus { border-color: #3b82f6 !important; }
+        button:active { opacity: 0.7; }
+        @media (min-width: 768px) {
+          .dog-card-container { display: grid !important; grid-template-columns: 200px 1fr !important; gap: 1.5rem !important; align-items: start !important; }
+          .dog-card-photo-wrapper { grid-row: 1 / -1 !important; }
+          .dog-card-content { display: flex !important; flex-direction: column !important; }
+        }
+        @media (max-width: 767px) {
+          .dog-card-container { display: flex !important; flex-direction: column !important; }
+        }
+      `}</style>
+
+      <div style={styles.header}>
+        <div style={styles.headerContent}>
+          <h1 style={styles.title}>🏠 Mapa Schroniska</h1>
+          <p style={styles.subtitle}>Dotknij pawilon aby zobaczyć psy</p>
+          <div
+            style={{
+              marginTop: "0.75rem",
+              fontSize: "1rem",
+              fontWeight: "600",
+              color: "#374151",
+            }}
+          >
+            📊 {dogs.length} psów w schronisku
+          </div>
+          <div style={styles.searchContainer}>
+            <Search style={styles.searchIcon} size={20} />
+            <input
+              type="text"
+              placeholder="Szukaj po imieniu, ID, rasie..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={styles.searchInput}
+            />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm("")}
+                style={styles.clearButton}
+              >
+                <X size={20} />
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div style={styles.content}>
+        {searchTerm ? (
+          <div>
+            <h2
+              style={{
+                fontSize: "1.25rem",
+                fontWeight: "bold",
+                color: "#111827",
+                marginBottom: "1rem",
+              }}
+            >
+              🔍 Znaleziono: {getFilteredDogs().length}
+            </h2>
+            {getFilteredDogs().length === 0 ? (
+              <div style={styles.card}>
+                <p
+                  style={{
+                    textAlign: "center",
+                    padding: "2rem 0",
+                    color: "#6b7280",
+                  }}
+                >
+                  Nie znaleziono
+                </p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr",
+                  gap: "1rem",
+                }}
+              >
+                {getFilteredDogs().map((dog) => (
+                  <div
+                    key={dog.id}
+                    onClick={() => {
+                      setSelectedDog(dog);
+                      setCurrentView("dogCard");
+                    }}
+                    style={{
+                      ...styles.dogCard,
+                      ...(hoveredCard === dog.id ? styles.dogCardHover : {}),
+                    }}
+                    onTouchStart={() => setHoveredCard(dog.id)}
+                    onTouchEnd={() => setHoveredCard(null)}
+                  >
+                    <div className="dog-card-container">
+                      <div className="dog-card-photo-wrapper">
+                        <DogPhoto
+                          photo={dog.photo}
+                          name={dog.name}
+                          size="normal"
+                        />
+                      </div>
+                      <div className="dog-card-content">
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "start",
+                            marginBottom: "0.75rem",
+                          }}
+                        >
+                          <h3
+                            style={{
+                              fontSize: "1.25rem",
+                              fontWeight: "bold",
+                              color: "#111827",
+                            }}
+                          >
+                            {dog.name}
+                          </h3>
+                          <span
+                            style={
+                              !dog.status ||
+                              dog.status.toLowerCase().includes("dostępny")
+                                ? styles.badgeGreen
+                                : styles.badgeYellow
+                            }
+                          >
+                            {dog.status || "dostępny"}
+                          </span>
+                        </div>
+                        <p
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#6b7280",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          <strong>Rasa:</strong> {dog.breed}
+                        </p>
+                        <p
+                          style={{
+                            fontSize: "0.875rem",
+                            color: "#9ca3af",
+                            marginBottom: "0.5rem",
+                          }}
+                        >
+                          📍 {dog.pavilion} / Boks {dog.box}
+                        </p>
+                        <p style={{ fontSize: "0.75rem", color: "#d1d5db" }}>
+                          ID: {dog.id}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            <div style={styles.card}>
+              <h2
+                style={{
+                  fontSize: "1.125rem",
+                  fontWeight: "bold",
+                  color: "#111827",
+                  marginBottom: "1rem",
+                }}
+              >
+                🗺️ Mapa pawilonów
+              </h2>
+              <p
+                style={{
+                  fontSize: "0.875rem",
+                  color: "#6b7280",
+                  marginBottom: "1rem",
+                }}
+              >
+                Przesuń palcem aby zobaczyć całą mapę →
+              </p>
+              <div style={styles.mapContainer}>
+                <svg
+                  viewBox="-100 0 850 600"
+                  style={{
+                    width: "100%",
+                    minWidth: "600px",
+                    minHeight: "400px",
+                  }}
+                >
+                  <rect
+                    x="-100"
+                    y="0"
+                    width="850"
+                    height="600"
+                    fill="#eff6ff"
+                  />
+                  {infrastructure.map((item) =>
+                    item.type === "building" ? (
+                      <g key={item.id}>
+                        <rect
+                          x={item.x}
+                          y={item.y}
+                          width={item.width}
+                          height={item.height}
+                          fill={item.color}
+                          stroke={item.strokeColor}
+                          strokeWidth="2"
+                          rx="4"
+                          opacity="0.7"
+                        />
+                        <text
+                          x={item.x + item.width / 2}
+                          y={item.y + item.height / 2 + 4}
+                          textAnchor="middle"
+                          fontSize="10"
+                          fontWeight="bold"
+                          fill="#374151"
+                        >
+                          {item.label}
+                        </text>
+                      </g>
+                    ) : (
+                      <g key={item.id}>
+                        <polygon
+                          points={item.points.map((p) => p.join(",")).join(" ")}
+                          fill={item.color}
+                          opacity="0.5"
+                          stroke={item.strokeColor}
+                          strokeWidth="2"
+                        />
+                      </g>
+                    )
+                  )}
+                  {Object.entries(pavilionConfig).map(([code, config]) => {
+                    const dogCount = countDogsInPavilion(code);
+                    let fillColor = "#e2e8f0";
+                    if (config.special === "szczeniaki") fillColor = "#fde047";
+                    else if (config.special === "wewnętrzne")
+                      fillColor = "#93c5fd";
+                    else if (config.special === "zewnętrzne")
+                      fillColor = "#c084fc";
+                    return (
+                      <g key={code}>
+                        <rect
+                          x={config.x}
+                          y={config.y}
+                          width={config.width}
+                          height={config.height}
+                          fill={fillColor}
+                          stroke="#64748b"
+                          strokeWidth="3"
+                          rx="4"
+                          style={{ cursor: "pointer" }}
+                          onClick={() => {
+                            setSelectedPavilion(code);
+                            setCurrentView("boxes");
+                          }}
+                          transform={
+                            config.rotation
+                              ? `rotate(${config.rotation} ${
+                                  config.x + config.width / 2
+                                } ${config.y + config.height / 2})`
+                              : ""
+                          }
+                        />
+                        <text
+                          x={config.x + config.width / 2}
+                          y={config.y + config.height / 2 + 5}
+                          textAnchor="middle"
+                          fontSize="14"
+                          fontWeight="bold"
+                          fill="#1e293b"
+                          style={{ pointerEvents: "none" }}
+                        >
+                          {code}
+                        </text>
+                        {dogCount > 0 && config.height > 30 && (
+                          <text
+                            x={config.x + config.width / 2}
+                            y={config.y + config.height / 2 + 20}
+                            textAnchor="middle"
+                            fontSize="10"
+                            fill="#475569"
+                            style={{ pointerEvents: "none" }}
+                          >
+                            {dogCount} 🐕
+                          </text>
+                        )}
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+              <div
+                style={{
+                  marginTop: "1rem",
+                  display: "grid",
+                  gridTemplateColumns: "1fr 1fr",
+                  gap: "0.75rem",
+                  fontSize: "0.75rem",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "1rem",
+                      height: "1rem",
+                      borderRadius: "0.25rem",
+                      backgroundColor: "#c084fc",
+                    }}
+                  ></div>
+                  <span>Zewnętrzne</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "1rem",
+                      height: "1rem",
+                      borderRadius: "0.25rem",
+                      backgroundColor: "#93c5fd",
+                    }}
+                  ></div>
+                  <span>Wewnętrzne</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "1rem",
+                      height: "1rem",
+                      borderRadius: "0.25rem",
+                      backgroundColor: "#fde047",
+                    }}
+                  ></div>
+                  <span>Szczeniaki</span>
+                </div>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "0.5rem",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: "1rem",
+                      height: "1rem",
+                      borderRadius: "0.25rem",
+                      backgroundColor: "#86efac",
+                    }}
+                  ></div>
+                  <span>Wybiegi</span>
+                </div>
+              </div>
+            </div>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "1rem",
+              }}
+            >
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statNumber, color: "#2563eb" }}>
+                  {dogs.length}
+                </div>
+                <div style={styles.statLabel}>Psów</div>
+              </div>
+              <div style={styles.statCard}>
+                <div style={{ ...styles.statNumber, color: "#22c55e" }}>
+                  {
+                    dogs.filter(
+                      (d) =>
+                        !d.status || d.status.toLowerCase().includes("dostępny")
+                    ).length
+                  }
+                </div>
+                <div style={styles.statLabel}>Dostępnych</div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      <div style={styles.bottomNav}>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("home")}
+        >
+          <Home size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
+        </button>
+        <button
+          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
+        >
+          <MapPin size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("dashboard")}
+        >
+          <Briefcase size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Praca</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const BoxesView = ({
+  dogs,
+  selectedPavilion,
+  setCurrentView,
+  setSelectedBox,
+  hoveredCard,
+  setHoveredCard,
+}) => {
+  const countDogsInPavilion = (pavilion) =>
+    dogs.filter((dog) => dog.pavilion === pavilion).length;
+  const countDogsInBox = (pavilion, box) =>
+    dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box).length;
+  const getBoxesForPavilion = (pavilion) => {
+    const boxes = [
+      ...new Set(
+        dogs.filter((dog) => dog.pavilion === pavilion).map((dog) => dog.box)
+      ),
+    ].sort((a, b) => a - b);
+    if (boxes.length === 0) return Array.from({ length: 10 }, (_, i) => i + 1);
+    const maxBox = Math.max(...boxes, 10);
+    return Array.from({ length: maxBox }, (_, i) => i + 1);
+  };
+  const boxes = getBoxesForPavilion(selectedPavilion);
+
+  return (
+    <div style={styles.pageContainer}>
+      <div style={styles.header}>
+        <div style={styles.headerContent}>
+          <button
+            onClick={() => setCurrentView("map")}
+            style={styles.backButton}
+            onTouchStart={(e) =>
+              (e.currentTarget.style.backgroundColor = "#f3f4f6")
+            }
+            onTouchEnd={(e) =>
+              (e.currentTarget.style.backgroundColor = "transparent")
+            }
+          >
+            <ArrowLeft size={24} style={{ marginRight: "0.5rem" }} />
+            Powrót
+          </button>
+          <h1 style={styles.title}>Pawilon {selectedPavilion}</h1>
+          <p style={styles.subtitle}>
+            Ilość psów: {countDogsInPavilion(selectedPavilion)}
+          </p>
+        </div>
+      </div>
+      <div style={styles.content}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(2, 1fr)",
+            gap: "1rem",
+          }}
+        >
+          {boxes.map((boxNum) => {
+            const dogCount = countDogsInBox(selectedPavilion, boxNum);
+            const hasDogs = dogCount > 0;
+            return (
+              <button
+                key={boxNum}
+                onClick={() => {
+                  setSelectedBox(boxNum);
+                  setCurrentView("dogs");
+                }}
+                style={{
+                  ...(hasDogs
+                    ? { ...styles.boxCard, ...styles.boxCardFull }
+                    : { ...styles.boxCard, ...styles.boxCardEmpty }),
+                  ...(hoveredCard === `box-${boxNum}`
+                    ? {
+                        boxShadow: "0 6px 16px rgba(0, 0, 0, 0.15)",
+                        transform: "translateY(-2px)",
+                      }
+                    : {}),
+                }}
+                onTouchStart={() => setHoveredCard(`box-${boxNum}`)}
+                onTouchEnd={() => setHoveredCard(null)}
+              >
+                <div style={{ fontSize: "3rem", marginBottom: "0.5rem" }}>
+                  {hasDogs ? "🏠" : "📦"}
+                </div>
+                <div
+                  style={{
+                    fontWeight: "bold",
+                    color: "#111827",
+                    fontSize: "1.125rem",
+                  }}
+                >
+                  Boks {boxNum}
+                </div>
+                {hasDogs && (
+                  <div
+                    style={{
+                      fontSize: "0.875rem",
+                      color: "#22c55e",
+                      marginTop: "0.5rem",
+                      fontWeight: "600",
+                    }}
+                  >
+                    Ilość psów: {dogCount}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div style={styles.bottomNav}>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("home")}
+        >
+          <Home size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
+        </button>
+        <button
+          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
+        >
+          <MapPin size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("dashboard")}
+        >
+          <Briefcase size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Praca</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DogsListView = ({
+  dogs,
+  selectedPavilion,
+  selectedBox,
+  setCurrentView,
+  setSelectedDog,
+  hoveredCard,
+  setHoveredCard,
+}) => {
+  const getDogsInBox = (pavilion, box) =>
+    dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box);
+  const dogsInBox = getDogsInBox(selectedPavilion, selectedBox);
+
+  return (
+    <div style={styles.pageContainer}>
+      <div style={styles.header}>
+        <div style={styles.headerContent}>
+          <button
+            onClick={() => setCurrentView("boxes")}
+            style={styles.backButton}
+            onTouchStart={(e) =>
+              (e.currentTarget.style.backgroundColor = "#f3f4f6")
+            }
+            onTouchEnd={(e) =>
+              (e.currentTarget.style.backgroundColor = "transparent")
+            }
+          >
+            <ArrowLeft size={24} style={{ marginRight: "0.5rem" }} />
+            Powrót
+          </button>
+          <h1 style={styles.title}>
+            {selectedPavilion} / Boks {selectedBox}
+          </h1>
+          <p style={styles.subtitle}>Ilość psów: {dogsInBox.length}</p>
+        </div>
+      </div>
+      <div style={styles.content}>
+        {dogsInBox.length === 0 ? (
+          <div style={styles.card}>
+            <p
+              style={{
+                textAlign: "center",
+                padding: "3rem 0",
+                fontSize: "1.125rem",
+                color: "#6b7280",
+              }}
+            >
+              Ten boks jest pusty
+            </p>
+          </div>
+        ) : (
+          <div
+            style={{ display: "grid", gridTemplateColumns: "1fr", gap: "1rem" }}
+          >
+            {dogsInBox.map((dog) => (
+              <div
+                key={dog.id}
+                onClick={() => {
+                  setSelectedDog(dog);
+                  setCurrentView("dogCard");
+                }}
+                style={{
+                  ...styles.dogCard,
+                  ...(hoveredCard === dog.id ? styles.dogCardHover : {}),
+                }}
+                onTouchStart={() => setHoveredCard(dog.id)}
+                onTouchEnd={() => setHoveredCard(null)}
+              >
+                <div className="dog-card-container">
+                  <div className="dog-card-photo-wrapper">
+                    <DogPhoto photo={dog.photo} name={dog.name} size="normal" />
+                  </div>
+                  <div className="dog-card-content">
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "start",
+                        marginBottom: "0.75rem",
+                      }}
+                    >
+                      <h3
+                        style={{
+                          fontSize: "1.5rem",
+                          fontWeight: "bold",
+                          color: "#111827",
+                        }}
+                      >
+                        {dog.name}
+                      </h3>
+                      <span
+                        style={
+                          !dog.status ||
+                          dog.status.toLowerCase().includes("dostępny")
+                            ? styles.badgeGreen
+                            : styles.badgeYellow
+                        }
+                      >
+                        {dog.status || "dostępny"}
+                      </span>
+                    </div>
+                    <p
+                      style={{
+                        color: "#374151",
+                        marginBottom: "0.75rem",
+                        fontSize: "1rem",
+                      }}
+                    >
+                      <strong>Rasa:</strong> {dog.breed}
+                    </p>
+                    {dog.age && (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          fontSize: "0.875rem",
+                          color: "#6b7280",
+                          marginBottom: "0.5rem",
+                        }}
+                      >
+                        <Calendar size={18} style={{ marginRight: "0.5rem" }} />
+                        {dog.age}
+                      </div>
+                    )}
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: "0.875rem",
+                        color: "#9ca3af",
+                        marginBottom: "0.5rem",
+                      }}
+                    >
+                      <MapPin size={16} style={{ marginRight: "0.25rem" }} />
+                      Boks {dog.box}
+                    </div>
+                    <div
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        fontSize: "0.75rem",
+                        color: "#d1d5db",
+                        marginTop: "0.5rem",
+                      }}
+                    >
+                      <Hash size={14} style={{ marginRight: "0.25rem" }} />
+                      {dog.id}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+      <div style={styles.bottomNav}>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("home")}
+        >
+          <Home size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
+        </button>
+        <button
+          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
+        >
+          <MapPin size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("dashboard")}
+        >
+          <Briefcase size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Praca</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DogCardView = ({ selectedDog, setCurrentView }) => {
+  const [showEditor, setShowEditor] = useState(false);
+  const [showSurvey, setShowSurvey] = useState(false);
+
+  if (!selectedDog) return null;
+
+  const formattedLastWalk = formatLastWalkDate(selectedDog.lastWalk);
+
+  return (
+    <div style={styles.pageContainer}>
+      <div style={styles.header}>
+        <div style={styles.headerContent}>
+          <button
+            onClick={() => setCurrentView("dogs")}
+            style={styles.backButton}
+            onTouchStart={(e) =>
+              (e.currentTarget.style.backgroundColor = "#f3f4f6")
+            }
+            onTouchEnd={(e) =>
+              (e.currentTarget.style.backgroundColor = "transparent")
+            }
+          >
+            <ArrowLeft size={24} style={{ marginRight: "0.5rem" }} />
+            Powrót
+          </button>
+        </div>
+      </div>
+      <div style={styles.content}>
+        <div
+          style={{
+            backgroundColor: "white",
+            borderRadius: "1rem",
+            overflow: "hidden",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.1)",
+          }}
+        >
+          <div
+            style={{
+              background: "linear-gradient(135deg, #2563eb, #1e40af)",
+              padding: "1.5rem",
+            }}
+          >
+            <h1
+              style={{
+                fontSize: "2rem",
+                fontWeight: "bold",
+                color: "white",
+                marginBottom: "0.5rem",
+              }}
+            >
+              {selectedDog.name}
+            </h1>
+            <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "1rem" }}>
+              {selectedDog.breed}
+            </p>
+          </div>
+          <div style={{ padding: "1.5rem", paddingBottom: 0 }}>
+            <DogPhoto
+              photo={selectedDog.photo}
+              name={selectedDog.name}
+              size="large"
+            />
+          </div>
+          <div style={{ padding: "1.25rem" }}>
+            <button
+              onClick={() => setShowSurvey(true)}
+              style={styles.walkButton}
+            >
+              <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
+              Wyjdź na spacer
+            </button>
+            <button
+              onClick={() => setShowEditor(true)}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: "#3b82f6",
+                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
+              }}
+            >
+              <FileText size={24} style={{ marginRight: "0.75rem" }} />
+              Edytuj plan pracy
+            </button>
+            {formattedLastWalk && (
+              <div style={styles.sectionYellow}>
+                <h3 style={styles.sectionTitle}>
+                  <Clock size={20} style={{ marginRight: "0.5rem" }} />
+                  Ostatni spacer
+                </h3>
+                <p
+                  style={{
+                    color: "#374151",
+                    fontSize: "1.125rem",
+                    fontWeight: "600",
+                  }}
+                >
+                  {formattedLastWalk}
+                </p>
+              </div>
+            )}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr",
+                gap: "0.75rem",
+                marginBottom: "1rem",
+              }}
+            >
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>📍 Lokalizacja</div>
+                <div style={styles.infoValue}>
+                  {selectedDog.pavilion} / Boks {selectedDog.box}
+                </div>
+              </div>
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>🆔 ID</div>
+                <div
+                  style={{
+                    ...styles.infoValue,
+                    fontFamily: "monospace",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {selectedDog.id}
+                </div>
+              </div>
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>📊 Status</div>
+                <span
+                  style={
+                    !selectedDog.status ||
+                    selectedDog.status.toLowerCase().includes("dostępny")
+                      ? styles.badgeGreen
+                      : styles.badgeYellow
+                  }
+                >
+                  {selectedDog.status || "dostępny"}
+                </span>
+              </div>
+              {selectedDog.age && (
+                <div style={styles.infoBox}>
+                  <div style={styles.infoLabel}>🎂 Wiek</div>
+                  <div style={styles.infoValue}>{selectedDog.age}</div>
+                </div>
+              )}
+              {selectedDog.chip && (
+                <div style={styles.infoBox}>
+                  <div style={styles.infoLabel}>💳 Chip</div>
+                  <div
+                    style={{
+                      ...styles.infoValue,
+                      fontFamily: "monospace",
+                      fontSize: "0.875rem",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {selectedDog.chip}
+                  </div>
+                </div>
+              )}
+            </div>
+            {selectedDog.appearance && (
+              <div style={styles.sectionBlue}>
+                <h3 style={styles.sectionTitle}>👁️ Wygląd</h3>
+                <p style={{ color: "#374151", lineHeight: "1.6" }}>
+                  {selectedDog.appearance}
+                </p>
+              </div>
+            )}
+            {selectedDog.diet && (
+              <div style={styles.sectionGreen}>
+                <h3 style={styles.sectionTitle}>🍖 Dieta / Żywienie</h3>
+                <p style={{ color: "#374151", lineHeight: "1.6" }}>
+                  {selectedDog.diet}
+                </p>
+              </div>
+            )}
+            {selectedDog.character && (
+              <div style={styles.sectionPurple}>
+                <h3 style={styles.sectionTitle}>🐕 Charakter</h3>
+                <p style={{ color: "#374151", lineHeight: "1.6" }}>
+                  {selectedDog.character}
+                </p>
+              </div>
+            )}
+            {selectedDog.warnings && (
+              <div style={styles.sectionRed}>
+                <h3 style={styles.sectionTitle}>
+                  <AlertCircle size={20} style={{ marginRight: "0.5rem" }} />
+                  Na co uważać!
+                </h3>
+                <p style={{ color: "#374151", lineHeight: "1.6" }}>
+                  {selectedDog.warnings}
+                </p>
+              </div>
+            )}
+            {selectedDog.notes && (
+              <div style={styles.sectionGray}>
+                <h3 style={styles.sectionTitle}>📝 Uwagi</h3>
+                <p style={{ color: "#374151", lineHeight: "1.6" }}>
+                  {selectedDog.notes}
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+      <div style={styles.bottomNav}>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("home")}
+        >
+          <Home size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("map")}
+        >
+          <MapPin size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("dashboard")}
+        >
+          <Briefcase size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Praca</span>
+        </button>
+      </div>
+      {showEditor && (
+        <DogWorkEditor
+          dog={selectedDog}
+          onClose={() => setShowEditor(false)}
+          onSave={() => setShowEditor(false)}
+        />
+      )}
+      {showSurvey && (
+        <WalkSurvey
+          dog={selectedDog}
+          onClose={() => setShowSurvey(false)}
+          onSave={() => setShowSurvey(false)}
+        />
+      )}
+    </div>
+  );
+};
+
+const ShelterMapSystem = () => {
+  const [dogs, setDogs] = useState([]);
+  const [currentView, setCurrentView] = useState("home");
+  const [selectedPavilion, setSelectedPavilion] = useState(null);
+  const [selectedBox, setSelectedBox] = useState(null);
+  const [selectedDog, setSelectedDog] = useState(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [hoveredCard, setHoveredCard] = useState(null);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const SHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
+      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
+      const response = await fetch(url);
+      const text = await response.text();
+      const json = JSON.parse(text.substring(47).slice(0, -2));
+      const rows = json.table.rows;
+      const dogsData = rows
+        .map((row) => ({
+          status: row.c[0]?.v || "",
+          pavilion: row.c[1]?.v || "",
+          box: parseInt(row.c[2]?.v) || 1,
+          name: row.c[3]?.v || "",
+          id: row.c[4]?.v || "",
+          age: row.c[5]?.v || "",
+          chip: row.c[6]?.v || "",
+          breed: row.c[7]?.v || "",
+          appearance: row.c[8]?.v || "",
+          diet: row.c[9]?.v || "",
+          character: row.c[10]?.v || "",
+          warnings: row.c[11]?.v || "",
+          notes: row.c[12]?.v || "",
+          photo: row.c[13]?.v || "",
+          walkFormUrl: row.c[14]?.v || "",
+          historySheetUrl: row.c[15]?.v || "",
+          lastWalk: row.c[19]?.v || "",
+        }))
+        .filter((dog) => dog.name && dog.pavilion);
+      setDogs(dogsData);
+    } catch (error) {
+      console.error("Błąd:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDogClickFromDashboard = (dog) => {
+    setSelectedDog(dog);
+    setCurrentView("dogCard");
+  };
+
+  if (loading) {
+    return (
+      <div style={styles.loadingContainer}>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); }}`}</style>
+        <div style={{ textAlign: "center" }}>
+          <div style={styles.spinner}></div>
+          <p
+            style={{
+              marginTop: "1rem",
+              fontSize: "1.125rem",
+              color: "#374151",
+            }}
+          >
+            Ładowanie...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {currentView === "home" && (
+        <HomeView
+          dogs={dogs}
+          onDogClick={handleDogClickFromDashboard}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+          setCurrentView={setCurrentView}
+        />
+      )}
+      {currentView === "map" && (
+        <MapView
+          dogs={dogs}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          setSelectedPavilion={setSelectedPavilion}
+          setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+        />
+      )}
+      {currentView === "dashboard" && (
+        <DashboardView
+          onDogClick={handleDogClickFromDashboard}
+          setCurrentView={setCurrentView}
+        />
+      )}
+      {currentView === "boxes" && (
+        <BoxesView
+          dogs={dogs}
+          selectedPavilion={selectedPavilion}
+          setCurrentView={setCurrentView}
+          setSelectedBox={setSelectedBox}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+        />
+      )}
+      {currentView === "dogs" && (
+        <DogsListView
+          dogs={dogs}
+          selectedPavilion={selectedPavilion}
+          selectedBox={selectedBox}
+          setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+        />
+      )}
+      {currentView === "dogCard" && (
+        <DogCardView
+          selectedDog={selectedDog}
+          setCurrentView={setCurrentView}
+        />
+      )}
+    </>
+  );
+};
+
+export default ShelterMapSystem;
