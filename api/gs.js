@@ -26,6 +26,7 @@ function normalizeResult(raw, status = 200) {
 }
 
 export default async function handler(req, res) {
+
   setCorsHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -36,6 +37,7 @@ export default async function handler(req, res) {
     const url = new URL(APPS_SCRIPT_URL);
 
     if (req.method === "GET") {
+
       for (const [key, value] of Object.entries(req.query || {})) {
         url.searchParams.set(key, String(value));
       }
@@ -50,15 +52,12 @@ export default async function handler(req, res) {
           }
         : { method: "GET" };
 
+
     const response = await fetch(url.toString(), options);
     const text = await response.text();
 
     let parsed;
     try {
-      parsed = JSON.parse(text);
-    } catch {
-      parsed = { ok: false, error: "Non-JSON response", raw: text };
-    }
 
     return res.status(response.status).json(normalizeResult(parsed, response.status));
   } catch (error) {
