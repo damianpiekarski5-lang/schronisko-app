@@ -26,8 +26,7 @@ function normalizeResult(raw, status = 200) {
 }
 
 export default async function handler(req, res) {
-  const APPS_SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
+
   setCorsHeaders(res);
 
   if (req.method === "OPTIONS") {
@@ -35,12 +34,10 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Forward querystring dla GET (np. ?action=getDashboard)
     const url = new URL(APPS_SCRIPT_URL);
 
     if (req.method === "GET") {
-      for (const [k, v] of Object.entries(req.query || {})) {
-        url.searchParams.set(k, String(v));
+
       for (const [key, value] of Object.entries(req.query || {})) {
         url.searchParams.set(key, String(value));
       }
@@ -55,26 +52,12 @@ export default async function handler(req, res) {
           }
         : { method: "GET" };
 
-    const r = await fetch(url.toString(), options);
-    const text = await r.text();
 
-    // Zwracamy JSON jeśli się da, inaczej tekst
-    res.status(r.status);
-    res.setHeader("Content-Type", "application/json; charset=utf-8");
     const response = await fetch(url.toString(), options);
     const text = await response.text();
 
     let parsed;
     try {
-      const json = JSON.parse(text);
-      return res.json(json);
-      parsed = JSON.parse(text);
-    } catch {
-      return res.json({ ok: false, error: "Non-JSON response", raw: text });
-      parsed = { ok: false, error: "Non-JSON response", raw: text };
-    }
-  } catch (err) {
-    return res.status(500).json({ ok: false, error: String(err) });
 
     return res.status(response.status).json(normalizeResult(parsed, response.status));
   } catch (error) {

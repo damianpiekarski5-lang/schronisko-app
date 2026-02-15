@@ -8,15 +8,12 @@ import {
   Calendar,
   Hash,
   Home,
+  ClipboardPlus,
   ExternalLink,
   Clock,
-  Briefcase,
-  FileText,
-  CheckCircle,
 } from "lucide-react";
-import DashboardView from "./DashboardView";
 import WalkSurvey from "./WalkSurvey";
-import DogWorkEditor from "./DogWorkEditor";
+import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 
 // Mobile-optimized styles
@@ -1044,13 +1041,6 @@ const MapView = ({
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("dashboard")}
-        >
-          <Briefcase size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Praca</span>
-        </button>
       </div>
     </div>
   );
@@ -1177,13 +1167,6 @@ const BoxesView = ({
         >
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("dashboard")}
-        >
-          <Briefcase size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Praca</span>
         </button>
       </div>
     </div>
@@ -1359,21 +1342,14 @@ const DogsListView = ({
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("dashboard")}
-        >
-          <Briefcase size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Praca</span>
-        </button>
       </div>
     </div>
   );
 };
 
 const DogCardView = ({ selectedDog, setCurrentView }) => {
-  const [showEditor, setShowEditor] = useState(false);
   const [showSurvey, setShowSurvey] = useState(false);
+  const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
   if (!selectedDog) return null;
 
@@ -1440,18 +1416,7 @@ const DogCardView = ({ selectedDog, setCurrentView }) => {
               style={styles.walkButton}
             >
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
-              Wyjdź na spacer
-            </button>
-            <button
-              onClick={() => setShowEditor(true)}
-              style={{
-                ...styles.walkButton,
-                backgroundColor: "#3b82f6",
-                boxShadow: "0 2px 4px rgba(59, 130, 246, 0.3)",
-              }}
-            >
-              <FileText size={24} style={{ marginRight: "0.75rem" }} />
-              Edytuj plan pracy
+              Spacer
             </button>
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
@@ -1470,6 +1435,17 @@ const DogCardView = ({ selectedDog, setCurrentView }) => {
                 </p>
               </div>
             )}
+            <button
+              onClick={() => setShowBehaviorReport(true)}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: "#f59e0b",
+                boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+              }}
+            >
+              <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
+              Zgłoszenie do pracy behawioralnej
+            </button>
             <div
               style={{
                 display: "grid",
@@ -1592,26 +1568,18 @@ const DogCardView = ({ selectedDog, setCurrentView }) => {
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("dashboard")}
-        >
-          <Briefcase size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Praca</span>
-        </button>
       </div>
-      {showEditor && (
-        <DogWorkEditor
-          dog={selectedDog}
-          onClose={() => setShowEditor(false)}
-          onSave={() => setShowEditor(false)}
-        />
-      )}
       {showSurvey && (
         <WalkSurvey
           dog={selectedDog}
           onClose={() => setShowSurvey(false)}
           onSave={() => setShowSurvey(false)}
+        />
+      )}
+      {showBehaviorReport && (
+        <BehaviorReport
+          dog={selectedDog}
+          onClose={() => setShowBehaviorReport(false)}
         />
       )}
     </div>
@@ -1716,12 +1684,6 @@ const ShelterMapSystem = () => {
           setSelectedDog={setSelectedDog}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
-        />
-      )}
-      {currentView === "dashboard" && (
-        <DashboardView
-          onDogClick={handleDogClickFromDashboard}
-          setCurrentView={setCurrentView}
         />
       )}
       {currentView === "boxes" && (

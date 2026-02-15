@@ -7,7 +7,6 @@ import {
   MapPin,
   Hash,
   Home,
-  Briefcase,
 } from "lucide-react";
 
 const styles = {
@@ -383,13 +382,6 @@ const HomeView = ({
         >
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("dashboard")}
-        >
-          <Briefcase size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Praca</span>
         </button>
       </div>
     </div>
