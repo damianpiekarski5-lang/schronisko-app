@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import { X, CheckCircle } from "lucide-react";
 
-// Proxy na Vercelu (omija CORS do Apps Script)
 const API_URL = "/api/gs";
 
 const styles = {
@@ -40,14 +39,8 @@ const styles = {
     alignItems: "center",
     marginBottom: "0.5rem",
   },
-  title: {
-    fontSize: "1.5rem",
-    fontWeight: "bold",
-  },
-  subtitle: {
-    opacity: 0.9,
-    fontSize: "0.875rem",
-  },
+  title: { fontSize: "1.5rem", fontWeight: "bold" },
+  subtitle: { opacity: 0.9, fontSize: "0.875rem" },
   closeButton: {
     background: "rgba(255,255,255,0.2)",
     border: "none",
@@ -56,12 +49,8 @@ const styles = {
     padding: "0.5rem",
     borderRadius: "0.5rem",
   },
-  content: {
-    padding: "1.5rem",
-  },
-  section: {
-    marginBottom: "2rem",
-  },
+  content: { padding: "1.5rem" },
+  section: { marginBottom: "2rem" },
   sectionTitle: {
     fontSize: "1.125rem",
     fontWeight: "bold",
@@ -70,9 +59,7 @@ const styles = {
     paddingBottom: "0.5rem",
     borderBottom: "2px solid #e5e7eb",
   },
-  question: {
-    marginBottom: "1.5rem",
-  },
+  question: { marginBottom: "1.5rem" },
   questionLabel: {
     fontSize: "0.875rem",
     fontWeight: "600",
@@ -80,11 +67,7 @@ const styles = {
     marginBottom: "0.75rem",
     display: "block",
   },
-  checkboxGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
+  checkboxGroup: { display: "flex", flexDirection: "column", gap: "0.5rem" },
   checkboxLabel: {
     display: "flex",
     alignItems: "flex-start",
@@ -95,10 +78,7 @@ const styles = {
     transition: "all 0.2s",
     backgroundColor: "white",
   },
-  checkboxLabelChecked: {
-    borderColor: "#22c55e",
-    backgroundColor: "#f0fdf4",
-  },
+  checkboxLabelChecked: { borderColor: "#22c55e", backgroundColor: "#f0fdf4" },
   checkbox: {
     width: "1.25rem",
     height: "1.25rem",
@@ -107,16 +87,8 @@ const styles = {
     flexShrink: 0,
     marginTop: "0.125rem",
   },
-  checkboxText: {
-    fontSize: "0.875rem",
-    color: "#374151",
-    lineHeight: "1.4",
-  },
-  radioGroup: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
+  checkboxText: { fontSize: "0.875rem", color: "#374151", lineHeight: "1.4" },
+  radioGroup: { display: "flex", flexDirection: "column", gap: "0.5rem" },
   radioLabel: {
     display: "flex",
     alignItems: "center",
@@ -127,10 +99,7 @@ const styles = {
     transition: "all 0.2s",
     backgroundColor: "white",
   },
-  radioLabelChecked: {
-    borderColor: "#3b82f6",
-    backgroundColor: "#eff6ff",
-  },
+  radioLabelChecked: { borderColor: "#3b82f6", backgroundColor: "#eff6ff" },
   radio: {
     width: "1.25rem",
     height: "1.25rem",
@@ -138,9 +107,15 @@ const styles = {
     cursor: "pointer",
     flexShrink: 0,
   },
-  radioText: {
+  radioText: { fontSize: "0.875rem", color: "#374151" },
+  input: {
+    width: "100%",
+    padding: "0.75rem",
+    border: "2px solid #e5e7eb",
+    borderRadius: "0.5rem",
     fontSize: "0.875rem",
-    color: "#374151",
+    outline: "none",
+    fontFamily: "inherit",
   },
   textarea: {
     width: "100%",
@@ -153,10 +128,7 @@ const styles = {
     resize: "vertical",
     fontFamily: "inherit",
   },
-  required: {
-    color: "#ef4444",
-    marginLeft: "0.25rem",
-  },
+  required: { color: "#ef4444", marginLeft: "0.25rem" },
   saveButton: {
     position: "fixed",
     bottom: "1rem",
@@ -204,42 +176,37 @@ const styles = {
 };
 
 const WalkSurvey = ({ dog, onClose, onSave }) => {
-  // Stan dla odpowiedzi
-  const [contact, setContact] = useState([]);
+  const [volunteerName, setVolunteerName] = useState("");
   const [walking, setWalking] = useState([]);
   const [dogs, setDogs] = useState("");
   const [people, setPeople] = useState("");
   const [traffic, setTraffic] = useState("");
   const [emotionalState, setEmotionalState] = useState("");
   const [notes, setNotes] = useState("");
-
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
-  // Toggle checkbox
   const toggleCheckbox = (value, state, setState) => {
-    if (state.includes(value)) {
-      setState(state.filter((v) => v !== value));
-    } else {
-      setState([...state, value]);
-    }
+    if (state.includes(value)) setState(state.filter((v) => v !== value));
+    else setState([...state, value]);
   };
 
-  // Walidacja
-  const isValid = () => {
-    return emotionalState !== ""; // Tylko stan emocjonalny jest wymagany
-  };
+  const isValid = () => volunteerName.trim() && emotionalState !== "";
 
   const handleSave = async () => {
     if (!isValid()) {
-      setMessage({ type: "error", text: "❌ Stan emocjonalny jest wymagany!" });
+      setMessage({
+        type: "error",
+        text: "❌ Uzupełnij kto wyprowadził psa i stan emocjonalny.",
+      });
       return;
     }
 
-    // bezpieczeństwo: jeśli dog/id jest puste
-    const dogId = dog?.id ?? dog?.dogId ?? dog?.ID;
-    if (!dogId) {
-      setMessage({ type: "error", text: "❌ Brak ID psa (dog.id)" });
+    const dogId = String(dog?.id ?? dog?.dogId ?? dog?.ID ?? "").trim();
+    const dogName = String(dog?.name ?? "").trim();
+
+    if (!dogId || !dogName) {
+      setMessage({ type: "error", text: "❌ Brak imienia lub ID psa." });
       return;
     }
 
@@ -252,37 +219,42 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           action: "recordWalk",
-          dogId: String(dogId),
-          volunteer: "Wolontariusz",
-          responses: {
-            contact: contact.join(", "),
-            walking: walking.join(", "),
-            dogs,
-            people,
-            traffic,
-            emotionalState,
-            notes,
-          },
+          dogName,
+          dogId,
+          volunteerName: volunteerName.trim(),
+          walking: walking.join(", "),
+          dogs,
+          people,
+          traffic,
+          emotionalState,
+          notes: notes.trim(),
         }),
       });
 
       const result = await response.json();
+      console.log("recordWalk response:", result);
 
-      if (result?.ok && result?.data?.success) {
+      const isSuccess =
+        result?.ok === true &&
+        (result?.data?.success === true || result?.success === true);
+
+      if (isSuccess) {
         setMessage({ type: "success", text: "✅ Spacer zapisany!" });
         setTimeout(() => {
           onSave && onSave();
           onClose && onClose();
-        }, 1500);
+        }, 1300);
       } else {
         setMessage({
           type: "error",
-          text: "❌ Błąd: " + (result?.error || "Nieznany błąd"),
+          text:
+            "❌ Nie udało się zapisać spaceru. " +
+            (result?.error || "Spróbuj ponownie za chwilę."),
         });
       }
-    } catch (err) {
-      console.error(err);
-      setMessage({ type: "error", text: "❌ Błąd połączenia" });
+    } catch (error) {
+      console.error("recordWalk error:", error);
+      setMessage({ type: "error", text: "❌ Błąd połączenia z serwerem." });
     } finally {
       setSaving(false);
     }
@@ -292,7 +264,6 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
     <div style={styles.overlay}>
       <div style={styles.container}>
         <div style={styles.panel}>
-          {/* Header */}
           <div style={styles.header}>
             <div style={styles.headerTop}>
               <div>
@@ -307,7 +278,6 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
             </div>
           </div>
 
-          {/* Content */}
           <div style={styles.content}>
             {message && (
               <div
@@ -321,54 +291,23 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               </div>
             )}
 
-            {/* SEKCJA 1: Wyjście z boksu */}
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>1. WYJŚCIE Z BOKSU I OBSŁUGA</h3>
-
+              <h3 style={styles.sectionTitle}>1. Dane spaceru</h3>
               <div style={styles.question}>
-                <label style={styles.questionLabel}>Reakcja na kontakt:</label>
-                <div style={styles.checkboxGroup}>
-                  {[
-                    "Chętnie podchodzi do krat boksowych",
-                    "Pozwala na zapięcie smyczy",
-                    "Skacze na wolontariusza z ekscytacji",
-                    "Podchodzi powoli, niepewnie",
-                    "Tylko obserwuje, nie podchodzi sam",
-                    "Szczeka z ekscytacji (nie agresywnie)",
-                    "Chwyta za smycz lub ręce",
-                    "Unika kontaktu",
-                    "Cofa się do tyłu boksu",
-                    "Zamiera w bezruchu",
-                    "Warczy lub kłapie zębami",
-                  ].map((option) => (
-                    <label
-                      key={option}
-                      style={{
-                        ...styles.checkboxLabel,
-                        ...(contact.includes(option)
-                          ? styles.checkboxLabelChecked
-                          : {}),
-                      }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={contact.includes(option)}
-                        onChange={() =>
-                          toggleCheckbox(option, contact, setContact)
-                        }
-                        style={styles.checkbox}
-                      />
-                      <span style={styles.checkboxText}>{option}</span>
-                    </label>
-                  ))}
-                </div>
+                <label style={styles.questionLabel}>
+                  Kto wyprowadził psa? <span style={styles.required}>*</span>
+                </label>
+                <input
+                  value={volunteerName}
+                  onChange={(e) => setVolunteerName(e.target.value)}
+                  style={styles.input}
+                  placeholder="Imię i nazwisko / ksywa wolontariusza"
+                />
               </div>
             </div>
 
-            {/* SEKCJA 2: Zachowanie na spacerze */}
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>2. ZACHOWANIE NA SPACERZE</h3>
-
+              <h3 style={styles.sectionTitle}>2. Zachowanie na spacerze</h3>
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Sposób chodzenia:</label>
                 <div style={styles.checkboxGroup}>
@@ -377,9 +316,9 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
                     "Potrafi usiąść lub uspokoić się na chwilę na sygnał",
                     "Ciągnie umiarkowanie (da się opanować)",
                     "Silnie ciągnie",
-                    "Często węszy i eksploruje teren nie zwraca uwagi na człowieka",
+                    "Często węszy i eksploruje teren",
                     "Atakuje/gryzie smycz podczas marszu",
-                    "Zapiera się / nie chce iść w konkretnym kierunku",
+                    "Zapiera się / nie chce iść",
                     "Szarpie gwałtownie w różnych kierunkach",
                   ].map((option) => (
                     <label
@@ -406,126 +345,90 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               </div>
             </div>
 
-            {/* SEKCJA 3: Reakcja na bodźce */}
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>3. REAKCJA NA BODŹCE</h3>
+              <h3 style={styles.sectionTitle}>3. Reakcja na bodźce</h3>
 
-              {/* Inne psy */}
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Inne psy:</label>
                 <div style={styles.radioGroup}>
-                  {[
-                    "Ignoruje całkowicie",
-                    "Zauważa, ale szybko wraca do swoich spraw",
-                    "Obserwuje z dystansu bez napięcia",
-                    "Wpatruje się intensywnie",
-                    "Sztywnieje, zatrzymuje się",
-                    "Napina smycz, ciągnie w kierunku psa",
-                    "Chce podejść (sygnały zabawy - luźne ciało, merdanie)",
-                    "Skomli/pojękuje z ekscytacji",
-                    "Szczeka, ale pozostaje w miejscu",
-                    "Szczeka i rzuca się",
-                    "Boi się - cofa się",
-                    "Boi się - zamiera",
-                  ].map((option) => (
-                    <label
-                      key={option}
-                      style={{
-                        ...styles.radioLabel,
-                        ...(dogs === option ? styles.radioLabelChecked : {}),
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="dogs"
-                        checked={dogs === option}
-                        onChange={() => setDogs(option)}
-                        style={styles.radio}
-                      />
-                      <span style={styles.radioText}>{option}</span>
-                    </label>
-                  ))}
+                  {["Ignoruje", "Obserwuje", "Napina się", "Szczeka", "Rzuca się", "Boi się"].map(
+                    (option) => (
+                      <label
+                        key={option}
+                        style={{
+                          ...styles.radioLabel,
+                          ...(dogs === option ? styles.radioLabelChecked : {}),
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="dogs"
+                          checked={dogs === option}
+                          onChange={() => setDogs(option)}
+                          style={styles.radio}
+                        />
+                        <span style={styles.radioText}>{option}</span>
+                      </label>
+                    )
+                  )}
                 </div>
               </div>
 
-              {/* Ludzie */}
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Ludzie:</label>
                 <div style={styles.radioGroup}>
-                  {[
-                    "Przyjazny - podchodzi sam z radością",
-                    "Przyjazny - czeka na zaproszenie",
-                    "Zainteresowany, ale niepewny",
-                    "Podchodzi ostrożnie, węszy",
-                    "Ignoruje",
-                    "Obserwuje z dystansu bez podchodzenia",
-                    "Szczeka",
-                    "Warczy",
-                    "Unika - oddala się",
-                    "Unika - chowa się za wolontariusza",
-                    "Skacze na ludzi (zbyt pobudzony)",
-                  ].map((option) => (
-                    <label
-                      key={option}
-                      style={{
-                        ...styles.radioLabel,
-                        ...(people === option ? styles.radioLabelChecked : {}),
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="people"
-                        checked={people === option}
-                        onChange={() => setPeople(option)}
-                        style={styles.radio}
-                      />
-                      <span style={styles.radioText}>{option}</span>
-                    </label>
-                  ))}
+                  {["Przyjazny", "Niepewny", "Ignoruje", "Szczeka", "Unika"].map(
+                    (option) => (
+                      <label
+                        key={option}
+                        style={{
+                          ...styles.radioLabel,
+                          ...(people === option ? styles.radioLabelChecked : {}),
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="people"
+                          checked={people === option}
+                          onChange={() => setPeople(option)}
+                          style={styles.radio}
+                        />
+                        <span style={styles.radioText}>{option}</span>
+                      </label>
+                    )
+                  )}
                 </div>
               </div>
 
-              {/* Ruch uliczny */}
               <div style={styles.question}>
-                <label style={styles.questionLabel}>
-                  Ruch uliczny (auta, rowery, biegacze):
-                </label>
+                <label style={styles.questionLabel}>Ruch uliczny:</label>
                 <div style={styles.radioGroup}>
-                  {[
-                    "Brak reakcji / ignoruje",
-                    "Zauważa, ale pozostaje spokojny",
-                    "Napina się, sztywnieje",
-                    "Szczeka, ale da się opanować",
-                    "Rzuca się i szczeka",
-                    "Unika / chowa się",
-                    "Panikuje - szarpie, próbuje uciec",
-                  ].map((option) => (
-                    <label
-                      key={option}
-                      style={{
-                        ...styles.radioLabel,
-                        ...(traffic === option ? styles.radioLabelChecked : {}),
-                      }}
-                    >
-                      <input
-                        type="radio"
-                        name="traffic"
-                        checked={traffic === option}
-                        onChange={() => setTraffic(option)}
-                        style={styles.radio}
-                      />
-                      <span style={styles.radioText}>{option}</span>
-                    </label>
-                  ))}
+                  {["Brak reakcji", "Spokojny", "Napina się", "Szczeka", "Panikuje"].map(
+                    (option) => (
+                      <label
+                        key={option}
+                        style={{
+                          ...styles.radioLabel,
+                          ...(traffic === option ? styles.radioLabelChecked : {}),
+                        }}
+                      >
+                        <input
+                          type="radio"
+                          name="traffic"
+                          checked={traffic === option}
+                          onChange={() => setTraffic(option)}
+                          style={styles.radio}
+                        />
+                        <span style={styles.radioText}>{option}</span>
+                      </label>
+                    )
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* SEKCJA 4: Podsumowanie */}
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>4. PODSUMOWANIE</h3>
-
-              {/* Stan emocjonalny - WYMAGANE */}
+              <h3 style={styles.sectionTitle}>4. Podsumowanie</h3>
               <div style={styles.question}>
                 <label style={styles.questionLabel}>
                   Stan emocjonalny: <span style={styles.required}>*</span>
@@ -533,11 +436,11 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
                 <div style={styles.radioGroup}>
                   {[
                     "A – Bardzo przyjazny, zrelaksowany",
-                    "B – Aktywny, zainteresowany, ale opanowany",
+                    "B – Aktywny, opanowany",
                     "C – Neutralny, lekko niepewny",
-                    "D – Bardzo pobudzony / trudny do opanowania",
-                    "E – Bardzo przestraszony / unikający",
-                    "F – Wykazujący zachowania grożące (warczenie, rzucanie się)",
+                    "D – Bardzo pobudzony",
+                    "E – Bardzo przestraszony",
+                    "F – Zachowania grożące",
                   ].map((option) => (
                     <label
                       key={option}
@@ -561,7 +464,6 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
                 </div>
               </div>
 
-              {/* Dodatkowe uwagi */}
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Dodatkowe uwagi:</label>
                 <textarea
@@ -575,7 +477,6 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
           </div>
         </div>
 
-        {/* Save Button - Fixed na dole */}
         <button
           onClick={handleSave}
           disabled={saving || !isValid()}
