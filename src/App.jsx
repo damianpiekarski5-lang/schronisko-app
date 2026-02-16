@@ -15,6 +15,7 @@ import {
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
+import { formatDateTime, parseSpreadsheetDate } from "./utils/dateTime";
 
 // Mobile-optimized styles
 const styles = {
@@ -582,21 +583,8 @@ const formatLastWalkDate = (dateString) => {
   if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!") {
     return null;
   }
-  try {
-    const normalizedDate = String(dateString).includes("T")
-      ? String(dateString)
-      : String(dateString).replace(" ", "T");
-    const date = new Date(normalizedDate);
-    if (isNaN(date.getTime())) return null;
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
-    return `${day}.${month}.${year}, ${hours}:${minutes}`;
-  } catch (e) {
-    return null;
-  }
+
+  return formatDateTime(dateString);
 };
 
 const normalizePhotoUrl = (photo) => {
@@ -628,10 +616,7 @@ const parseBoxNumber = (kennelValue) => {
 
 const parseDateSafe = (value) => {
   const text = cleanText(value);
-  if (!text) return null;
-  const normalized = text.includes("T") ? text : text.replace(" ", "T");
-  const parsed = new Date(normalized);
-  return Number.isNaN(parsed.getTime()) ? null : parsed;
+  return parseSpreadsheetDate(text);
 };
 
 const chooseBetterDogRecord = (currentDog, nextDog) => {
