@@ -25,16 +25,8 @@ export const parseSpreadsheetDate = (value) => {
 
   const isoWithTimezoneMatch = text.match(ISO_DATE_TIME_WITH_TIMEZONE_PATTERN);
   if (isoWithTimezoneMatch) {
-    const [, year, month, day, hours, minutes, seconds = "00"] =
-      isoWithTimezoneMatch;
-    const parsed = new Date(
-      Number(year),
-      Number(month) - 1,
-      Number(day),
-      Number(hours),
-      Number(minutes),
-      Number(seconds)
-    );
+    const normalizedIso = text.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+    const parsed = new Date(normalizedIso);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
   }
 

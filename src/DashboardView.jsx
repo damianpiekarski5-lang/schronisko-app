@@ -9,6 +9,7 @@ import {
   MapPin,
   Briefcase,
 } from "lucide-react";
+import { parseSpreadsheetDate } from "./utils/dateTime";
 
 const API_URL =
   "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
@@ -435,10 +436,9 @@ const DogCard = ({
     const reasons = [];
     if (dog.urgencyScore >= 60 && showUrgency) {
       if (dog.work?.priority >= 4) reasons.push("Wysoki priorytet");
-      const daysSince = dog.lastWalk
-        ? Math.floor(
-            (new Date() - new Date(dog.lastWalk)) / (1000 * 60 * 60 * 24)
-          )
+      const lastWalkDate = parseSpreadsheetDate(dog.lastWalk);
+      const daysSince = lastWalkDate
+        ? Math.floor((new Date() - lastWalkDate) / (1000 * 60 * 60 * 24))
         : 999;
       if (daysSince > 7) reasons.push(`${daysSince} dni bez spaceru`);
     }
