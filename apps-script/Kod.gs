@@ -92,6 +92,18 @@ function nowInPoland() {
   return new Date(isoOffset);
 }
 
+function nowInPolandText() {
+  return Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+}
+
+function normalizeSheetDate(value) {
+  if (!value) return "";
+  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
+    return Utilities.formatDate(value, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+  }
+  return safeStr(value);
+}
+
 // ===============================
 // CORE – DOGS
 // ===============================
@@ -129,7 +141,7 @@ function getDogs(includeArchived) {
       caution: safeStr(row[map[H.CAUTION]]),
       extra: safeStr(row[map[H.EXTRA]]),
       photo: safeStr(row[map[H.PHOTO]]),
-      lastWalk: row[map[H.LAST_WALK]] || "",
+      lastWalk: normalizeSheetDate(row[map[H.LAST_WALK]]),
       archived,
     });
   }
@@ -178,7 +190,7 @@ function recordWalk(payload) {
   if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
 
   const dogRow = dogsValues[rowIndex];
-  const now = nowInPoland();
+  const now = nowInPolandText();
 
   const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
   ensureHeaders(walksSheet, [
@@ -240,7 +252,7 @@ function reportBehavior(payload) {
   ]);
 
   reportsSheet.appendRow([
-    nowInPoland(),
+    nowInPolandText(),
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
     safeStr(payload?.volunteerName),
