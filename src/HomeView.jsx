@@ -8,6 +8,7 @@ import {
   Hash,
   Home,
 } from "lucide-react";
+import { parseSpreadsheetDate } from "./utils/dateTime";
 
 const styles = {
   pageContainer: {
@@ -188,18 +189,13 @@ const DogPhoto = ({ photo, name }) => {
 const getDaysSince = (dateString) => {
   if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!")
     return 999;
-  try {
-    const normalizedDate = String(dateString).includes("T")
-      ? String(dateString)
-      : String(dateString).replace(" ", "T");
-    const date = new Date(normalizedDate);
-    if (isNaN(date.getTime())) return 999;
-    const now = new Date();
-    const diff = now - date;
-    return Math.floor(diff / (1000 * 60 * 60 * 24));
-  } catch (e) {
-    return 999;
-  }
+
+  const date = parseSpreadsheetDate(dateString);
+  if (!date) return 999;
+
+  const now = new Date();
+  const diff = now - date;
+  return Math.floor(diff / (1000 * 60 * 60 * 24));
 };
 
 const formatDaysAgo = (days) => {
