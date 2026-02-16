@@ -1,5 +1,6 @@
 // ===============================
-// SCHRONISKO API v2 – Web App + Arkusz
+// SCHRONISKO API v3 – Web App + Arkusz (pełny)
+// Jedna baza psów + spacery + zgłoszenia + archiwizacja
 // ===============================
 
 const SPREADSHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
@@ -7,6 +8,8 @@ const SPREADSHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
 const DOGS_SHEET_NAME = "Baza psów";
 const WALKS_SHEET_NAME = "Spacery";
 const REPORTS_SHEET_NAME = "Zgłoszenia";
+const ARCHIVE_SHEET_NAME = "Archiwum";
+const ARCHIVE_HEADER_NAME = "Archiwum";
 
 const H = {
   PAVILION: "PAWILON",
@@ -26,6 +29,9 @@ const H = {
   ARCHIVE: "Archiwum",
 };
 
+// ===============================
+// WEB APP
+// ===============================
 function doOptions() {
   return json({ ok: true, data: { success: true } });
 }
@@ -39,7 +45,7 @@ function doGet(e) {
       return json({ ok: true, data: getDogs(includeArchived) });
     }
 
-    return json({ ok: true, data: { success: true } });
+    return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
   }
@@ -63,6 +69,11 @@ function doPost(e) {
       return json({ ok: true, data: { success: true } });
     }
 
+    if (action === "setArchive") {
+      const result = setArchive(payload);
+      return json({ ok: true, data: result });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -73,6 +84,9 @@ function doPost(e) {
   }
 }
 
+// ===============================
+// CORE – DOGS
+// ===============================
 function getDogs(includeArchived) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sh = ss.getSheetByName(DOGS_SHEET_NAME);
@@ -85,7 +99,6 @@ function getDogs(includeArchived) {
   requireHeaders(map, [H.ID, H.NAME, H.ARCHIVE]);
 
   const out = [];
-
   for (let r = 1; r < values.length; r++) {
     const row = values[r];
     const dogId = safeStr(row[map[H.ID]]);
@@ -116,6 +129,31 @@ function getDogs(includeArchived) {
   return out;
 }
 
+function setArchive(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const archived = Boolean(payload?.archived);
+
+  if (!dogId) throw new Error("Brak dogId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.ARCHIVE]);
+
+  const rowIndex = findDogRow(values, map, dogId);
+  if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
+
+  sh.getRange(rowIndex + 1, map[H.ARCHIVE] + 1).setValue(archived);
+
+  return { success: true, dogId, archived };
+}
+
+// ===============================
+// CORE – WALKS
+// ===============================
 function recordWalk(payload) {
   const dogId = safeStr(payload?.dogId);
   if (!dogId) throw new Error("Brak dogId");
@@ -136,38 +174,45 @@ function recordWalk(payload) {
 
   const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
   ensureHeaders(walksSheet, [
-    "timestamp",
-    "dogName",
-    "dogId",
-    "volunteerName",
-    "walking",
-    "dogs",
-    "people",
-    "traffic",
-    "emotionalState",
-    "notes",
-    "pavilion",
-    "kennel",
+    "Data spaceru",
+    "DogId",
+    "Imię psa",
+    "Pawilon",
+    "Boks",
+    "Wolontariusz",
+    "Kontakt",
+    "Smycz",
+    "Psy",
+    "Ludzie",
+    "Ruch",
+    "Stan emocjonalny",
+    "Uwagi",
   ]);
+
+  const responses = payload?.responses || {};
 
   walksSheet.appendRow([
     now,
-    safeStr(dogRow[map[H.NAME]]),
     dogId,
-    safeStr(payload?.volunteerName) || "Wolontariusz",
-    safeStr(payload?.walking),
-    safeStr(payload?.dogs),
-    safeStr(payload?.people),
-    safeStr(payload?.traffic),
-    safeStr(payload?.emotionalState),
-    safeStr(payload?.notes),
+    safeStr(dogRow[map[H.NAME]]),
     safeStr(dogRow[map[H.PAVILION]]),
     safeStr(dogRow[map[H.KENNEL]]),
+    safeStr(payload?.volunteer) || safeStr(payload?.volunteerName) || "Wolontariusz",
+    safeStr(responses.contact || payload?.contact),
+    safeStr(responses.walking || payload?.walking),
+    safeStr(responses.dogs || payload?.dogs),
+    safeStr(responses.people || payload?.people),
+    safeStr(responses.traffic || payload?.traffic),
+    safeStr(responses.emotionalState || payload?.emotionalState),
+    safeStr(responses.notes || payload?.notes),
   ]);
 
   dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
 }
 
+// ===============================
+// CORE – REPORTS
+// ===============================
 function reportBehavior(payload) {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
@@ -201,6 +246,68 @@ function reportBehavior(payload) {
   ]);
 }
 
+// ===============================
+// ARCHIWUM – onEdit checkbox (dwukierunkowo)
+// ===============================
+function onEdit(e) {
+  if (!e || !e.range) return;
+  handleArchiveCheckboxEdit(e.range, e.value);
+}
+
+function testOnEditArchiveFromCurrentCell() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet();
+  const range = sheet.getActiveCell();
+  const value = String(range.getValue());
+  handleArchiveCheckboxEdit(range, value);
+}
+
+function handleArchiveCheckboxEdit(range, rawValue) {
+  const sheet = range.getSheet();
+  const row = range.getRow();
+  if (row <= 1) return;
+
+  const sheetName = sheet.getName();
+  if (sheetName !== DOGS_SHEET_NAME && sheetName !== ARCHIVE_SHEET_NAME) return;
+
+  const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const archiveCol = headerRow.findIndex((h) => safeStr(h) === ARCHIVE_HEADER_NAME) + 1;
+  if (!archiveCol || range.getColumn() !== archiveCol) return;
+
+  const checked = String(rawValue ?? range.getValue()).toLowerCase() === "true";
+
+  if (sheetName === DOGS_SHEET_NAME && checked) {
+    moveRowBetweenSheets_(sheet, row, ARCHIVE_SHEET_NAME, archiveCol, true);
+  } else if (sheetName === ARCHIVE_SHEET_NAME && !checked) {
+    moveRowBetweenSheets_(sheet, row, DOGS_SHEET_NAME, archiveCol, false);
+  }
+}
+
+function moveRowBetweenSheets_(sourceSheet, sourceRow, targetSheetName, archiveCol, archiveChecked) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const targetSheet = getOrCreateSheet(ss, targetSheetName);
+
+  const values = sourceSheet.getRange(sourceRow, 1, 1, sourceSheet.getLastColumn()).getValues();
+  values[0][archiveCol - 1] = archiveChecked;
+
+  if (targetSheet.getLastRow() === 0) {
+    const headers = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues();
+    targetSheet.getRange(1, 1, 1, headers[0].length).setValues(headers);
+  }
+
+  targetSheet.appendRow(values[0]);
+  const targetRow = targetSheet.getLastRow();
+
+  sourceSheet.getRange(sourceRow, 1, 1, sourceSheet.getLastColumn()).clearDataValidations();
+  targetSheet.getRange(targetRow, archiveCol).insertCheckboxes();
+  targetSheet.getRange(targetRow, archiveCol).setValue(archiveChecked);
+
+  sourceSheet.deleteRow(sourceRow);
+}
+
+// ===============================
+// HELPERS
+// ===============================
 function json(payload) {
   return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(
     ContentService.MimeType.JSON
@@ -231,9 +338,7 @@ function requireHeaders(map, headers) {
 function findDogRow(values, map, dogId) {
   for (let r = 1; r < values.length; r++) {
     const rowDogId = safeStr(values[r][map[H.ID]]);
-    if (rowDogId && rowDogId === safeStr(dogId)) {
-      return r;
-    }
+    if (rowDogId && rowDogId === safeStr(dogId)) return r;
   }
   return -1;
 }
@@ -247,6 +352,7 @@ function getOrCreateSheet(ss, sheetName) {
 function ensureHeaders(sheet, headers) {
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    if (sheet.getName() === WALKS_SHEET_NAME) sheet.setFrozenRows(1);
     return;
   }
 
@@ -255,5 +361,6 @@ function ensureHeaders(sheet, headers) {
 
   if (!matches) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    if (sheet.getName() === WALKS_SHEET_NAME) sheet.setFrozenRows(1);
   }
 }
