@@ -1,4 +1,4 @@
-const CACHE_NAME = "schronisko-app-v2";
+const CACHE_NAME = "schronisko-app-v3";
 const APP_SHELL = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -29,23 +29,37 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Fallback do index.html tylko dla nawigacji strony.
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+          return response;
+        })
+        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("/index.html")))
+    );
+    return;
+  }
+
+  // Dla assetów (JS/CSS/obrazy) nigdy nie zwracaj index.html,
+  // bo prowadzi to do błędu "Unexpected token '<'" i pustego ekranu.
   event.respondWith(
     caches.match(event.request).then((cached) => {
       if (cached) {
         return cached;
       }
 
-      return fetch(event.request)
-        .then((response) => {
-          if (!response || response.status !== 200 || response.type !== "basic") {
-            return response;
-          }
-
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+      return fetch(event.request).then((response) => {
+        if (!response || response.status !== 200 || response.type !== "basic") {
           return response;
-        })
-        .catch(() => caches.match("/index.html"));
+        }
+
+        const responseClone = response.clone();
+        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, responseClone));
+        return response;
+      });
     })
   );
 });
