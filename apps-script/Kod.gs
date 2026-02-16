@@ -1,55 +1,141 @@
-/**
- * Apps Script dla schroniska
- * - API (doPost/doGet) dla akcji: recordWalk, reportBehavior
- * - Archiwum onEdit z checkboxem dwukierunkowo (Główna <-> Archiwum)
- */
+// ===============================
+// SCHRONISKO API v2 – Web App + Arkusz
+// ===============================
 
-const SHEET_MAIN = "Arkusz1"; // <- ustaw nazwę głównej zakładki
-const SHEET_WALKS = "Spacery";
-const SHEET_REPORTS = "Zgłoszenia";
-const SHEET_ARCHIVE = "Archiwum";
-const MAIN_ARCHIVE_HEADER = "Archiwum";
+const SPREADSHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
+
+const DOGS_SHEET_NAME = "Baza psów";
+const WALKS_SHEET_NAME = "Spacery";
+const REPORTS_SHEET_NAME = "Zgłoszenia";
+
+const H = {
+  PAVILION: "PAWILON",
+  KENNEL: "BOKS",
+  NAME: "IMIĘ",
+  ID: "ID",
+  AGE: "WIEK",
+  CHIP: "CHIP",
+  BREED: "RASA",
+  LOOK: "WYGLAD",
+  DIET: "DIETA / ŻYWIENIE",
+  CHARACTER: "ZACHOWANIE / CHARAKTER",
+  CAUTION: "NA CO UWAŻAĆ!",
+  EXTRA: "UWAGI DODATKOWE",
+  PHOTO: "Zdjęcie",
+  LAST_WALK: "Ostatni spacer",
+  ARCHIVE: "Archiwum",
+};
 
 function doOptions() {
-  return createJsonOutput({ ok: true, data: { success: true } });
+  return json({ ok: true, data: { success: true } });
 }
 
-function doGet() {
-  return createJsonOutput({ ok: true, data: { success: true } });
-}
+function doGet(e) {
+  const action = safeStr(e?.parameter?.action);
 
-function doPost(e) {
   try {
-    const payload = JSON.parse(e.postData?.contents || "{}");
-    const action = String(payload.action || "");
-
-    if (action === "recordWalk") {
-      appendWalk(payload);
-      return createJsonOutput({ ok: true, data: { success: true } });
+    if (action === "getDogs") {
+      const includeArchived = String(e?.parameter?.includeArchived || "false") === "true";
+      return json({ ok: true, data: getDogs(includeArchived) });
     }
 
-    if (action === "reportBehavior") {
-      appendBehaviorReport(payload);
-      return createJsonOutput({ ok: true, data: { success: true } });
-    }
-
-    return createJsonOutput({ ok: false, error: "Unknown action" });
+    return json({ ok: true, data: { success: true } });
   } catch (error) {
-    return createJsonOutput({ ok: false, error: String(error) });
+    return json({ ok: false, error: String(error) });
   }
 }
 
-function createJsonOutput(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj)).setMimeType(
-    ContentService.MimeType.JSON
-  );
+function doPost(e) {
+  const lock = LockService.getScriptLock();
+  lock.tryLock(30000);
+
+  try {
+    const payload = JSON.parse(e?.postData?.contents || "{}");
+    const action = safeStr(payload?.action);
+
+    if (action === "recordWalk") {
+      recordWalk(payload);
+      return json({ ok: true, data: { success: true } });
+    }
+
+    if (action === "reportBehavior") {
+      reportBehavior(payload);
+      return json({ ok: true, data: { success: true } });
+    }
+
+    return json({ ok: false, error: "Unknown action" });
+  } catch (error) {
+    return json({ ok: false, error: String(error) });
+  } finally {
+    try {
+      lock.releaseLock();
+    } catch (_) {}
+  }
 }
 
-function appendWalk(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = getOrCreateSheet(ss, SHEET_WALKS);
+function getDogs(includeArchived) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
 
-  ensureHeaders(sheet, [
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
+
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.NAME, H.ARCHIVE]);
+
+  const out = [];
+
+  for (let r = 1; r < values.length; r++) {
+    const row = values[r];
+    const dogId = safeStr(row[map[H.ID]]);
+    if (!dogId) continue;
+
+    const archived = Boolean(row[map[H.ARCHIVE]]);
+    if (!includeArchived && archived) continue;
+
+    out.push({
+      id: dogId,
+      name: safeStr(row[map[H.NAME]]),
+      pavilion: safeStr(row[map[H.PAVILION]]),
+      kennel: safeStr(row[map[H.KENNEL]]),
+      age: safeStr(row[map[H.AGE]]),
+      chip: safeStr(row[map[H.CHIP]]),
+      breed: safeStr(row[map[H.BREED]]),
+      look: safeStr(row[map[H.LOOK]]),
+      diet: safeStr(row[map[H.DIET]]),
+      character: safeStr(row[map[H.CHARACTER]]),
+      caution: safeStr(row[map[H.CAUTION]]),
+      extra: safeStr(row[map[H.EXTRA]]),
+      photo: safeStr(row[map[H.PHOTO]]),
+      lastWalk: row[map[H.LAST_WALK]] || "",
+      archived,
+    });
+  }
+
+  return out;
+}
+
+function recordWalk(payload) {
+  const dogId = safeStr(payload?.dogId);
+  if (!dogId) throw new Error("Brak dogId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const dogsSheet = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!dogsSheet) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
+
+  const dogsValues = dogsSheet.getDataRange().getValues();
+  const map = headerMap(dogsValues[0]);
+  requireHeaders(map, [H.ID, H.NAME, H.LAST_WALK, H.PAVILION, H.KENNEL]);
+
+  const rowIndex = findDogRow(dogsValues, map, dogId);
+  if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
+
+  const dogRow = dogsValues[rowIndex];
+  const now = new Date();
+
+  const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
+  ensureHeaders(walksSheet, [
     "timestamp",
     "dogName",
     "dogId",
@@ -60,27 +146,33 @@ function appendWalk(payload) {
     "traffic",
     "emotionalState",
     "notes",
+    "pavilion",
+    "kennel",
   ]);
 
-  sheet.appendRow([
-    new Date(),
-    payload.dogName || "",
-    payload.dogId || "",
-    payload.volunteerName || "",
-    payload.walking || "",
-    payload.dogs || "",
-    payload.people || "",
-    payload.traffic || "",
-    payload.emotionalState || "",
-    payload.notes || "",
+  walksSheet.appendRow([
+    now,
+    safeStr(dogRow[map[H.NAME]]),
+    dogId,
+    safeStr(payload?.volunteerName) || "Wolontariusz",
+    safeStr(payload?.walking),
+    safeStr(payload?.dogs),
+    safeStr(payload?.people),
+    safeStr(payload?.traffic),
+    safeStr(payload?.emotionalState),
+    safeStr(payload?.notes),
+    safeStr(dogRow[map[H.PAVILION]]),
+    safeStr(dogRow[map[H.KENNEL]]),
   ]);
+
+  dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
 }
 
-function appendBehaviorReport(payload) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = getOrCreateSheet(ss, SHEET_REPORTS);
+function reportBehavior(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
 
-  ensureHeaders(sheet, [
+  ensureHeaders(reportsSheet, [
     "timestamp",
     "dogName",
     "dogId",
@@ -94,19 +186,56 @@ function appendBehaviorReport(payload) {
     "priority",
   ]);
 
-  sheet.appendRow([
+  reportsSheet.appendRow([
     new Date(),
-    payload.dogName || "",
-    payload.dogId || "",
-    payload.volunteerName || "",
-    payload.reason || "",
-    payload.incident3P || "",
-    payload.tagsEmotions || "",
-    payload.tagsRelations || "",
-    payload.tagsWelfare || "",
-    payload.risk || "",
-    payload.priority || "",
+    safeStr(payload?.dogName),
+    safeStr(payload?.dogId),
+    safeStr(payload?.volunteerName),
+    safeStr(payload?.reason),
+    safeStr(payload?.incident3P),
+    safeStr(payload?.tagsEmotions),
+    safeStr(payload?.tagsRelations),
+    safeStr(payload?.tagsWelfare),
+    safeStr(payload?.risk),
+    safeStr(payload?.priority),
   ]);
+}
+
+function json(payload) {
+  return ContentService.createTextOutput(JSON.stringify(payload)).setMimeType(
+    ContentService.MimeType.JSON
+  );
+}
+
+function safeStr(value) {
+  if (value === null || value === undefined) return "";
+  return String(value).trim();
+}
+
+function headerMap(headerRow) {
+  const map = {};
+  for (let c = 0; c < headerRow.length; c++) {
+    const name = safeStr(headerRow[c]);
+    if (name) map[name] = c;
+  }
+  return map;
+}
+
+function requireHeaders(map, headers) {
+  const missing = headers.filter((h) => map[h] === undefined);
+  if (missing.length > 0) {
+    throw new Error("Brak wymaganych nagłówków w '" + DOGS_SHEET_NAME + "': " + missing.join(", "));
+  }
+}
+
+function findDogRow(values, map, dogId) {
+  for (let r = 1; r < values.length; r++) {
+    const rowDogId = safeStr(values[r][map[H.ID]]);
+    if (rowDogId && rowDogId === safeStr(dogId)) {
+      return r;
+    }
+  }
+  return -1;
 }
 
 function getOrCreateSheet(ss, sheetName) {
@@ -120,65 +249,11 @@ function ensureHeaders(sheet, headers) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     return;
   }
-  const existing = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
-  const same = headers.every((h, i) => String(existing[i] || "") === h);
-  if (!same) {
+
+  const current = sheet.getRange(1, 1, 1, headers.length).getValues()[0];
+  const matches = headers.every((header, idx) => String(current[idx] || "") === header);
+
+  if (!matches) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
   }
-}
-
-function onEdit(e) {
-  if (!e || !e.range) {
-    return;
-  }
-  handleArchiveCheckboxEdit(e.range, e.value);
-}
-
-function testOnEditArchiveFromCurrentCell() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getActiveSheet();
-  const range = sheet.getActiveCell();
-  const value = String(range.getValue());
-  handleArchiveCheckboxEdit(range, value);
-}
-
-function handleArchiveCheckboxEdit(range, rawValue) {
-  const sheet = range.getSheet();
-  const row = range.getRow();
-  if (row <= 1) return;
-
-  const sheetName = sheet.getName();
-  if (sheetName !== SHEET_MAIN && sheetName !== SHEET_ARCHIVE) return;
-
-  const headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  const archiveCol = headerRow.findIndex((h) => String(h).trim() === MAIN_ARCHIVE_HEADER) + 1;
-  if (!archiveCol || range.getColumn() !== archiveCol) return;
-
-  const checked = String(rawValue || range.getValue()).toLowerCase() === "true";
-  if (sheetName === SHEET_MAIN && checked) {
-    moveRowBetweenSheets_(sheet, row, SHEET_ARCHIVE, archiveCol, true);
-  } else if (sheetName === SHEET_ARCHIVE && !checked) {
-    moveRowBetweenSheets_(sheet, row, SHEET_MAIN, archiveCol, false);
-  }
-}
-
-function moveRowBetweenSheets_(sourceSheet, sourceRow, targetSheetName, archiveCol, archiveChecked) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const targetSheet = getOrCreateSheet(ss, targetSheetName);
-
-  const values = sourceSheet.getRange(sourceRow, 1, 1, sourceSheet.getLastColumn()).getValues();
-  values[0][archiveCol - 1] = archiveChecked;
-
-  if (targetSheet.getLastRow() === 0) {
-    const headers = sourceSheet.getRange(1, 1, 1, sourceSheet.getLastColumn()).getValues();
-    targetSheet.getRange(1, 1, 1, headers[0].length).setValues(headers);
-  }
-
-  targetSheet.appendRow(values[0]);
-  const targetRow = targetSheet.getLastRow();
-
-  sourceSheet.getRange(sourceRow, 1, 1, sourceSheet.getLastColumn()).clearDataValidations();
-  targetSheet.getRange(targetRow, archiveCol).insertCheckboxes();
-  targetSheet.getRange(targetRow, archiveCol).setValue(archiveChecked);
-  sourceSheet.deleteRow(sourceRow);
 }

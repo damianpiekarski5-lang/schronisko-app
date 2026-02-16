@@ -596,6 +596,26 @@ const formatLastWalkDate = (dateString) => {
   }
 };
 
+const normalizePhotoUrl = (photo) => {
+  const value = String(photo || "").trim();
+  if (!value) return "";
+
+  const formulaMatch = value.match(/^=IMAGE\("(.+)"\)$/i);
+  const fromFormula = formulaMatch ? formulaMatch[1] : value;
+
+  const openMatch = fromFormula.match(/drive\.google\.com\/open\?id=([^&]+)/i);
+  if (openMatch) {
+    return `https://drive.google.com/uc?export=view&id=${openMatch[1]}`;
+  }
+
+  const fileMatch = fromFormula.match(/drive\.google\.com\/file\/d\/([^/]+)/i);
+  if (fileMatch) {
+    return `https://drive.google.com/uc?export=view&id=${fileMatch[1]}`;
+  }
+
+  return fromFormula;
+};
+
 const MapView = ({
   dogs,
   searchTerm,
@@ -1603,33 +1623,32 @@ const ShelterMapSystem = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const SHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
-      const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
-      const response = await fetch(url);
-      const text = await response.text();
-      const json = JSON.parse(text.substring(47).slice(0, -2));
-      const rows = json.table.rows;
-      const dogsData = rows
-        .map((row) => ({
-          status: row.c[0]?.v || "",
-          pavilion: row.c[1]?.v || "",
-          box: parseInt(row.c[2]?.v) || 1,
-          name: row.c[3]?.v || "",
-          id: row.c[4]?.v || "",
-          age: row.c[5]?.v || "",
-          chip: row.c[6]?.v || "",
-          breed: row.c[7]?.v || "",
-          appearance: row.c[8]?.v || "",
-          diet: row.c[9]?.v || "",
-          character: row.c[10]?.v || "",
-          warnings: row.c[11]?.v || "",
-          notes: row.c[12]?.v || "",
-          photo: row.c[13]?.v || "",
-          walkFormUrl: row.c[14]?.v || "",
-          historySheetUrl: row.c[15]?.v || "",
-          lastWalk: row.c[19]?.v || "",
+      const response = await fetch("/api/gs?action=getDogs");
+      const result = await response.json();
+
+      if (!response.ok || result?.ok !== true || !Array.isArray(result?.data)) {
+        throw new Error(result?.error || "Nie udało się pobrać listy psów");
+      }
+
+      const dogsData = result.data
+        .map((dog) => ({
+          pavilion: dog?.pavilion || "",
+          box: parseInt(dog?.kennel) || 1,
+          name: dog?.name || "",
+          id: dog?.id || "",
+          age: dog?.age || "",
+          chip: dog?.chip || "",
+          breed: dog?.breed || "",
+          appearance: dog?.look || "",
+          diet: dog?.diet || "",
+          character: dog?.character || "",
+          warnings: dog?.caution || "",
+          notes: dog?.extra || "",
+          photo: normalizePhotoUrl(dog?.photo),
+          lastWalk: dog?.lastWalk || "",
         }))
         .filter((dog) => dog.name && dog.pavilion);
+
       setDogs(dogsData);
     } catch (error) {
       console.error("Błąd:", error);
