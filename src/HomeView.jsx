@@ -189,7 +189,10 @@ const getDaysSince = (dateString) => {
   if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!")
     return 999;
   try {
-    const date = new Date(dateString);
+    const normalizedDate = String(dateString).includes("T")
+      ? String(dateString)
+      : String(dateString).replace(" ", "T");
+    const date = new Date(normalizedDate);
     if (isNaN(date.getTime())) return 999;
     const now = new Date();
     const diff = now - date;

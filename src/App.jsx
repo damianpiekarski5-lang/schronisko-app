@@ -583,7 +583,10 @@ const formatLastWalkDate = (dateString) => {
     return null;
   }
   try {
-    const date = new Date(dateString);
+    const normalizedDate = String(dateString).includes("T")
+      ? String(dateString)
+      : String(dateString).replace(" ", "T");
+    const date = new Date(normalizedDate);
     if (isNaN(date.getTime())) return null;
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -614,6 +617,36 @@ const normalizePhotoUrl = (photo) => {
   }
 
   return fromFormula;
+};
+
+const cleanText = (value) => String(value ?? "").replace(/\s+/g, " ").trim();
+
+const parseBoxNumber = (kennelValue) => {
+  const match = cleanText(kennelValue).match(/\d+/);
+  return match ? Number(match[0]) : 1;
+};
+
+const parseDateSafe = (value) => {
+  const text = cleanText(value);
+  if (!text) return null;
+  const normalized = text.includes("T") ? text : text.replace(" ", "T");
+  const parsed = new Date(normalized);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const chooseBetterDogRecord = (currentDog, nextDog) => {
+  const currentWalkDate = parseDateSafe(currentDog.lastWalk);
+  const nextWalkDate = parseDateSafe(nextDog.lastWalk);
+
+  const hasMoreData =
+    Object.values(nextDog).filter((value) => cleanText(value).length > 0).length >
+    Object.values(currentDog).filter((value) => cleanText(value).length > 0).length;
+
+  if (nextWalkDate && (!currentWalkDate || nextWalkDate > currentWalkDate)) {
+    return { ...currentDog, ...nextDog };
+  }
+
+  return hasMoreData ? { ...currentDog, ...nextDog } : currentDog;
 };
 
 const MapView = ({
@@ -1367,7 +1400,7 @@ const DogsListView = ({
   );
 };
 
-const DogCardView = ({ selectedDog, setCurrentView }) => {
+const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
@@ -1593,7 +1626,10 @@ const DogCardView = ({ selectedDog, setCurrentView }) => {
         <WalkSurvey
           dog={selectedDog}
           onClose={() => setShowSurvey(false)}
-          onSave={() => setShowSurvey(false)}
+          onSave={() => {
+            setShowSurvey(false);
+            onSurveySaved && onSurveySaved(selectedDog.id);
+          }}
         />
       )}
       {showBehaviorReport && (
@@ -1632,26 +1668,35 @@ const ShelterMapSystem = () => {
 
       const dogsData = result.data
         .map((dog) => ({
-          pavilion: dog?.pavilion || "",
-          box: parseInt(dog?.kennel) || 1,
-          name: dog?.name || "",
-          id: dog?.id || "",
-          age: dog?.age || "",
-          chip: dog?.chip || "",
-          breed: dog?.breed || "",
-          appearance: dog?.look || "",
-          diet: dog?.diet || "",
-          character: dog?.character || "",
-          warnings: dog?.caution || "",
-          notes: dog?.extra || "",
+          pavilion: cleanText(dog?.pavilion),
+          box: parseBoxNumber(dog?.kennel),
+          name: cleanText(dog?.name),
+          id: cleanText(dog?.id),
+          age: cleanText(dog?.age),
+          chip: cleanText(dog?.chip),
+          breed: cleanText(dog?.breed),
+          appearance: cleanText(dog?.look),
+          diet: cleanText(dog?.diet),
+          character: cleanText(dog?.character),
+          warnings: cleanText(dog?.caution),
+          notes: cleanText(dog?.extra),
           photo: normalizePhotoUrl(dog?.photo),
-          lastWalk: dog?.lastWalk || "",
+          lastWalk: cleanText(dog?.lastWalk),
         }))
-        .filter((dog) => dog.name && dog.pavilion);
+        .filter((dog) => dog.name && dog.pavilion)
+        .reduce((acc, dog) => {
+          const uniqueKey = dog.id || `${dog.name}|${dog.pavilion}|${dog.box}`;
+          const existing = acc.get(uniqueKey);
+          acc.set(uniqueKey, existing ? chooseBetterDogRecord(existing, dog) : dog);
+          return acc;
+        }, new Map());
 
-      setDogs(dogsData);
+      const normalizedDogs = Array.from(dogsData.values());
+      setDogs(normalizedDogs);
+      return normalizedDogs;
     } catch (error) {
       console.error("Błąd:", error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -1660,6 +1705,14 @@ const ShelterMapSystem = () => {
   const handleDogClickFromDashboard = (dog) => {
     setSelectedDog(dog);
     setCurrentView("dogCard");
+  };
+
+  const handleSurveySaved = async (dogId) => {
+    const refreshedDogs = await fetchData();
+    setSelectedDog((previousDog) => {
+      if (!previousDog) return previousDog;
+      return refreshedDogs.find((dog) => dog.id === dogId) || previousDog;
+    });
   };
 
   if (loading) {
@@ -1730,6 +1783,7 @@ const ShelterMapSystem = () => {
         <DogCardView
           selectedDog={selectedDog}
           setCurrentView={setCurrentView}
+          onSurveySaved={handleSurveySaved}
         />
       )}
     </>
