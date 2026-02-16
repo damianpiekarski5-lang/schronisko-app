@@ -1,4 +1,4 @@
-const CACHE_NAME = "schronisko-app-v1";
+const CACHE_NAME = "schronisko-app-v2";
 const APP_SHELL = ["/", "/index.html", "/manifest.json"];
 
 self.addEventListener("install", (event) => {
@@ -18,6 +18,14 @@ self.addEventListener("activate", (event) => {
 
 self.addEventListener("fetch", (event) => {
   if (event.request.method !== "GET") {
+    return;
+  }
+
+  const requestUrl = new URL(event.request.url);
+
+  // API musi zawsze iść do sieci, żeby dane (np. po zapisaniu ankiety) odświeżały się od razu.
+  if (requestUrl.pathname.startsWith("/api/")) {
+    event.respondWith(fetch(event.request));
     return;
   }
 
