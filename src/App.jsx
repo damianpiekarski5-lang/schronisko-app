@@ -15,7 +15,7 @@ import {
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import { formatDateTime, parseSpreadsheetDate } from "./utils/dateTime";
+import { parseSpreadsheetDate } from "./utils/dateTime";
 
 // Mobile-optimized styles
 const styles = {
@@ -584,7 +584,7 @@ const formatLastWalkDate = (dateString) => {
     return null;
   }
 
-  return formatDateTime(dateString);
+  return String(dateString).trim() || null;
 };
 
 const normalizePhotoUrl = (photo) => {
