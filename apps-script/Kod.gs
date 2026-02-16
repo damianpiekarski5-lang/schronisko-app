@@ -10,6 +10,7 @@ const WALKS_SHEET_NAME = "Spacery";
 const REPORTS_SHEET_NAME = "Zgłoszenia";
 const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
+const POLAND_TIMEZONE = "Europe/Warsaw";
 
 const H = {
   PAVILION: "PAWILON",
@@ -82,6 +83,13 @@ function doPost(e) {
       lock.releaseLock();
     } catch (_) {}
   }
+}
+
+
+function nowInPoland() {
+  const formatted = Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd'T'HH:mm:ssZ");
+  const isoOffset = formatted.replace(/([+-]\d{2})(\d{2})$/, "$1:$2");
+  return new Date(isoOffset);
 }
 
 // ===============================
@@ -170,7 +178,7 @@ function recordWalk(payload) {
   if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
 
   const dogRow = dogsValues[rowIndex];
-  const now = new Date();
+  const now = nowInPoland();
 
   const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
   ensureHeaders(walksSheet, [
@@ -232,7 +240,7 @@ function reportBehavior(payload) {
   ]);
 
   reportsSheet.appendRow([
-    new Date(),
+    nowInPoland(),
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
     safeStr(payload?.volunteerName),
