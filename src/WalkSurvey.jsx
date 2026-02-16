@@ -173,6 +173,22 @@ const styles = {
     textAlign: "center",
     fontWeight: "600",
   },
+  saveHint: {
+    position: "fixed",
+    bottom: "5.25rem",
+    left: "1rem",
+    right: "1rem",
+    maxWidth: "600px",
+    margin: "0 auto",
+    padding: "0.65rem 0.85rem",
+    borderRadius: "0.65rem",
+    fontSize: "0.875rem",
+    fontWeight: "600",
+    textAlign: "center",
+    zIndex: 1001,
+  },
+  saveHintSuccess: { backgroundColor: "#dcfce7", color: "#166534" },
+  saveHintError: { backgroundColor: "#fee2e2", color: "#991b1b" },
 };
 
 const WalkSurvey = ({ dog, onClose, onSave }) => {
@@ -316,9 +332,9 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
                     "Potrafi usiąść lub uspokoić się na chwilę na sygnał",
                     "Ciągnie umiarkowanie (da się opanować)",
                     "Silnie ciągnie",
-                    "Często węszy i eksploruje teren",
+                    "Często węszy i eksploruje teren nie zwraca uwagi na człowieka",
                     "Atakuje/gryzie smycz podczas marszu",
-                    "Zapiera się / nie chce iść",
+                    "Zapiera się / nie chce iść w konkretnym kierunku",
                     "Szarpie gwałtownie w różnych kierunkach",
                   ].map((option) => (
                     <label
@@ -351,7 +367,20 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Inne psy:</label>
                 <div style={styles.radioGroup}>
-                  {["Ignoruje", "Obserwuje", "Napina się", "Szczeka", "Rzuca się", "Boi się"].map(
+                  {[
+                    "Ignoruje całkowicie",
+                    "Zauważa, ale szybko wraca do swoich spraw",
+                    "Obserwuje z dystansu bez napięcia",
+                    "Wpatruje się intensywnie",
+                    "Sztywnieje, zatrzymuje się",
+                    "Napina smycz, ciągnie w kierunku psa",
+                    "Chce podejść (sygnały zabawy - luźne ciało, merdanie)",
+                    "Skomli/pojękuje z ekscytacji",
+                    "Szczeka, ale pozostaje w miejscu",
+                    "Szczeka i rzuca się",
+                    "Boi się - cofa się",
+                    "Boi się - zamiera",
+                  ].map(
                     (option) => (
                       <label
                         key={option}
@@ -377,7 +406,19 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Ludzie:</label>
                 <div style={styles.radioGroup}>
-                  {["Przyjazny", "Niepewny", "Ignoruje", "Szczeka", "Unika"].map(
+                  {[
+                    "Przyjazny - podchodzi sam z radością",
+                    "Przyjazny - czeka na zaproszenie",
+                    "Zainteresowany, ale niepewny",
+                    "Podchodzi ostrożnie, węszy",
+                    "Ignoruje",
+                    "Obserwuje z dystansu bez podchodzenia",
+                    "Szczeka",
+                    "Warczy",
+                    "Unika - oddala się",
+                    "Unika - chowa się za wolontariusza",
+                    "Skacze na ludzi (zbyt pobudzony)",
+                  ].map(
                     (option) => (
                       <label
                         key={option}
@@ -403,7 +444,15 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
               <div style={styles.question}>
                 <label style={styles.questionLabel}>Ruch uliczny:</label>
                 <div style={styles.radioGroup}>
-                  {["Brak reakcji", "Spokojny", "Napina się", "Szczeka", "Panikuje"].map(
+                  {[
+                    "Brak reakcji / ignoruje",
+                    "Zauważa, ale pozostaje spokojny",
+                    "Napina się, sztywnieje",
+                    "Szczeka, ale da się opanować",
+                    "Rzuca się i szczeka",
+                    "Unika / chowa się",
+                    "Panikuje - szarpie, próbuje uciec",
+                  ].map(
                     (option) => (
                       <label
                         key={option}
@@ -428,19 +477,19 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
             </div>
 
             <div style={styles.section}>
-              <h3 style={styles.sectionTitle}>4. Podsumowanie</h3>
+              <h3 style={styles.sectionTitle}>5. Podsumowanie</h3>
               <div style={styles.question}>
                 <label style={styles.questionLabel}>
-                  Stan emocjonalny: <span style={styles.required}>*</span>
+                  Stan emocjonalny: <span style={styles.required}>* ⚠️ WYMAGANE</span>
                 </label>
                 <div style={styles.radioGroup}>
                   {[
                     "A – Bardzo przyjazny, zrelaksowany",
-                    "B – Aktywny, opanowany",
+                    "B – Aktywny, zainteresowany, ale opanowany",
                     "C – Neutralny, lekko niepewny",
-                    "D – Bardzo pobudzony",
-                    "E – Bardzo przestraszony",
-                    "F – Zachowania grożące",
+                    "D – Bardzo pobudzony / trudny do opanowania",
+                    "E – Bardzo przestraszony / unikający",
+                    "F – Wykazujący zachowania grożące (warczenie, rzucanie się)",
                   ].map((option) => (
                     <label
                       key={option}
@@ -476,6 +525,19 @@ const WalkSurvey = ({ dog, onClose, onSave }) => {
             </div>
           </div>
         </div>
+
+        {message && (
+          <div
+            style={{
+              ...styles.saveHint,
+              ...(message.type === "success"
+                ? styles.saveHintSuccess
+                : styles.saveHintError),
+            }}
+          >
+            {message.text}
+          </div>
+        )}
 
         <button
           onClick={handleSave}
