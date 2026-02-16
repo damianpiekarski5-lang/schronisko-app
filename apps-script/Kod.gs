@@ -96,14 +96,6 @@ function nowInPolandText() {
   return Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
 }
 
-function normalizeSheetDate(value) {
-  if (!value) return "";
-  if (Object.prototype.toString.call(value) === "[object Date]" && !isNaN(value.getTime())) {
-    return Utilities.formatDate(value, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
-  }
-  return safeStr(value);
-}
-
 // ===============================
 // CORE – DOGS
 // ===============================
@@ -112,7 +104,9 @@ function getDogs(includeArchived) {
   const sh = ss.getSheetByName(DOGS_SHEET_NAME);
   if (!sh) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
 
-  const values = sh.getDataRange().getValues();
+  const dataRange = sh.getDataRange();
+  const values = dataRange.getValues();
+  const displayValues = dataRange.getDisplayValues();
   if (values.length < 2) return [];
 
   const map = headerMap(values[0]);
@@ -141,7 +135,7 @@ function getDogs(includeArchived) {
       caution: safeStr(row[map[H.CAUTION]]),
       extra: safeStr(row[map[H.EXTRA]]),
       photo: safeStr(row[map[H.PHOTO]]),
-      lastWalk: normalizeSheetDate(row[map[H.LAST_WALK]]),
+      lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
       archived,
     });
   }
