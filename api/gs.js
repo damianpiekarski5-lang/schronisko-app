@@ -6,6 +6,14 @@ const APPS_SCRIPT_URL =
 
 const ALLOWED_ORIGIN = "*";
 
+class HttpError extends Error {
+  constructor(status, message) {
+    super(message);
+    this.name = "HttpError";
+    this.status = status;
+  }
+}
+
 function setCorsHeaders(res) {
   res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
@@ -54,13 +62,50 @@ function safeJsonParse(text) {
   }
 }
 
+function readFirebaseAdminEnv() {
+  const projectId =
+    process.env.FIREBASE_ADMIN_PROJECT_ID ||
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.GCLOUD_PROJECT ||
+    process.env.REACT_APP_FIREBASE_PROJECT_ID;
+
+  const clientEmail =
+    process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL;
+
+  const privateKey =
+    process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n") ||
+    process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+
+  return { projectId, clientEmail, privateKey };
+}
+
+function assertFirebaseAdminEnv() {
+  const { projectId, clientEmail, privateKey } = readFirebaseAdminEnv();
+  const missing = [];
+
+  if (!projectId) missing.push("FIREBASE_ADMIN_PROJECT_ID");
+  if (!clientEmail) missing.push("FIREBASE_ADMIN_CLIENT_EMAIL");
+  if (!privateKey) missing.push("FIREBASE_ADMIN_PRIVATE_KEY");
+
+  if (missing.length) {
+    throw new HttpError(
+      503,
+      `Firebase Admin nie jest skonfigurowany. Ustaw zmienne: ${missing.join(", ")}.`
+    );
+  }
+
+  return { projectId, clientEmail, privateKey };
+}
+
 function getFirebaseAdminAuth() {
   if (!getApps().length) {
-    const privateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, "\n");
+    const { projectId, clientEmail, privateKey } = assertFirebaseAdminEnv();
+
     initializeApp({
       credential: cert({
-        projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
+        projectId,
+        clientEmail,
         privateKey,
       }),
     });
@@ -73,7 +118,7 @@ async function verifyUserFromRequest(req) {
   const authHeader = req.headers?.authorization || "";
   const [, token] = authHeader.match(/^Bearer\s+(.+)$/i) || [];
   if (!token) {
-    throw new Error("Brak tokena autoryzacji");
+    throw new HttpError(401, "Brak tokena autoryzacji");
   }
 
   const decoded = await getFirebaseAdminAuth().verifyIdToken(token);
@@ -136,6 +181,7 @@ export default async function handler(req, res) {
 
     return res.status(response.status).json(normalizeResult(parsed, response.status));
   } catch (error) {
-    return res.status(500).json({ ok: false, error: String(error?.message || error) });
+    const status = error?.status && Number.isInteger(error.status) ? error.status : 500;
+    return res.status(status).json({ ok: false, error: String(error?.message || error) });
   }
 }
