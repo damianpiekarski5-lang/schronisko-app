@@ -18,7 +18,17 @@ import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import { parseSpreadsheetDate } from "./utils/dateTime";
-import { auth, googleProvider } from "./firebase";
+import {
+  auth,
+  googleProvider,
+  hasFirebaseConfig,
+  firebaseInitError,
+} from "./firebase";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
 import {
   onAuthStateChanged,
   signInWithPopup,
@@ -1419,6 +1429,7 @@ const DogsListView = ({
   );
 };
 
+const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard, authEnabled }) => {
 const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard }) => {
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
@@ -1436,6 +1447,9 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
         {sortedDogs.length === 0 ? (
           <div style={styles.card}>
             <p style={{ textAlign: "center", color: "#6b7280" }}>
+              {authEnabled
+                ? "Nie masz jeszcze przypiętych psów."
+                : "Logowanie Firebase nie jest skonfigurowane, więc lista Moje psy jest niedostępna."}
               Nie masz jeszcze przypiętych psów.
             </p>
           </div>
@@ -1759,18 +1773,38 @@ const ShelterMapSystem = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [hoveredCard, setHoveredCard] = useState(null);
-  const [currentUser, setCurrentUser] = useState(null);
-  const [authReady, setAuthReady] = useState(false);
-  const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
+const [currentUser, setCurrentUser] = useState(null);
+const [authReady, setAuthReady] = useState(false);
+const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
+const [loginError, setLoginError] = useState("");
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 
-  useEffect(() => {
-    const unsub = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user || null);
-      setAuthReady(true);
+useEffect(() => {
+  fetchData();
+}, []);
+
+useEffect(() => {
+  if (!isAuthEnabled) {
+    setAuthReady(true);
+    setCurrentUser(null);
+    setFavoriteDogIds(new Set());
+    return undefined;
+  }
+
+  const unsub = onAuthStateChanged(auth, async (user) => {
+    setCurrentUser(user || null);
+    setAuthReady(true);
+    setLoginError("");
+    if (user) {
+      await fetchMyDogs(user);
+    } else {
+      setFavoriteDogIds(new Set());
+    }
+  });
+
+  return () => unsub();
+}, [isAuthEnabled]);
       if (user) {
         await fetchMyDogs(user);
       } else {
@@ -1779,7 +1813,6 @@ const ShelterMapSystem = () => {
     });
 
     return () => unsub();
-  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -1874,15 +1907,37 @@ const ShelterMapSystem = () => {
     }
   };
 
-  const handleLogin = async () => {
-    try {
-      await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Błąd logowania Google:", error);
+const handleLogin = async () => {
+  if (!isAuthEnabled) return;
+
+  setLoginError("");
+
+  try {
+    await signInWithPopup(auth, googleProvider);
+  } catch (error) {
+    console.error("Błąd logowania Google:", error);
+
+    if (error?.code === "auth/configuration-not-found") {
+      setLoginError(
+        "Firebase Auth nie jest poprawnie skonfigurowany dla tego projektu (CONFIGURATION_NOT_FOUND). Włącz metodę Google w Firebase Console → Authentication → Sign-in method oraz sprawdź czy używasz właściwego klucza API/projektu."
+      );
+      return;
     }
-  };
+
+    if (error?.code === "auth/unauthorized-domain") {
+      setLoginError(
+        "Ta domena nie jest dozwolona w Firebase Auth. Dodaj domenę aplikacji w Firebase Console → Authentication → Settings → Authorized domains."
+      );
+      return;
+    }
+
+    setLoginError("Nie udało się zalogować przez Google. Spróbuj ponownie za chwilę.");
+  }
+};
 
   const handleLogout = async () => {
+    if (!isAuthEnabled) return;
+
     try {
       await signOut(auth);
     } catch (error) {
@@ -1903,6 +1958,7 @@ const ShelterMapSystem = () => {
     });
   };
 
+  if (isAuthEnabled && !authReady) {
   if (!authReady) {
     return (
       <div style={styles.loadingContainer}>
@@ -1916,6 +1972,7 @@ const ShelterMapSystem = () => {
     );
   }
 
+  if (isAuthEnabled && !currentUser) {
   if (!currentUser) {
     return (
       <div style={styles.loadingContainer}>
@@ -1924,6 +1981,24 @@ const ShelterMapSystem = () => {
           <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
             Zaloguj się kontem Google, aby korzystać z ankiet i zakładki Moje psy.
           </p>
+{loginError && (
+  <div
+    style={{
+      marginBottom: "1rem",
+      padding: "0.75rem",
+      borderRadius: "0.75rem",
+      backgroundColor: "#fee2e2",
+      color: "#991b1b",
+      fontSize: "0.875rem",
+      textAlign: "left",
+    }}
+  >
+    {loginError}
+  </div>
+)}
+<button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
+  Zaloguj przez Google
+</button>
           <button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
             Zaloguj przez Google
           </button>
@@ -1956,6 +2031,21 @@ const ShelterMapSystem = () => {
 
   return (
     <>
+      {isAuthEnabled && currentUser && (
+        <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
+          <button
+            onClick={handleLogout}
+            style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "9999px", padding: "0.5rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer" }}
+          >
+            <LogOut size={16} /> Wyloguj
+          </button>
+        </div>
+      )}
+      {!isAuthEnabled && (
+        <div style={{ padding: "0.75rem 1rem", backgroundColor: "#fff7ed", color: "#9a3412", borderBottom: "1px solid #fdba74" }}>
+          ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
+        </div>
+      )}
       <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
         <button
           onClick={handleLogout}
@@ -2023,6 +2113,7 @@ const ShelterMapSystem = () => {
           setSelectedDog={setSelectedDog}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
+          authEnabled={isAuthEnabled}
         />
       )}
     </>
