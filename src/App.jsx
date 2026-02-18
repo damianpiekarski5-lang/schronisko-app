@@ -35,8 +35,12 @@ const styles = {
   // Layout
   pageContainer: {
     minHeight: "100vh",
+    width: "100%",
+    maxWidth: "100vw",
     backgroundColor: "#f9fafb",
     paddingBottom: "80px",
+    overflowX: "hidden",
+    boxSizing: "border-box",
   },
   header: {
     backgroundColor: "white",
@@ -598,6 +602,24 @@ const formatLastWalkDate = (dateString) => {
   }
 
   return String(dateString).trim() || null;
+};
+
+const formatLastWalkRelative = (dateString) => {
+  if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!") {
+    return "Brak danych";
+  }
+
+  const walkDate = parseSpreadsheetDate(dateString);
+  if (!walkDate) {
+    return String(dateString).trim() || "Brak danych";
+  }
+
+  const now = new Date();
+  const diffInDays = Math.floor((now - walkDate) / (1000 * 60 * 60 * 24));
+
+  if (diffInDays <= 0) return "Dzisiaj";
+  if (diffInDays === 1) return "Wczoraj";
+  return `${diffInDays} dni temu`;
 };
 
 const normalizePhotoUrl = (photo) => {
@@ -1462,16 +1484,30 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
               onTouchStart={() => setHoveredCard(`my-${dog.id}`)}
               onTouchEnd={() => setHoveredCard(null)}
             >
-              <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827" }}>
-                {dog.name}
-              </h3>
-              <p style={{ color: "#6b7280", marginTop: "0.35rem" }}>{dog.breed}</p>
-              <p style={{ color: "#374151", marginTop: "0.35rem" }}>
-                {dog.pavilion} / Boks {dog.box}
-              </p>
-              <p style={{ color: "#92400e", marginTop: "0.5rem", fontWeight: 600 }}>
-                Ostatni spacer: {formatLastWalkDate(dog.lastWalk) || "Brak danych"}
-              </p>
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "96px 1fr",
+                  gap: "1rem",
+                  alignItems: "start",
+                }}
+              >
+                <div>
+                  <DogPhoto photo={dog.photo} name={dog.name} size="normal" />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827" }}>
+                    {dog.name}
+                  </h3>
+                  <p style={{ color: "#6b7280", marginTop: "0.35rem" }}>{dog.breed}</p>
+                  <p style={{ color: "#374151", marginTop: "0.35rem" }}>
+                    {dog.pavilion} / Boks {dog.box}
+                  </p>
+                  <p style={{ color: "#92400e", marginTop: "0.5rem", fontWeight: 600 }}>
+                    Ostatni spacer: {formatLastWalkRelative(dog.lastWalk)}
+                  </p>
+                </div>
+              </div>
             </div>
           ))
         )}
