@@ -1494,7 +1494,15 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
   );
 };
 
-const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved, currentUser, favoriteDogIds, onToggleFavorite }) => {
+const DogCardView = ({
+  selectedDog,
+  setCurrentView,
+  onSurveySaved,
+  currentUser,
+  favoriteDogIds,
+  onToggleFavorite,
+  favoriteActionState,
+}) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
@@ -1502,6 +1510,8 @@ const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved, currentUser, 
 
   const formattedLastWalk = formatLastWalkDate(selectedDog.lastWalk);
   const isFavorite = favoriteDogIds.has(selectedDog.id);
+  const isFavoriteToggleInProgress =
+    favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
 
   return (
     <div style={styles.pageContainer}>
@@ -1561,15 +1571,39 @@ const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved, currentUser, 
           <div style={{ padding: "1.25rem" }}>
             <button
               onClick={() => onToggleFavorite(selectedDog.id)}
+              disabled={!currentUser || isFavoriteToggleInProgress}
               style={{
                 ...styles.walkButton,
-                backgroundColor: isFavorite ? "#f59e0b" : "#6b7280",
-                boxShadow: "none",
+                backgroundColor: isFavorite ? "#f59e0b" : "#2563eb",
+                boxShadow: isFavorite
+                  ? "0 2px 4px rgba(245, 158, 11, 0.3)"
+                  : "0 2px 4px rgba(37, 99, 235, 0.3)",
+                ...((!currentUser || isFavoriteToggleInProgress)
+                  ? styles.walkButtonDisabled
+                  : {}),
               }}
             >
               <Star size={24} style={{ marginRight: "0.75rem" }} />
-              {isFavorite ? "Odepnij z Moje psy" : "Przypnij do Moje psy"}
+              {isFavoriteToggleInProgress
+                ? "Zapisywanie..."
+                : isFavorite
+                ? "Odepnij z Moje psy"
+                : "Przypnij do Moje psy"}
             </button>
+            {favoriteActionState?.error && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: "#fee2e2",
+                  color: "#991b1b",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {favoriteActionState.error}
+              </div>
+            )}
             <button
               onClick={() => setShowSurvey(true)}
               style={styles.walkButton}
@@ -1770,6 +1804,11 @@ const [currentUser, setCurrentUser] = useState(null);
 const [authReady, setAuthReady] = useState(false);
 const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
 const [loginError, setLoginError] = useState("");
+const [favoriteActionState, setFavoriteActionState] = useState({
+  loading: false,
+  dogId: "",
+  error: "",
+});
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 
@@ -1872,6 +1911,8 @@ useEffect(() => {
   const handleToggleFavorite = async (dogId) => {
     if (!currentUser || !dogId) return;
 
+    setFavoriteActionState({ loading: true, dogId, error: "" });
+
     try {
       const token = await currentUser.getIdToken();
       const response = await fetch("/api/gs", {
@@ -1885,9 +1926,22 @@ useEffect(() => {
       const result = await response.json();
       if (response.ok && result?.ok === true) {
         await fetchMyDogs(currentUser);
+        setFavoriteActionState({ loading: false, dogId: "", error: "" });
+        return;
       }
+
+      setFavoriteActionState({
+        loading: false,
+        dogId: "",
+        error: result?.error || "Nie udało się zapisać zmiany w Moje psy.",
+      });
     } catch (error) {
       console.error("Błąd przypinania psa:", error);
+      setFavoriteActionState({
+        loading: false,
+        dogId: "",
+        error: "Wystąpił błąd połączenia podczas zapisywania. Spróbuj ponownie.",
+      });
     }
   };
 
@@ -2075,6 +2129,7 @@ const handleLogin = async () => {
           currentUser={currentUser}
           favoriteDogIds={favoriteDogIds}
           onToggleFavorite={handleToggleFavorite}
+          favoriteActionState={favoriteActionState}
         />
       )}
       {currentView === "myDogs" && (
