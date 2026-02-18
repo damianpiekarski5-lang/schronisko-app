@@ -11,11 +11,19 @@ import {
   ClipboardPlus,
   ExternalLink,
   Clock,
+  Star,
+  LogOut,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import { parseSpreadsheetDate } from "./utils/dateTime";
+import { auth, googleProvider } from "./firebase";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  signOut,
+} from "firebase/auth";
 
 // Mobile-optimized styles
 const styles = {
@@ -619,6 +627,11 @@ const parseDateSafe = (value) => {
   return parseSpreadsheetDate(text);
 };
 
+const getLastWalkSortValue = (value) => {
+  const parsed = parseDateSafe(value);
+  return parsed ? parsed.getTime() : 0;
+};
+
 const chooseBetterDogRecord = (currentDog, nextDog) => {
   const currentWalkDate = parseDateSafe(currentDog.lastWalk);
   const nextWalkDate = parseDateSafe(nextDog.lastWalk);
@@ -1079,6 +1092,13 @@ const MapView = ({
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("myDogs")}
+        >
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
+        </button>
       </div>
     </div>
   );
@@ -1205,6 +1225,13 @@ const BoxesView = ({
         >
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("myDogs")}
+        >
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
       </div>
     </div>
@@ -1380,18 +1407,94 @@ const DogsListView = ({
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("myDogs")}
+        >
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
+        </button>
       </div>
     </div>
   );
 };
 
-const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved }) => {
+const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard }) => {
+  const sortedDogs = [...myDogs].sort(
+    (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
+  );
+
+  return (
+    <div style={styles.pageContainer}>
+      <div style={styles.header}>
+        <div style={styles.headerContent}>
+          <h1 style={styles.title}>⭐ Moje psy</h1>
+          <p style={styles.subtitle}>Przypięte psy: {sortedDogs.length}</p>
+        </div>
+      </div>
+      <div style={styles.content}>
+        {sortedDogs.length === 0 ? (
+          <div style={styles.card}>
+            <p style={{ textAlign: "center", color: "#6b7280" }}>
+              Nie masz jeszcze przypiętych psów.
+            </p>
+          </div>
+        ) : (
+          sortedDogs.map((dog) => (
+            <div
+              key={dog.id}
+              onClick={() => {
+                setSelectedDog(dog);
+                setCurrentView("dogCard");
+              }}
+              style={{
+                ...styles.dogCard,
+                ...(hoveredCard === `my-${dog.id}` ? styles.dogCardHover : {}),
+                marginBottom: "1rem",
+              }}
+              onTouchStart={() => setHoveredCard(`my-${dog.id}`)}
+              onTouchEnd={() => setHoveredCard(null)}
+            >
+              <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827" }}>
+                {dog.name}
+              </h3>
+              <p style={{ color: "#6b7280", marginTop: "0.35rem" }}>{dog.breed}</p>
+              <p style={{ color: "#374151", marginTop: "0.35rem" }}>
+                {dog.pavilion} / Boks {dog.box}
+              </p>
+              <p style={{ color: "#92400e", marginTop: "0.5rem", fontWeight: 600 }}>
+                Ostatni spacer: {formatLastWalkDate(dog.lastWalk) || "Brak danych"}
+              </p>
+            </div>
+          ))
+        )}
+      </div>
+      <div style={styles.bottomNav}>
+        <button style={styles.bottomNavButton} onClick={() => setCurrentView("home")}>
+          <Home size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
+        </button>
+        <button style={styles.bottomNavButton} onClick={() => setCurrentView("map")}>
+          <MapPin size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}>
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
+        </button>
+      </div>
+    </div>
+  );
+};
+
+const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved, currentUser, favoriteDogIds, onToggleFavorite }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
   if (!selectedDog) return null;
 
   const formattedLastWalk = formatLastWalkDate(selectedDog.lastWalk);
+  const isFavorite = favoriteDogIds.has(selectedDog.id);
 
   return (
     <div style={styles.pageContainer}>
@@ -1449,6 +1552,17 @@ const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved }) => {
             />
           </div>
           <div style={{ padding: "1.25rem" }}>
+            <button
+              onClick={() => onToggleFavorite(selectedDog.id)}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: isFavorite ? "#f59e0b" : "#6b7280",
+                boxShadow: "none",
+              }}
+            >
+              <Star size={24} style={{ marginRight: "0.75rem" }} />
+              {isFavorite ? "Odepnij z Moje psy" : "Przypnij do Moje psy"}
+            </button>
             <button
               onClick={() => setShowSurvey(true)}
               style={styles.walkButton}
@@ -1606,10 +1720,18 @@ const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved }) => {
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
         </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("myDogs")}
+        >
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
+        </button>
       </div>
       {showSurvey && (
         <WalkSurvey
           dog={selectedDog}
+          currentUser={currentUser}
           onClose={() => setShowSurvey(false)}
           onSave={() => {
             setShowSurvey(false);
@@ -1620,6 +1742,7 @@ const DogCardView = ({ selectedDog, setCurrentView, onSurveySaved }) => {
       {showBehaviorReport && (
         <BehaviorReport
           dog={selectedDog}
+          currentUser={currentUser}
           onClose={() => setShowBehaviorReport(false)}
         />
       )}
@@ -1636,9 +1759,26 @@ const ShelterMapSystem = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [hoveredCard, setHoveredCard] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [authReady, setAuthReady] = useState(false);
+  const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
 
   useEffect(() => {
     fetchData();
+  }, []);
+
+  useEffect(() => {
+    const unsub = onAuthStateChanged(auth, async (user) => {
+      setCurrentUser(user || null);
+      setAuthReady(true);
+      if (user) {
+        await fetchMyDogs(user);
+      } else {
+        setFavoriteDogIds(new Set());
+      }
+    });
+
+    return () => unsub();
   }, []);
 
   const fetchData = async () => {
@@ -1687,6 +1827,69 @@ const ShelterMapSystem = () => {
     }
   };
 
+  const fetchMyDogs = async (user = currentUser) => {
+    if (!user) {
+      setFavoriteDogIds(new Set());
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "getMyDogs" }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true && Array.isArray(result?.data)) {
+        setFavoriteDogIds(new Set(result.data.map((dog) => cleanText(dog?.id))));
+      }
+    } catch (error) {
+      console.error("Błąd pobierania Moje psy:", error);
+    }
+  };
+
+  const handleToggleFavorite = async (dogId) => {
+    if (!currentUser || !dogId) return;
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "toggleFavorite", dogId }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true) {
+        await fetchMyDogs(currentUser);
+      }
+    } catch (error) {
+      console.error("Błąd przypinania psa:", error);
+    }
+  };
+
+  const handleLogin = async () => {
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error) {
+      console.error("Błąd logowania Google:", error);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Błąd wylogowania:", error);
+    }
+  };
+
   const handleDogClickFromDashboard = (dog) => {
     setSelectedDog(dog);
     setCurrentView("dogCard");
@@ -1699,6 +1902,35 @@ const ShelterMapSystem = () => {
       return refreshedDogs.find((dog) => dog.id === dogId) || previousDog;
     });
   };
+
+  if (!authReady) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={{ textAlign: "center" }}>
+          <div style={styles.spinner}></div>
+          <p style={{ marginTop: "1rem", fontSize: "1.125rem", color: "#374151" }}>
+            Sprawdzanie sesji...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={{ ...styles.card, maxWidth: "420px", textAlign: "center", margin: "1rem" }}>
+          <h1 style={{ fontSize: "1.5rem", marginBottom: "0.75rem" }}>🔐 Logowanie wolontariusza</h1>
+          <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
+            Zaloguj się kontem Google, aby korzystać z ankiet i zakładki Moje psy.
+          </p>
+          <button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
+            Zaloguj przez Google
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -1720,8 +1952,18 @@ const ShelterMapSystem = () => {
     );
   }
 
+  const myDogs = dogs.filter((dog) => favoriteDogIds.has(dog.id));
+
   return (
     <>
+      <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
+        <button
+          onClick={handleLogout}
+          style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "9999px", padding: "0.5rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer" }}
+        >
+          <LogOut size={16} /> Wyloguj
+        </button>
+      </div>
       {currentView === "home" && (
         <HomeView
           dogs={dogs}
@@ -1769,6 +2011,18 @@ const ShelterMapSystem = () => {
           selectedDog={selectedDog}
           setCurrentView={setCurrentView}
           onSurveySaved={handleSurveySaved}
+          currentUser={currentUser}
+          favoriteDogIds={favoriteDogIds}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )}
+      {currentView === "myDogs" && (
+        <MyDogsView
+          myDogs={myDogs}
+          setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
         />
       )}
     </>

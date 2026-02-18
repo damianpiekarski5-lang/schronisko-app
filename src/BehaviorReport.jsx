@@ -93,8 +93,7 @@ const styles = {
   saveHintError: { backgroundColor: "#fee2e2", color: "#991b1b" },
 };
 
-const BehaviorReport = ({ dog, onClose }) => {
-  const [volunteerName, setVolunteerName] = useState("");
+const BehaviorReport = ({ dog, onClose, currentUser }) => {
   const [context, setContext] = useState([]);
   const [mainConcern, setMainConcern] = useState("");
   const [trigger, setTrigger] = useState("");
@@ -170,11 +169,16 @@ const BehaviorReport = ({ dog, onClose }) => {
     else setList([...list, value]);
   };
 
-  const isValid = volunteerName.trim().length >= 2 && mainConcern.trim().length > 0;
+  const isValid = mainConcern.trim().length > 0;
 
   const handleSave = async () => {
     if (!isValid) {
-      setMessage({ type: "error", text: "❌ Uzupełnij: imię wolontariusza oraz główny powód zgłoszenia." });
+      setMessage({ type: "error", text: "❌ Uzupełnij główny powód zgłoszenia." });
+      return;
+    }
+
+    if (!currentUser) {
+      setMessage({ type: "error", text: "❌ Zaloguj się, aby wysłać zgłoszenie." });
       return;
     }
 
@@ -189,14 +193,17 @@ const BehaviorReport = ({ dog, onClose }) => {
     setMessage(null);
 
     try {
+      const token = await currentUser.getIdToken();
       const response = await fetch(API_URL, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           action: "reportBehavior",
           dogName: dog?.name || "",
           dogId: dog?.id || "",
-          volunteerName: volunteerName.trim(),
           reason: mainConcern,
           incident3P: incident3P.slice(0, 800),
           tagsEmotions: fearSignals.join(", "),
@@ -257,10 +264,9 @@ const BehaviorReport = ({ dog, onClose }) => {
                 <label style={styles.questionLabel}>Data i godzina</label>
                 <input value="Uzupełniane automatycznie przy zapisie" readOnly style={{ ...styles.input, ...styles.inputReadonly }} />
               </div>
-              <div style={styles.question}>
-                <label style={styles.questionLabel}>Wolontariusz <span style={styles.required}>*</span></label>
-                <input value={volunteerName} onChange={(e) => setVolunteerName(e.target.value)} style={styles.input} placeholder="np. Anna Kowalska" />
-              </div>
+              <p style={{ color: "#374151", fontSize: "0.875rem" }}>
+                Wolontariusz zostanie zapisany automatycznie z konta Google.
+              </p>
             </div>
 
             <div style={styles.section}>

@@ -7,6 +7,7 @@ import {
   MapPin,
   Hash,
   Home,
+  Star,
 } from "lucide-react";
 import { parseSpreadsheetDate } from "./utils/dateTime";
 
@@ -381,6 +382,13 @@ const HomeView = ({
         >
           <MapPin size={24} />
           <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        </button>
+        <button
+          style={styles.bottomNavButton}
+          onClick={() => setCurrentView("myDogs")}
+        >
+          <Star size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
       </div>
     </div>
