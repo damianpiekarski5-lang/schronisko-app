@@ -29,11 +29,6 @@ import {
   signInWithPopup,
   signOut,
 } from "firebase/auth";
-import {
-  onAuthStateChanged,
-  signInWithPopup,
-  signOut,
-} from "firebase/auth";
 
 // Mobile-optimized styles
 const styles = {
@@ -1430,7 +1425,6 @@ const DogsListView = ({
 };
 
 const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard, authEnabled }) => {
-const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard }) => {
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
   );
@@ -1450,7 +1444,6 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
               {authEnabled
                 ? "Nie masz jeszcze przypiętych psów."
                 : "Logowanie Firebase nie jest skonfigurowane, więc lista Moje psy jest niedostępna."}
-              Nie masz jeszcze przypiętych psów.
             </p>
           </div>
         ) : (
@@ -1805,15 +1798,6 @@ useEffect(() => {
 
   return () => unsub();
 }, [isAuthEnabled]);
-      if (user) {
-        await fetchMyDogs(user);
-      } else {
-        setFavoriteDogIds(new Set());
-      }
-    });
-
-    return () => unsub();
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -1959,7 +1943,6 @@ const handleLogin = async () => {
   };
 
   if (isAuthEnabled && !authReady) {
-  if (!authReady) {
     return (
       <div style={styles.loadingContainer}>
         <div style={{ textAlign: "center" }}>
@@ -1973,7 +1956,6 @@ const handleLogin = async () => {
   }
 
   if (isAuthEnabled && !currentUser) {
-  if (!currentUser) {
     return (
       <div style={styles.loadingContainer}>
         <div style={{ ...styles.card, maxWidth: "420px", textAlign: "center", margin: "1rem" }}>
@@ -1981,24 +1963,21 @@ const handleLogin = async () => {
           <p style={{ color: "#6b7280", marginBottom: "1rem" }}>
             Zaloguj się kontem Google, aby korzystać z ankiet i zakładki Moje psy.
           </p>
-{loginError && (
-  <div
-    style={{
-      marginBottom: "1rem",
-      padding: "0.75rem",
-      borderRadius: "0.75rem",
-      backgroundColor: "#fee2e2",
-      color: "#991b1b",
-      fontSize: "0.875rem",
-      textAlign: "left",
-    }}
-  >
-    {loginError}
-  </div>
-)}
-<button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
-  Zaloguj przez Google
-</button>
+          {loginError && (
+            <div
+              style={{
+                marginBottom: "1rem",
+                padding: "0.75rem",
+                borderRadius: "0.75rem",
+                backgroundColor: "#fee2e2",
+                color: "#991b1b",
+                fontSize: "0.875rem",
+                textAlign: "left",
+              }}
+            >
+              {loginError}
+            </div>
+          )}
           <button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
             Zaloguj przez Google
           </button>
@@ -2046,14 +2025,6 @@ const handleLogin = async () => {
           ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
         </div>
       )}
-      <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
-        <button
-          onClick={handleLogout}
-          style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "9999px", padding: "0.5rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer" }}
-        >
-          <LogOut size={16} /> Wyloguj
-        </button>
-      </div>
       {currentView === "home" && (
         <HomeView
           dogs={dogs}
