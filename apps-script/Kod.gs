@@ -10,7 +10,9 @@ const WALKS_SHEET_NAME = "Spacery";
 const REPORTS_SHEET_NAME = "Zgłoszenia";
 const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
+const FAVORITES_SHEET_NAME = "Favorites";
 const POLAND_TIMEZONE = "Europe/Warsaw";
+const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 
 const H = {
   PAVILION: "PAWILON",
@@ -58,6 +60,7 @@ function doPost(e) {
 
   try {
     const payload = JSON.parse(e?.postData?.contents || "{}");
+    validateSharedSecret(payload);
     const action = safeStr(payload?.action);
 
     if (action === "recordWalk") {
@@ -73,6 +76,14 @@ function doPost(e) {
     if (action === "setArchive") {
       const result = setArchive(payload);
       return json({ ok: true, data: result });
+    }
+
+    if (action === "toggleFavorite") {
+      return json({ ok: true, data: toggleFavorite(payload) });
+    }
+
+    if (action === "getMyDogs") {
+      return json({ ok: true, data: getMyDogs(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -211,7 +222,7 @@ function recordWalk(payload) {
     safeStr(dogRow[map[H.NAME]]),
     safeStr(dogRow[map[H.PAVILION]]),
     safeStr(dogRow[map[H.KENNEL]]),
-    safeStr(payload?.volunteer) || safeStr(payload?.volunteerName) || "Wolontariusz",
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email) || "Wolontariusz",
     safeStr(responses.contact || payload?.contact),
     safeStr(responses.walking || payload?.walking),
     safeStr(responses.dogs || payload?.dogs),
@@ -249,7 +260,7 @@ function reportBehavior(payload) {
     nowInPolandText(),
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
-    safeStr(payload?.volunteerName),
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email),
     safeStr(payload?.reason),
     safeStr(payload?.incident3P),
     safeStr(payload?.tagsEmotions),
@@ -258,6 +269,65 @@ function reportBehavior(payload) {
     safeStr(payload?.risk),
     safeStr(payload?.priority),
   ]);
+}
+
+// ===============================
+// CORE – FAVORITES
+// ===============================
+function toggleFavorite(payload) {
+  const uid = safeStr(payload?.user?.uid);
+  const dogId = safeStr(payload?.dogId);
+  if (!uid) throw new Error("Brak uid użytkownika");
+  if (!dogId) throw new Error("Brak dogId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, FAVORITES_SHEET_NAME);
+  ensureHeaders(sh, ["uid", "dogId", "addedAt"]);
+
+  const values = sh.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][0]) === uid && safeStr(values[i][1]) === dogId) {
+      sh.deleteRow(i + 1);
+      return { success: true, favorite: false, dogId };
+    }
+  }
+
+  sh.appendRow([uid, dogId, nowInPolandText()]);
+  return { success: true, favorite: true, dogId };
+}
+
+function getMyDogs(payload) {
+  const uid = safeStr(payload?.user?.uid);
+  if (!uid) throw new Error("Brak uid użytkownika");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const favSheet = getOrCreateSheet(ss, FAVORITES_SHEET_NAME);
+  ensureHeaders(favSheet, ["uid", "dogId", "addedAt"]);
+
+  const favoriteRows = favSheet.getDataRange().getValues().slice(1);
+  const dogIds = favoriteRows
+    .filter((row) => safeStr(row[0]) === uid)
+    .map((row) => safeStr(row[1]))
+    .filter(Boolean);
+
+  if (!dogIds.length) return [];
+
+  const dogs = getDogs(false);
+  const byId = {};
+  dogs.forEach((dog) => {
+    byId[safeStr(dog.id)] = dog;
+  });
+
+  return dogIds.map((dogId) => byId[dogId]).filter(Boolean);
+}
+
+function validateSharedSecret(payload) {
+  const expected = PropertiesService.getScriptProperties().getProperty(SHARED_SECRET_PROPERTY_NAME);
+  if (!expected) return;
+
+  if (safeStr(payload?.__secret) !== safeStr(expected)) {
+    throw new Error("Unauthorized");
+  }
 }
 
 // ===============================
