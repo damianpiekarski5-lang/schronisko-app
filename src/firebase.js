@@ -1,0 +1,37 @@
+import { initializeApp } from "firebase/app";
+import {
+  GoogleAuthProvider,
+  browserLocalPersistence,
+  getAuth,
+  setPersistence,
+} from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
+  authDomain: process.env.REACT_APP_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.REACT_APP_FIREBASE_PROJECT_ID,
+  appId: process.env.REACT_APP_FIREBASE_APP_ID,
+};
+
+export const hasFirebaseConfig = Object.values(firebaseConfig).every(
+  (value) => typeof value === "string" && value.trim().length > 0
+);
+
+export let auth = null;
+export let googleProvider = null;
+export let firebaseInitError = null;
+
+if (hasFirebaseConfig) {
+  try {
+    const app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    googleProvider = new GoogleAuthProvider();
+
+    setPersistence(auth, browserLocalPersistence).catch((error) => {
+      console.error("Nie udało się ustawić trwałej sesji Firebase:", error);
+    });
+  } catch (error) {
+    firebaseInitError = error;
+    console.error("Błąd inicjalizacji Firebase:", error);
+  }
+}
