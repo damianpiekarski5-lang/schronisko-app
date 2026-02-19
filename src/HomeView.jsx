@@ -9,7 +9,7 @@ import {
   Home,
   Star,
 } from "lucide-react";
-import { parseSpreadsheetDate } from "./utils/dateTime";
+import { getLastWalkPresentation } from "./utils/dateTime";
 
 const styles = {
   pageContainer: {
@@ -187,24 +187,6 @@ const DogPhoto = ({ photo, name }) => {
   );
 };
 
-const getDaysSince = (dateString) => {
-  if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!")
-    return 999;
-
-  const date = parseSpreadsheetDate(dateString);
-  if (!date) return 999;
-
-  const now = new Date();
-  const diff = now - date;
-  return Math.floor(diff / (1000 * 60 * 60 * 24));
-};
-
-const formatDaysAgo = (days) => {
-  if (days === 999) return "Brak danych";
-  if (days === 0) return "Dzisiaj";
-  if (days === 1) return "Wczoraj";
-  return `${days} dni temu`;
-};
 
 const HomeView = ({
   dogs,
@@ -245,13 +227,13 @@ const HomeView = ({
 
   const getDogsNeedingWalk = () => {
     return dogs
-      .filter((dog) => getDaysSince(dog.lastWalk) >= 5)
-      .sort((a, b) => getDaysSince(b.lastWalk) - getDaysSince(a.lastWalk));
+      .filter((dog) => (getLastWalkPresentation(dog.lastWalk).daysSince ?? 999) >= 5)
+      .sort((a, b) => (getLastWalkPresentation(b.lastWalk).daysSince ?? 999) - (getLastWalkPresentation(a.lastWalk).daysSince ?? 999));
   };
 
   const getAllDogsSorted = () => {
     return [...dogs].sort(
-      (a, b) => getDaysSince(b.lastWalk) - getDaysSince(a.lastWalk)
+      (a, b) => (getLastWalkPresentation(b.lastWalk).daysSince ?? 999) - (getLastWalkPresentation(a.lastWalk).daysSince ?? 999)
     );
   };
 
@@ -396,7 +378,7 @@ const HomeView = ({
 };
 
 const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
-  const daysSince = getDaysSince(dog.lastWalk);
+  const walkPresentation = getLastWalkPresentation(dog.lastWalk);
 
   return (
     <div
@@ -463,27 +445,16 @@ const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
           <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
             <Clock
               size={16}
-              color={
-                daysSince >= 7
-                  ? "#ef4444"
-                  : daysSince >= 5
-                  ? "#eab308"
-                  : "#6b7280"
-              }
+              color={walkPresentation.color}
             />
             <span
               style={{
                 fontSize: "0.875rem",
                 fontWeight: "600",
-                color:
-                  daysSince >= 7
-                    ? "#991b1b"
-                    : daysSince >= 5
-                    ? "#92400e"
-                    : "#374151",
+                color: walkPresentation.color,
               }}
             >
-              {formatDaysAgo(daysSince)}
+              {walkPresentation.label}
             </span>
           </div>
         </div>

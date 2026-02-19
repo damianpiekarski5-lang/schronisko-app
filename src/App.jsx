@@ -17,7 +17,7 @@ import {
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import { parseSpreadsheetDate } from "./utils/dateTime";
+import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
   googleProvider,
@@ -604,23 +604,6 @@ const formatLastWalkDate = (dateString) => {
   return String(dateString).trim() || null;
 };
 
-const formatLastWalkRelative = (dateString) => {
-  if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!") {
-    return "Brak danych";
-  }
-
-  const walkDate = parseSpreadsheetDate(dateString);
-  if (!walkDate) {
-    return String(dateString).trim() || "Brak danych";
-  }
-
-  const now = new Date();
-  const diffInDays = Math.floor((now - walkDate) / (1000 * 60 * 60 * 24));
-
-  if (diffInDays <= 0) return "Dzisiaj";
-  if (diffInDays === 1) return "Wczoraj";
-  return `${diffInDays} dni temu`;
-};
 
 const normalizePhotoUrl = (photo) => {
   const value = String(photo || "").trim();
@@ -1503,8 +1486,8 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
                   <p style={{ color: "#374151", marginTop: "0.35rem" }}>
                     {dog.pavilion} / Boks {dog.box}
                   </p>
-                  <p style={{ color: "#92400e", marginTop: "0.5rem", fontWeight: 600 }}>
-                    Ostatni spacer: {formatLastWalkRelative(dog.lastWalk)}
+                  <p style={{ color: getLastWalkPresentation(dog.lastWalk).color, marginTop: "0.5rem", fontWeight: 600 }}>
+                    Ostatni spacer: {getLastWalkPresentation(dog.lastWalk).label}
                   </p>
                 </div>
               </div>
