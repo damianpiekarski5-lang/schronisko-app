@@ -6,6 +6,31 @@ const APPS_SCRIPT_URL =
 
 const ALLOWED_ORIGIN = "*";
 
+const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: przenieś listę adminów do zmiennej środowiskowej ADMIN_EMAILS
+const ADMIN_ACTIONS = new Set([
+  "adminGetBehaviorReports",
+  "adminUpdateBehaviorReport",
+  "adminSaveWorkPlan",
+  "adminGetSessions",
+  "adminSaveSession",
+]);
+
+function getAdminEmails() {
+  const source = process.env.ADMIN_EMAILS || FALLBACK_ADMIN_EMAILS.join(",");
+
+  return source
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdminUser(user) {
+  const email = user?.email?.trim().toLowerCase();
+  if (!email) return false;
+  return getAdminEmails().includes(email);
+}
+
+
 class HttpError extends Error {
   constructor(status, message) {
     super(message);
@@ -142,11 +167,19 @@ export default async function handler(req, res) {
 
   try {
     const url = new URL(APPS_SCRIPT_URL);
+    const action = String(req.method === "GET" ? req.query?.action || "" : req.body?.action || "");
 
     if (req.method === "GET") {
       for (const [key, value] of Object.entries(req.query || {})) {
         if (value !== undefined && value !== null) {
           url.searchParams.set(key, String(value));
+        }
+      }
+
+      if (ADMIN_ACTIONS.has(action)) {
+        const user = await verifyUserFromRequest(req);
+        if (!isAdminUser(user)) {
+          throw new HttpError(403, "Brak uprawnień administratora");
         }
       }
     }
@@ -163,6 +196,11 @@ export default async function handler(req, res) {
 
     if (req.method === "POST") {
       const user = await verifyUserFromRequest(req);
+
+      if (ADMIN_ACTIONS.has(action) && !isAdminUser(user)) {
+        throw new HttpError(403, "Brak uprawnień administratora");
+      }
+
       const payload = {
         ...(req.body ?? {}),
         user,

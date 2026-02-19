@@ -13,10 +13,12 @@ import {
   Clock,
   Star,
   LogOut,
+  Shield,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
+import AdminPanelView from "./AdminPanelView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -31,6 +33,24 @@ import {
 } from "firebase/auth";
 
 // Mobile-optimized styles
+
+const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: utrzymuj listę adminów przez zmienną środowiskową ADMIN_EMAILS
+
+function getAdminEmails() {
+  const fromEnv = process.env.REACT_APP_ADMIN_EMAILS || "";
+  const source = fromEnv || FALLBACK_ADMIN_EMAILS.join(",");
+
+  return source
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function isAdminEmail(email) {
+  if (!email) return false;
+  return getAdminEmails().includes(String(email).trim().toLowerCase());
+}
+
 const styles = {
   // Layout
   pageContainer: {
@@ -666,6 +686,7 @@ const MapView = ({
   setSelectedDog,
   hoveredCard,
   setHoveredCard,
+  isAdmin,
 }) => {
   const getFilteredDogs = () => {
     if (!searchTerm) return dogs;
@@ -1109,6 +1130,15 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1121,6 +1151,7 @@ const BoxesView = ({
   setSelectedBox,
   hoveredCard,
   setHoveredCard,
+  isAdmin,
 }) => {
   const countDogsInPavilion = (pavilion) =>
     dogs.filter((dog) => dog.pavilion === pavilion).length;
@@ -1243,6 +1274,15 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1256,6 +1296,7 @@ const DogsListView = ({
   setSelectedDog,
   hoveredCard,
   setHoveredCard,
+  isAdmin,
 }) => {
   const getDogsInBox = (pavilion, box) =>
     dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box);
@@ -1424,12 +1465,21 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard, authEnabled }) => {
+const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard, authEnabled, isAdmin }) => {
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
   );
@@ -1521,6 +1571,7 @@ const DogCardView = ({
   favoriteDogIds,
   onToggleFavorite,
   favoriteActionState,
+  isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
   const [showBehaviorReport, setShowBehaviorReport] = useState(false);
@@ -1787,6 +1838,15 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
       {showSurvey && (
         <WalkSurvey
@@ -1830,6 +1890,7 @@ const [favoriteActionState, setFavoriteActionState] = useState({
 });
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
+const isAdminUser = isAdminEmail(currentUser?.email);
 
 useEffect(() => {
   fetchData();
@@ -2105,6 +2166,7 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           setCurrentView={setCurrentView}
+          isAdmin={isAdminUser}
         />
       )}
       {currentView === "map" && (
@@ -2117,6 +2179,7 @@ const handleLogin = async () => {
           setSelectedDog={setSelectedDog}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
+          isAdmin={isAdminUser}
         />
       )}
       {currentView === "boxes" && (
@@ -2127,6 +2190,7 @@ const handleLogin = async () => {
           setSelectedBox={setSelectedBox}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
+          isAdmin={isAdminUser}
         />
       )}
       {currentView === "dogs" && (
@@ -2138,6 +2202,7 @@ const handleLogin = async () => {
           setSelectedDog={setSelectedDog}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
+          isAdmin={isAdminUser}
         />
       )}
       {currentView === "dogCard" && (
@@ -2149,6 +2214,7 @@ const handleLogin = async () => {
           favoriteDogIds={favoriteDogIds}
           onToggleFavorite={handleToggleFavorite}
           favoriteActionState={favoriteActionState}
+          isAdmin={isAdminUser}
         />
       )}
       {currentView === "myDogs" && (
@@ -2159,6 +2225,14 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
+          isAdmin={isAdminUser}
+        />
+      )}
+      {currentView === "panel" && isAdminUser && (
+        <AdminPanelView
+          currentUser={currentUser}
+          dogs={dogs}
+          setCurrentView={setCurrentView}
         />
       )}
     </>
