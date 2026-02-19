@@ -47,3 +47,37 @@ export const formatDateTime = (value) => {
 
   return `${day}.${month}.${year}, ${hours}:${minutes}`;
 };
+
+const startOfDay = (date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+export const getCalendarDayDiff = (value, now = new Date()) => {
+  const parsed = parseSpreadsheetDate(value);
+  if (!parsed) return null;
+
+  const walkDay = startOfDay(parsed);
+  const today = startOfDay(now);
+  return Math.floor((today - walkDay) / (1000 * 60 * 60 * 24));
+};
+
+export const getLastWalkPresentation = (value) => {
+  const text = String(value ?? "").trim();
+  if (!text || text === "Brak spacerów" || text === "#REF!") {
+    return { label: "Brak danych", daysSince: null, color: "#6b7280" };
+  }
+
+  const daysSince = getCalendarDayDiff(text);
+  if (daysSince === null || daysSince < 0) {
+    return { label: text || "Brak danych", daysSince: null, color: "#6b7280" };
+  }
+
+  if (daysSince === 0) {
+    return { label: "Dzisiaj", daysSince, color: "#16a34a" };
+  }
+
+  if (daysSince === 1) {
+    return { label: "Wczoraj", daysSince, color: "#f97316" };
+  }
+
+  return { label: `${daysSince} dni temu`, daysSince, color: "#dc2626" };
+};
