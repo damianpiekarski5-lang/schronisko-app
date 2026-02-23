@@ -8,6 +8,8 @@ const SPREADSHEET_ID = "1NTi42HMtaJB-xK6ZQvupHwCx2hNTR0cjFm6PtGM-mgQ";
 const DOGS_SHEET_NAME = "Baza psów";
 const WALKS_SHEET_NAME = "Spacery";
 const REPORTS_SHEET_NAME = "Zgłoszenia";
+const BEHAVIOR_WORK_PLANS_SHEET_NAME = "Plany pracy behawiorysty";
+const BEHAVIOR_SESSIONS_SHEET_NAME = "Sesje behawiorysty";
 const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
 const FAVORITES_SHEET_NAME = "Favorites";
@@ -66,6 +68,14 @@ function doGet(e) {
       return json({ ok: true, data: getDogs(includeArchived) });
     }
 
+    if (action === "adminGetBehaviorReports") {
+      return json({ ok: true, data: adminGetBehaviorReports_() });
+    }
+
+    if (action === "adminGetSessions") {
+      return json({ ok: true, data: adminGetSessions_() });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -93,6 +103,18 @@ function doPost(e) {
     if (action === "reportBehavior") {
       reportBehavior(payload);
       return json({ ok: true, data: { success: true } });
+    }
+
+    if (action === "adminUpdateBehaviorReport") {
+      return json({ ok: true, data: adminUpdateBehaviorReport_(payload) });
+    }
+
+    if (action === "adminSaveWorkPlan") {
+      return json({ ok: true, data: adminSaveWorkPlan_(payload) });
+    }
+
+    if (action === "adminSaveSession") {
+      return json({ ok: true, data: adminSaveSession_(payload) });
     }
 
     if (action === "setArchive") {
@@ -591,6 +613,11 @@ function reportBehavior(payload) {
     "tagsWelfare",
     "risk",
     "priority",
+    "status",
+    "resolvedAt",
+    "workPlanGoals",
+    "workPlanNotes",
+    "assignedTo",
   ]);
 
   reportsSheet.appendRow([
@@ -605,7 +632,167 @@ function reportBehavior(payload) {
     safeStr(payload?.tagsWelfare),
     safeStr(payload?.risk),
     safeStr(payload?.priority),
+    "NEW",
+    "",
+    "",
+    "",
+    "",
   ]);
+}
+
+function adminGetBehaviorReports_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+
+  ensureHeaders(reportsSheet, [
+    "timestamp",
+    "dogName",
+    "dogId",
+    "volunteerName",
+    "reason",
+    "incident3P",
+    "tagsEmotions",
+    "tagsRelations",
+    "tagsWelfare",
+    "risk",
+    "priority",
+    "status",
+    "resolvedAt",
+    "workPlanGoals",
+    "workPlanNotes",
+    "assignedTo",
+  ]);
+
+  const values = reportsSheet.getDataRange().getValues();
+  if (values.length <= 1) return [];
+
+  return values.slice(1).map((row, idx) => ({
+    id: `report-${idx + 2}`,
+    timestamp: safeStr(row[0]),
+    dogName: safeStr(row[1]),
+    dogId: safeStr(row[2]),
+    volunteerName: safeStr(row[3]),
+    reason: safeStr(row[4]),
+    incident3P: safeStr(row[5]),
+    tagsEmotions: safeStr(row[6]),
+    tagsRelations: safeStr(row[7]),
+    tagsWelfare: safeStr(row[8]),
+    risk: safeStr(row[9]),
+    priority: safeStr(row[10]),
+    status: safeStr(row[11]) || "NEW",
+    resolvedAt: safeStr(row[12]),
+    workPlanGoals: safeStr(row[13]),
+    workPlanNotes: safeStr(row[14]),
+    assignedTo: safeStr(row[15]),
+  })).sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+}
+
+function adminUpdateBehaviorReport_(payload) {
+  const reportId = safeStr(payload?.reportId || payload?.id);
+  const status = safeStr(payload?.status).toUpperCase();
+  if (!reportId) throw new Error("Brak reportId");
+  if (!status) throw new Error("Brak statusu");
+
+  const rowNumber = Number(reportId.replace("report-", ""));
+  if (!rowNumber || rowNumber < 2) throw new Error("Nieprawidłowe reportId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+  ensureHeaders(reportsSheet, [
+    "timestamp", "dogName", "dogId", "volunteerName", "reason", "incident3P", "tagsEmotions", "tagsRelations", "tagsWelfare", "risk", "priority", "status", "resolvedAt", "workPlanGoals", "workPlanNotes", "assignedTo",
+  ]);
+
+  if (rowNumber > reportsSheet.getLastRow()) throw new Error("Zgłoszenie nie istnieje");
+
+  reportsSheet.getRange(rowNumber, 12).setValue(status);
+  if (status === "DONE") reportsSheet.getRange(rowNumber, 13).setValue(nowInPolandText());
+  return { success: true, reportId, status };
+}
+
+function adminSaveWorkPlan_(payload) {
+  const reportId = safeStr(payload?.reportId);
+  const dogId = safeStr(payload?.dogId);
+  const goals = payload?.goals || [];
+  const notes = safeStr(payload?.notes);
+
+  if (!reportId) throw new Error("Brak reportId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+  ensureHeaders(reportsSheet, [
+    "timestamp", "dogName", "dogId", "volunteerName", "reason", "incident3P", "tagsEmotions", "tagsRelations", "tagsWelfare", "risk", "priority", "status", "resolvedAt", "workPlanGoals", "workPlanNotes", "assignedTo",
+  ]);
+
+  const rowNumber = Number(reportId.replace("report-", ""));
+  if (!rowNumber || rowNumber < 2 || rowNumber > reportsSheet.getLastRow()) throw new Error("Nieprawidłowe reportId");
+
+  const goalText = Array.isArray(goals) ? goals.map((goal) => safeStr(goal)).filter(Boolean).join("\n") : safeStr(goals);
+  reportsSheet.getRange(rowNumber, 14).setValue(goalText);
+  reportsSheet.getRange(rowNumber, 15).setValue(notes);
+  if (dogId) reportsSheet.getRange(rowNumber, 3).setValue(dogId);
+
+  const plansSheet = getOrCreateSheet(ss, BEHAVIOR_WORK_PLANS_SHEET_NAME);
+  ensureHeaders(plansSheet, ["id", "reportId", "dogId", "goals", "notes", "createdAt", "updatedAt"]);
+  plansSheet.appendRow([`plan-${new Date().getTime()}`, reportId, dogId, goalText, notes, nowInPolandText(), nowInPolandText()]);
+
+  return { success: true, reportId };
+}
+
+function adminGetSessions_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sessionsSheet = getOrCreateSheet(ss, BEHAVIOR_SESSIONS_SHEET_NAME);
+  ensureHeaders(sessionsSheet, ["id", "reportId", "dogId", "title", "plannedFor", "goals", "notes", "status", "createdAt", "updatedAt"]);
+
+  const values = sessionsSheet.getDataRange().getValues();
+  if (values.length <= 1) return [];
+
+  return values.slice(1).map((row) => ({
+    id: safeStr(row[0]),
+    reportId: safeStr(row[1]),
+    dogId: safeStr(row[2]),
+    title: safeStr(row[3]),
+    plannedFor: safeStr(row[4]),
+    goals: safeStr(row[5]),
+    notes: safeStr(row[6]),
+    status: safeStr(row[7]) || "PLANNED",
+    createdAt: safeStr(row[8]),
+    updatedAt: safeStr(row[9]),
+  })).sort((a, b) => String(a.plannedFor).localeCompare(String(b.plannedFor)));
+}
+
+function adminSaveSession_(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sessionsSheet = getOrCreateSheet(ss, BEHAVIOR_SESSIONS_SHEET_NAME);
+  ensureHeaders(sessionsSheet, ["id", "reportId", "dogId", "title", "plannedFor", "goals", "notes", "status", "createdAt", "updatedAt"]);
+
+  const id = safeStr(payload?.id) || `session-${new Date().getTime()}`;
+  const reportId = safeStr(payload?.reportId);
+  const dogId = safeStr(payload?.dogId);
+  const title = safeStr(payload?.title) || "Sesja behawioralna";
+  const plannedFor = safeStr(payload?.plannedFor);
+  const goals = safeStr(payload?.goals);
+  const notes = safeStr(payload?.notes);
+  const status = safeStr(payload?.status) || "PLANNED";
+
+  if (!dogId) throw new Error("Brak dogId");
+
+  const all = sessionsSheet.getDataRange().getValues();
+  const now = nowInPolandText();
+  let updated = false;
+
+  for (let r = 1; r < all.length; r++) {
+    if (safeStr(all[r][0]) === id) {
+      sessionsSheet.getRange(r + 1, 1, 1, 10).setValues([[id, reportId, dogId, title, plannedFor, goals, notes, status, safeStr(all[r][8]) || now, now]]);
+      updated = true;
+      break;
+    }
+  }
+
+  if (!updated) {
+    sessionsSheet.appendRow([id, reportId, dogId, title, plannedFor, goals, notes, status, now, now]);
+  }
+
+  return { success: true, id };
 }
 
 // ===============================
