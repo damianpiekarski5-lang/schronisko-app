@@ -1,16 +1,5 @@
 import React, { useState } from "react";
-import {
-  Search,
-  X,
-  Clock,
-  AlertCircle,
-  MapPin,
-  Hash,
-  Home,
-  Star,
-  Shield,
-  Briefcase,
-} from "lucide-react";
+import { Search, X, Clock, AlertCircle, MapPin, Hash, Home, Star, Briefcase } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
 
 const styles = {
@@ -376,22 +365,13 @@ const HomeView = ({
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
         {isAdmin && (
-          <>
-            <button
-              style={styles.bottomNavButton}
-              onClick={() => setCurrentView("panel")}
-            >
-              <Shield size={24} />
-              <span style={{ marginTop: "0.25rem" }}>Panel</span>
-            </button>
-            <button
-              style={styles.bottomNavButton}
-              onClick={() => setCurrentView("behaviorPanel")}
-            >
-              <Briefcase size={24} />
-              <span style={{ marginTop: "0.25rem" }}>Behaw.</span>
-            </button>
-          </>
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorPanel")}
+          >
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Terapia</span>
+          </button>
         )}
       </div>
     </div>
