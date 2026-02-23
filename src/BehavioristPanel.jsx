@@ -22,6 +22,7 @@ const styles = {
   card: { backgroundColor: "white", borderRadius: "0.9rem", padding: "0.9rem", boxShadow: "0 1px 3px rgba(0,0,0,0.08)", marginBottom: "0.9rem" },
   sectionTitle: { fontSize: "0.98rem", fontWeight: 800, color: "#111827", marginBottom: "0.65rem", display: "flex", alignItems: "center", gap: "0.45rem" },
   tabs: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "0.5rem", marginBottom: "0.65rem" },
+  tabs: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "0.65rem" },
   tab: { border: "1px solid #d1d5db", borderRadius: "0.65rem", padding: "0.5rem", background: "white", fontWeight: 700, color: "#374151" },
   tabActive: { background: "#dbeafe", borderColor: "#3b82f6", color: "#1e3a8a" },
   input: { width: "100%", border: "1px solid #d1d5db", borderRadius: "0.65rem", padding: "0.6rem 0.7rem", fontSize: "0.9rem", marginBottom: "0.5rem" },
@@ -129,6 +130,7 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
   const filteredReports = useMemo(() => {
     const term = reportSearch.trim().toLowerCase();
     const targetStatus = activeList === "new" ? "NEW" : activeList === "progress" ? "IN_PROGRESS" : "DONE";
+    const targetStatus = activeList === "new" ? "NEW" : "IN_PROGRESS";
     return reportsNormalized.filter((report) => {
       if (report.statusNorm !== targetStatus) return false;
       if (!term) return true;
