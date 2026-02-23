@@ -18,6 +18,9 @@ const styles = {
   },
   headerContent: {
     padding: "1rem",
+    maxWidth: "640px",
+    margin: "0 auto",
+    boxSizing: "border-box",
   },
   title: {
     fontSize: "1.5rem",
@@ -35,6 +38,7 @@ const styles = {
   },
   searchInput: {
     width: "100%",
+    boxSizing: "border-box",
     paddingLeft: "3rem",
     paddingRight: "3rem",
     paddingTop: "1rem",
@@ -65,6 +69,9 @@ const styles = {
   },
   content: {
     padding: "1rem",
+    maxWidth: "640px",
+    margin: "0 auto",
+    boxSizing: "border-box",
   },
   section: {
     marginBottom: "2rem",
@@ -118,10 +125,16 @@ const styles = {
   bottomNav: {
     position: "fixed",
     bottom: 0,
-    left: 0,
-    right: 0,
+    left: "50%",
+    transform: "translateX(-50%)",
+    width: "calc(100% - 2rem)",
+    maxWidth: "608px",
     backgroundColor: "white",
     borderTop: "1px solid #e5e7eb",
+    borderLeft: "1px solid #e5e7eb",
+    borderRight: "1px solid #e5e7eb",
+    borderTopLeftRadius: "0.75rem",
+    borderTopRightRadius: "0.75rem",
     padding: "0.75rem 0.25rem",
     display: "flex",
     justifyContent: "space-around",
