@@ -17,8 +17,6 @@ import {
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import AdminPanelView from "./AdminPanelView";
-import PanelBehawiorystyView from "./PanelBehawiorystyView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -2190,20 +2188,6 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
-        />
-      )}
-      {currentView === "panel" && isAdminUser && (
-        <AdminPanelView
-          currentUser={currentUser}
-          dogs={dogs}
-          setCurrentView={setCurrentView}
-        />
-      )}
-      {currentView === "behaviorPanel" && isAdminUser && (
-        <PanelBehawiorystyView
-          currentUser={currentUser}
-          dogs={dogs}
-          setCurrentView={setCurrentView}
         />
       )}
     </>
