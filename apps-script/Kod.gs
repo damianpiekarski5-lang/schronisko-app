@@ -58,7 +58,7 @@ function doGet(e) {
 
   try {
     if (String(action).indexOf(".") !== -1 || action === "behavior.init") {
-      return json(handleBehaviorGetAction_(action, e?.parameter || {}));
+      return json({ ok: false, error: "Moduł panelu behawiorysty jest wyłączony." });
     }
 
     if (action === "getDogs") {
@@ -82,7 +82,7 @@ function doPost(e) {
     const action = safeStr(payload?.action);
 
     if (String(action).indexOf(".") !== -1 || action === "behavior.init") {
-      return json(handleBehaviorPostAction_(action, payload));
+      return json({ ok: false, error: "Moduł panelu behawiorysty jest wyłączony." });
     }
 
     if (action === "recordWalk") {

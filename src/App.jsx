@@ -13,13 +13,10 @@ import {
   Clock,
   Star,
   LogOut,
-  Shield,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import AdminPanelView from "./AdminPanelView";
-import PanelBehawiorystyView from "./PanelBehawiorystyView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1131,15 +1128,6 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1275,15 +1263,6 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1466,15 +1445,6 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1839,15 +1809,6 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
       {showSurvey && (
         <WalkSurvey
@@ -2227,20 +2188,6 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
-        />
-      )}
-      {currentView === "panel" && isAdminUser && (
-        <AdminPanelView
-          currentUser={currentUser}
-          dogs={dogs}
-          setCurrentView={setCurrentView}
-        />
-      )}
-      {currentView === "behaviorPanel" && isAdminUser && (
-        <PanelBehawiorystyView
-          currentUser={currentUser}
-          dogs={dogs}
-          setCurrentView={setCurrentView}
         />
       )}
     </>
