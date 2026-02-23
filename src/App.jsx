@@ -13,7 +13,6 @@ import {
   Clock,
   Star,
   LogOut,
-  Shield,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
@@ -1131,15 +1130,6 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1275,15 +1265,6 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1466,15 +1447,6 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1839,15 +1811,6 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
       </div>
       {showSurvey && (
         <WalkSurvey
