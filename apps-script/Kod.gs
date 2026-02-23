@@ -613,6 +613,11 @@ function reportBehavior(payload) {
     "tagsWelfare",
     "risk",
     "priority",
+    "status",
+    "resolvedAt",
+    "workPlanGoals",
+    "workPlanNotes",
+    "assignedTo",
   ]);
 
   reportsSheet.appendRow([
