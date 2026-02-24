@@ -10,12 +10,18 @@ const WALKS_SHEET_NAME = "Spacery";
 const REPORTS_SHEET_NAME = "Zgłoszenia";
 const BEHAVIOR_WORK_PLANS_SHEET_NAME = "Plany pracy behawiorysty";
 const BEHAVIOR_SESSIONS_SHEET_NAME = "Sesje behawiorysty";
+const DOGS_THERAPY_SHEET_NAME = "DogsTherapy";
+const THERAPY_SCHEDULE_SHEET_NAME = "Schedule";
+const THERAPY_SESSION_LOG_SHEET_NAME = "SessionLog";
 const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
 const FAVORITES_SHEET_NAME = "Favorites";
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 const BEHAVIOR_PANEL_SPREADSHEET_PROPERTY = "BEHAVIOR_PANEL_SPREADSHEET_ID";
+const THERAPY_STATUSES = ["THERAPY", "WAIT", "HOLD", "ADOPTION_READY"];
+const THERAPY_DECISIONS = ["THERAPY", "WAIT", "REJECTED"];
+const SLOT_STATUS = ["PLANNED", "DONE", "CANCELED", "EMPTY"];
 
 const BEHAVIOR_SHEETS = {
   BehaviorCases: ["id", "dogId", "title", "stage", "priority", "tags", "assignedTo", "createdAt", "updatedAt", "startedAt", "closedAt"],
@@ -76,6 +82,26 @@ function doGet(e) {
       return json({ ok: true, data: adminGetSessions_() });
     }
 
+    if (action === "getBehavioristDashboard") {
+      return json({ ok: true, data: getBehavioristDashboard_(e?.parameter?.date) });
+    }
+
+    if (action === "getWeekSchedule") {
+      return json({ ok: true, data: getWeekSchedule_(e?.parameter?.startDate, e?.parameter?.days) });
+    }
+
+    if (action === "getTherapyInbox") {
+      return json({ ok: true, data: getTherapyInbox_() });
+    }
+
+    if (action === "getTherapyDog") {
+      return json({ ok: true, data: getTherapyDog_(e?.parameter?.dogId) });
+    }
+
+    if (action === "getToSchedule") {
+      return json({ ok: true, data: getToSchedule_(e?.parameter?.date, e?.parameter?.windowDays) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -128,6 +154,30 @@ function doPost(e) {
 
     if (action === "getMyDogs") {
       return json({ ok: true, data: getMyDogs(payload) });
+    }
+
+    if (action === "setScheduleSlot") {
+      return json({ ok: true, data: setScheduleSlot_(payload) });
+    }
+
+    if (action === "clearScheduleSlot") {
+      return json({ ok: true, data: clearScheduleSlot_(payload) });
+    }
+
+    if (action === "completeSession") {
+      return json({ ok: true, data: completeSession_(payload) });
+    }
+
+    if (action === "setTherapyDecision") {
+      return json({ ok: true, data: setTherapyDecision_(payload) });
+    }
+
+    if (action === "updateTherapyDog") {
+      return json({ ok: true, data: updateTherapyDog_(payload?.dogId, payload) });
+    }
+
+    if (action === "autoPlanWeek") {
+      return json({ ok: true, data: autoPlanWeek_(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -852,6 +902,371 @@ function validateSharedSecret(payload) {
   if (safeStr(payload?.__secret) !== safeStr(expected)) {
     throw new Error("Unauthorized");
   }
+}
+
+function getTherapyHeaders_() {
+  return ["DogID", "TherapyStatus", "Priority", "WalkFreqDays", "BoxFreqDays", "LastWalkDate", "LastBoxDate", "NextWalkDue", "NextBoxDue", "WorkAreas", "Exercises", "NotesShort"];
+}
+
+function getScheduleHeaders_() {
+  return ["Date", "SessionType", "Slot", "DogID", "Status", "PlanArea", "TemplateID", "SessionNote"];
+}
+
+function getSessionLogHeaders_() {
+  return ["Timestamp", "Date", "SessionType", "Slot", "DogID", "ExercisesDone", "Outcome", "Note"];
+}
+
+function initTherapySheets_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  ensureHeadersAppend_(getOrCreateSheet(ss, DOGS_THERAPY_SHEET_NAME), getTherapyHeaders_());
+  ensureHeadersAppend_(getOrCreateSheet(ss, THERAPY_SCHEDULE_SHEET_NAME), getScheduleHeaders_());
+  ensureHeadersAppend_(getOrCreateSheet(ss, THERAPY_SESSION_LOG_SHEET_NAME), getSessionLogHeaders_());
+}
+
+function ensureHeadersAppend_(sheet, headers) {
+  if (sheet.getLastRow() === 0) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+    return;
+  }
+  const width = Math.max(sheet.getLastColumn(), headers.length);
+  const current = sheet.getRange(1, 1, 1, width).getValues()[0].map((v) => safeStr(v));
+  let changed = false;
+  headers.forEach((header, idx) => {
+    if (!current[idx]) {
+      current[idx] = header;
+      changed = true;
+    }
+  });
+  if (changed) sheet.getRange(1, 1, 1, current.length).setValues([current]);
+  sheet.setFrozenRows(1);
+}
+
+function formatDatePoland_(value) {
+  if (!value) return "";
+  const date = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return Utilities.formatDate(date, POLAND_TIMEZONE, "yyyy-MM-dd");
+}
+
+function toDatePoland_(value) {
+  const normalized = formatDatePoland_(value);
+  if (!normalized) return null;
+  return new Date(normalized + "T00:00:00+01:00");
+}
+
+function validSessionType_(value) { return value === "WALK" || value === "BOX"; }
+function getMaxSlot_(type) { return type === "WALK" ? 6 : 4; }
+
+function assertDate_(value, fieldName) {
+  const date = formatDatePoland_(value);
+  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Nieprawidłowa data: " + fieldName);
+  return date;
+}
+
+function getDogsMap_() {
+  const dogs = getDogs(true);
+  const map = {};
+  dogs.forEach((dog) => { map[safeStr(dog.id)] = dog; });
+  return map;
+}
+
+function readTherapyRows_() {
+  initTherapySheets_();
+  const sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(DOGS_THERAPY_SHEET_NAME);
+  const rows = sh.getDataRange().getValues();
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((h) => safeStr(h));
+  return rows.slice(1).map((row, idx) => {
+    const item = { __row: idx + 2 };
+    headers.forEach((h, i) => { item[h] = row[i]; });
+    return item;
+  }).filter((row) => safeStr(row.DogID));
+}
+
+function upsertTherapyDog_(dogId, patch) {
+  const normalizedDogId = safeStr(dogId);
+  if (!normalizedDogId) throw new Error("Brak dogId");
+  initTherapySheets_();
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_THERAPY_SHEET_NAME);
+  const headers = getTherapyHeaders_();
+  const rows = readTherapyRows_();
+  const existing = rows.find((row) => safeStr(row.DogID) === normalizedDogId);
+  const base = {
+    DogID: normalizedDogId,
+    TherapyStatus: "WAIT",
+    Priority: 2,
+    WalkFreqDays: "",
+    BoxFreqDays: "",
+    LastWalkDate: "",
+    LastBoxDate: "",
+    NextWalkDue: "",
+    NextBoxDue: "",
+    WorkAreas: "",
+    Exercises: "",
+    NotesShort: "",
+  };
+  const next = { ...base, ...(existing || {}), ...(patch || {}) };
+  const values = headers.map((h) => (next[h] === undefined ? "" : next[h]));
+  if (existing?.__row) sh.getRange(existing.__row, 1, 1, headers.length).setValues([values]);
+  else sh.appendRow(values);
+  return next;
+}
+
+function getScheduleRows_() {
+  initTherapySheets_();
+  const sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(THERAPY_SCHEDULE_SHEET_NAME);
+  const rows = sh.getDataRange().getValues();
+  if (rows.length < 2) return [];
+  const headers = rows[0].map((h) => safeStr(h));
+  return rows.slice(1).map((row, idx) => {
+    const out = { __row: idx + 2 };
+    headers.forEach((h, i) => { out[h] = row[i]; });
+    return out;
+  });
+}
+
+function getOrCreateScheduleSlot_(date, type, slot) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(THERAPY_SCHEDULE_SHEET_NAME);
+  const headers = getScheduleHeaders_();
+  const rows = getScheduleRows_();
+  const found = rows.find((row) => safeStr(row.Date) === date && safeStr(row.SessionType) === type && Number(row.Slot) === Number(slot));
+  if (found) return found;
+  const rowObj = { Date: date, SessionType: type, Slot: Number(slot), DogID: "", Status: "EMPTY", PlanArea: "", TemplateID: "", SessionNote: "" };
+  sh.appendRow(headers.map((h) => rowObj[h]));
+  const rowNumber = sh.getLastRow();
+  return { ...rowObj, __row: rowNumber };
+}
+
+function setScheduleRow_(rowNumber, data) {
+  const sh = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(THERAPY_SCHEDULE_SHEET_NAME);
+  const headers = getScheduleHeaders_();
+  sh.getRange(rowNumber, 1, 1, headers.length).setValues([headers.map((h) => data[h] || "")]);
+}
+
+function setScheduleSlot_(payload) {
+  initTherapySheets_();
+  const date = assertDate_(payload?.date, "date");
+  const type = safeStr(payload?.type).toUpperCase();
+  const slot = Number(payload?.slot);
+  const dogId = safeStr(payload?.dogId);
+  if (!validSessionType_(type)) throw new Error("Nieprawidłowy type");
+  if (!dogId) throw new Error("Brak dogId");
+  if (!Number.isInteger(slot) || slot < 1 || slot > getMaxSlot_(type)) throw new Error("Nieprawidłowy slot");
+
+  const row = getOrCreateScheduleSlot_(date, type, slot);
+  const next = { ...row, Date: date, SessionType: type, Slot: slot, DogID: dogId, Status: "PLANNED", PlanArea: safeStr(payload?.planArea), TemplateID: safeStr(payload?.templateId), SessionNote: safeStr(payload?.sessionNote) };
+  setScheduleRow_(row.__row, next);
+  return { success: true };
+}
+
+function clearScheduleSlot_(payload) {
+  const date = assertDate_(payload?.date, "date");
+  const type = safeStr(payload?.type).toUpperCase();
+  const slot = Number(payload?.slot);
+  if (!validSessionType_(type)) throw new Error("Nieprawidłowy type");
+  if (!Number.isInteger(slot) || slot < 1 || slot > getMaxSlot_(type)) throw new Error("Nieprawidłowy slot");
+  const row = getOrCreateScheduleSlot_(date, type, slot);
+  setScheduleRow_(row.__row, { ...row, Date: date, SessionType: type, Slot: slot, DogID: "", Status: "EMPTY", PlanArea: "", TemplateID: "", SessionNote: "" });
+  return { success: true };
+}
+
+function getBehavioristDashboard_(dateValue) {
+  const date = assertDate_(dateValue || formatDatePoland_(new Date()), "date");
+  const dogsMap = getDogsMap_();
+  const schedule = getWeekSchedule_(date, 1);
+  return { date, slots: schedule.days[0].slots.map((slot) => ({ ...slot, dog: dogsMap[slot.dogId] || null })) };
+}
+
+function getWeekSchedule_(startDateValue, daysValue) {
+  initTherapySheets_();
+  const startDate = assertDate_(startDateValue || formatDatePoland_(new Date()), "startDate");
+  const days = Math.min(Math.max(Number(daysValue) || 7, 1), 21);
+  const allRows = getScheduleRows_();
+  const rowsByKey = {};
+  allRows.forEach((row) => {
+    rowsByKey[`${safeStr(row.Date)}|${safeStr(row.SessionType)}|${Number(row.Slot)}`] = row;
+  });
+  const daysOut = [];
+  for (let i = 0; i < days; i++) {
+    const date = formatDatePoland_(new Date(toDatePoland_(startDate).getTime() + i * 24 * 60 * 60 * 1000));
+    const slots = [];
+    ["WALK", "BOX"].forEach((type) => {
+      for (let slot = 1; slot <= getMaxSlot_(type); slot++) {
+        const key = `${date}|${type}|${slot}`;
+        const found = rowsByKey[key];
+        slots.push({ date, type, slot, dogId: safeStr(found?.DogID), status: safeStr(found?.Status) || "EMPTY", planArea: safeStr(found?.PlanArea), templateId: safeStr(found?.TemplateID), sessionNote: safeStr(found?.SessionNote) });
+      }
+    });
+    daysOut.push({ date, slots });
+  }
+  return { startDate, days: daysOut };
+}
+
+function completeSession_(payload) {
+  const date = assertDate_(payload?.date, "date");
+  const type = safeStr(payload?.type).toUpperCase();
+  const slot = Number(payload?.slot);
+  const dogId = safeStr(payload?.dogId);
+  if (!validSessionType_(type)) throw new Error("Nieprawidłowy type");
+  if (!dogId) throw new Error("Brak dogId");
+  if (!Number.isInteger(slot) || slot < 1 || slot > getMaxSlot_(type)) throw new Error("Nieprawidłowy slot");
+
+  const row = getOrCreateScheduleSlot_(date, type, slot);
+  setScheduleRow_(row.__row, { ...row, Date: date, SessionType: type, Slot: slot, DogID: dogId, Status: "DONE", SessionNote: safeStr(payload?.note) || safeStr(row.SessionNote) });
+
+  const logSheet = SpreadsheetApp.openById(SPREADSHEET_ID).getSheetByName(THERAPY_SESSION_LOG_SHEET_NAME);
+  const exercisesDone = Array.isArray(payload?.exercisesDone) ? payload.exercisesDone.join(", ") : safeStr(payload?.exercisesDone);
+  logSheet.appendRow([nowInPolandText(), date, type, slot, dogId, exercisesDone, safeStr(payload?.outcome), safeStr(payload?.note)]);
+
+  const patch = {};
+  if (type === "WALK") {
+    patch.LastWalkDate = date;
+    const freq = Number(payload?.walkFreqDays) || Number(getTherapyDog_(dogId)?.WalkFreqDays) || 0;
+    patch.NextWalkDue = freq > 0 ? formatDatePoland_(new Date(toDatePoland_(date).getTime() + freq * 24 * 60 * 60 * 1000)) : "";
+  } else {
+    patch.LastBoxDate = date;
+    const freq = Number(payload?.boxFreqDays) || Number(getTherapyDog_(dogId)?.BoxFreqDays) || 0;
+    patch.NextBoxDue = freq > 0 ? formatDatePoland_(new Date(toDatePoland_(date).getTime() + freq * 24 * 60 * 60 * 1000)) : "";
+  }
+  upsertTherapyDog_(dogId, patch);
+  return { success: true };
+}
+
+function getTherapyInbox_() {
+  const reports = adminGetBehaviorReports_();
+  const dogs = getDogsMap_();
+  return reports.map((report) => ({
+    id: report.id,
+    dogId: report.dogId,
+    dogName: report.dogName || dogs[safeStr(report.dogId)]?.name || "",
+    box: dogs[safeStr(report.dogId)]?.kennel || report.box || "",
+    pavilion: dogs[safeStr(report.dogId)]?.pavilion || report.pavilion || "",
+    reason: report.reason,
+    priority: report.priority,
+    timestamp: report.timestamp,
+    decision: safeStr(report.therapyDecision || report.status || "NEW"),
+  }));
+}
+
+function setTherapyDecision_(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const decision = safeStr(payload?.decision).toUpperCase();
+  if (!dogId) throw new Error("Brak dogId");
+  if (THERAPY_DECISIONS.indexOf(decision) === -1) throw new Error("Nieprawidłowa decyzja");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+  ensureHeadersAppend_(reportsSheet, ["timestamp", "dogName", "dogId", "volunteerName", "reason", "incident3P", "tagsEmotions", "tagsRelations", "tagsWelfare", "risk", "priority", "status", "resolvedAt", "workPlanGoals", "workPlanNotes", "assignedTo", "therapyDecision", "therapyDecisionAt"]);
+
+  const values = reportsSheet.getDataRange().getValues();
+  const headers = values[0].map((h) => safeStr(h));
+  const dogIdx = headers.indexOf("dogId");
+  const decisionIdx = headers.indexOf("therapyDecision");
+  const decisionAtIdx = headers.indexOf("therapyDecisionAt");
+  for (let r = values.length - 1; r >= 1; r--) {
+    if (safeStr(values[r][dogIdx]) === dogId) {
+      reportsSheet.getRange(r + 1, decisionIdx + 1).setValue(decision);
+      reportsSheet.getRange(r + 1, decisionAtIdx + 1).setValue(nowInPolandText());
+      break;
+    }
+  }
+
+  if (decision === "THERAPY") upsertTherapyDog_(dogId, { TherapyStatus: "THERAPY" });
+  if (decision === "WAIT") upsertTherapyDog_(dogId, { TherapyStatus: "WAIT" });
+  return { success: true };
+}
+
+function getTherapyDog_(dogId) {
+  const id = safeStr(dogId);
+  if (!id) throw new Error("Brak dogId");
+  const row = readTherapyRows_().find((item) => safeStr(item.DogID) === id);
+  return row || upsertTherapyDog_(id, {});
+}
+
+function updateTherapyDog_(dogId, payload) {
+  const id = safeStr(dogId);
+  if (!id) throw new Error("Brak dogId");
+  const patch = {};
+  if (THERAPY_STATUSES.indexOf(safeStr(payload?.therapyStatus).toUpperCase()) !== -1) patch.TherapyStatus = safeStr(payload?.therapyStatus).toUpperCase();
+  if ([1, 2, 3].indexOf(Number(payload?.priority)) !== -1) patch.Priority = Number(payload.priority);
+  ["walkFreqDays", "boxFreqDays"].forEach((key) => {
+    const val = payload?.[key];
+    if (val === "" || val === null || val === undefined) return;
+    if (!Number.isInteger(Number(val)) || Number(val) <= 0) throw new Error("Nieprawidłowa częstotliwość");
+  });
+  if (payload?.walkFreqDays !== undefined) patch.WalkFreqDays = payload.walkFreqDays === "" ? "" : Number(payload.walkFreqDays);
+  if (payload?.boxFreqDays !== undefined) patch.BoxFreqDays = payload.boxFreqDays === "" ? "" : Number(payload.boxFreqDays);
+  if (payload?.workAreas !== undefined) patch.WorkAreas = safeStr(payload.workAreas);
+  if (payload?.exercises !== undefined) patch.Exercises = safeStr(payload.exercises);
+  if (payload?.notesShort !== undefined) patch.NotesShort = safeStr(payload.notesShort);
+  return upsertTherapyDog_(id, patch);
+}
+
+function getToSchedule_(dateValue, windowDaysValue) {
+  const date = assertDate_(dateValue || formatDatePoland_(new Date()), "date");
+  const windowDays = Math.max(Number(windowDaysValue) || 1, 1);
+  const dogs = readTherapyRows_().filter((row) => safeStr(row.TherapyStatus) === "THERAPY");
+  const schedule = getWeekSchedule_(date, windowDays + 1);
+  const byDog = {};
+  schedule.days.forEach((day) => {
+    day.slots.forEach((slot) => {
+      if (!slot.dogId) return;
+      if (!byDog[slot.dogId]) byDog[slot.dogId] = { WALK: 0, BOX: 0 };
+      byDog[slot.dogId][slot.type] += 1;
+    });
+  });
+  const today = toDatePoland_(date);
+  return dogs.filter((dog) => {
+    const nextWalkDue = toDatePoland_(dog.NextWalkDue);
+    const nextBoxDue = toDatePoland_(dog.NextBoxDue);
+    const walkFreq = Number(dog.WalkFreqDays) || 0;
+    const boxFreq = Number(dog.BoxFreqDays) || 0;
+    const overdue = (nextWalkDue && nextWalkDue.getTime() < today.getTime()) || (nextBoxDue && nextBoxDue.getTime() < today.getTime());
+    const dailyNoPlan = (walkFreq === 1 && (!byDog[safeStr(dog.DogID)] || byDog[safeStr(dog.DogID)].WALK < 1)) || (boxFreq === 1 && (!byDog[safeStr(dog.DogID)] || byDog[safeStr(dog.DogID)].BOX < 1));
+    return overdue || dailyNoPlan;
+  });
+}
+
+function autoPlanWeek_(payload) {
+  const startDate = assertDate_(payload?.startDate || formatDatePoland_(new Date()), "startDate");
+  const days = Math.max(Number(payload?.days) || 7, 1);
+  const therapyDogs = readTherapyRows_().filter((row) => safeStr(row.TherapyStatus) === "THERAPY");
+
+  for (let i = 0; i < days; i++) {
+    const date = formatDatePoland_(new Date(toDatePoland_(startDate).getTime() + i * 24 * 60 * 60 * 1000));
+    ["WALK", "BOX"].forEach((type) => {
+      const candidates = therapyDogs.filter((dog) => Number(type === "WALK" ? dog.WalkFreqDays : dog.BoxFreqDays) > 0)
+        .sort((a, b) => {
+          const dueA = toDatePoland_(type === "WALK" ? a.NextWalkDue : a.NextBoxDue);
+          const dueB = toDatePoland_(type === "WALK" ? b.NextWalkDue : b.NextBoxDue);
+          const overdueA = dueA && dueA.getTime() <= toDatePoland_(date).getTime();
+          const overdueB = dueB && dueB.getTime() <= toDatePoland_(date).getTime();
+          if (overdueA !== overdueB) return overdueA ? -1 : 1;
+          const dailyA = Number(type === "WALK" ? a.WalkFreqDays : a.BoxFreqDays) === 1;
+          const dailyB = Number(type === "WALK" ? b.WalkFreqDays : b.BoxFreqDays) === 1;
+          if (dailyA !== dailyB) return dailyA ? -1 : 1;
+          const priorityDiff = (Number(a.Priority) || 3) - (Number(b.Priority) || 3);
+          if (priorityDiff !== 0) return priorityDiff;
+          const lastA = toDatePoland_(type === "WALK" ? a.LastWalkDate : a.LastBoxDate);
+          const lastB = toDatePoland_(type === "WALK" ? b.LastWalkDate : b.LastBoxDate);
+          return (lastA ? lastA.getTime() : 0) - (lastB ? lastB.getTime() : 0);
+        });
+
+      const used = {};
+      for (let slot = 1; slot <= getMaxSlot_(type); slot++) {
+        const existing = getOrCreateScheduleSlot_(date, type, slot);
+        if (safeStr(existing.DogID) || safeStr(existing.Status) === "DONE") continue;
+        const candidate = candidates.find((dog) => !used[safeStr(dog.DogID)]);
+        if (!candidate) break;
+        used[safeStr(candidate.DogID)] = true;
+        setScheduleSlot_({ date, type, slot, dogId: safeStr(candidate.DogID) });
+      }
+    });
+  }
+  return { success: true };
 }
 
 // ===============================
