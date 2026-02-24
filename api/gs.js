@@ -13,6 +13,18 @@ const ADMIN_ACTIONS = new Set([
   "adminSaveWorkPlan",
   "adminGetSessions",
   "adminSaveSession",
+  "getBehavioristDashboard",
+  "getWeekSchedule",
+  "setScheduleSlot",
+  "clearScheduleSlot",
+  "completeSession",
+  "getTherapyInbox",
+  "setTherapyDecision",
+  "getTherapyDog",
+  "getTherapyDogs",
+  "updateTherapyDog",
+  "getToSchedule",
+  "autoPlanWeek",
 ]);
 
 function getAdminEmails() {
