@@ -65,6 +65,10 @@ function normalizeResult(raw, status = 200) {
     return { ok: true, data: raw.data };
   }
 
+  if (raw?.ok === true && raw?.data !== undefined) {
+    return { ok: true, data: raw.data };
+  }
+
   if (raw?.ok === true && (raw?.data?.success === true || raw?.success === true)) {
     return { ok: true, data: { success: true, ...(raw?.data || {}) } };
   }
