@@ -360,7 +360,7 @@ const HomeView = ({
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={styles.bottomNavButton}

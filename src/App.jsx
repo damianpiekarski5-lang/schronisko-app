@@ -1115,7 +1115,7 @@ const MapView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1250,7 +1250,7 @@ const BoxesView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1432,7 +1432,7 @@ const DogsListView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1521,7 +1521,7 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
       <div style={styles.bottomNav}>
         <button style={styles.bottomNavButton} onClick={() => setCurrentView("home")}>
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button style={styles.bottomNavButton} onClick={() => setCurrentView("map")}>
           <MapPin size={24} />
@@ -1795,7 +1795,7 @@ const DogCardView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={styles.bottomNavButton}
