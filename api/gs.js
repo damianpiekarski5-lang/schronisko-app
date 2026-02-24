@@ -27,7 +27,10 @@ const ADMIN_ACTIONS = new Set([
 ]);
 
 function getAdminEmails() {
-  const source = process.env.ADMIN_EMAILS || FALLBACK_ADMIN_EMAILS.join(",");
+  const source =
+    process.env.ADMIN_EMAILS ||
+    process.env.REACT_APP_ADMIN_EMAILS ||
+    FALLBACK_ADMIN_EMAILS.join(",");
 
   return source
     .split(",")
