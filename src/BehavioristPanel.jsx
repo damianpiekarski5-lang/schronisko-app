@@ -55,7 +55,7 @@ function TodayView({ dashboard, onOpenSession }) {
             <div>
               <div style={{ fontWeight: 800 }}>{label(slot)}</div>
               <div style={{ fontSize: 13, color: "#4b5563" }}>{slot.dog ? `${slot.dog.name} | ${slot.dog.id} | boks ${slot.dog.kennel}` : "Brak przypisania"}</div>
-              <div style={{ fontSize: 12, color: "#6b7280" }}>Status: {slot.status || "EMPTY"}</div>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>Status: {slot.status || "PUSTE"}</div>
             </div>
             <button style={{ ...styles.btn, background: "#dbeafe", color: "#1d4ed8" }} onClick={() => onOpenSession(slot)} disabled={!slot.dogId}>Sesja</button>
           </div>
@@ -113,7 +113,7 @@ function BehavioristPanel({ currentUser, dogs, onBack }) {
       <div style={styles.content}>
         {message ? <div style={styles.card}>{message}</div> : null}
         <div style={styles.tabs}>
-          {[["today", "DZIŚ"], ["week", "PLAN"], ["inbox", "INBOX"], ["todo", "DO ZAPLAN."], ["dog", "KARTA PSA"]].map(([key, text]) => (
+          {[["today", "DZIŚ"], ["week", "PLAN"], ["inbox", "SKRZYNKA"], ["todo", "DO ZAPLAN."], ["dog", "KARTA PSA"]].map(([key, text]) => (
             <button key={key} style={{ ...styles.tab, ...(tab === key ? { background: "#dbeafe", borderColor: "#3b82f6" } : {}) }} onClick={() => setTab(key)}>{text}</button>
           ))}
         </div>
@@ -133,7 +133,7 @@ function BehavioristPanel({ currentUser, dogs, onBack }) {
                     <div key={`${day.date}-${slotDef.type}-${slotDef.slot}`} style={{ display: "grid", gridTemplateColumns: "120px 1fr auto auto", gap: 8, marginBottom: 6, alignItems: "center" }}>
                       <div>{day.date}</div>
                       <div style={{ fontSize: 13 }}>{dog ? `${dog.name} (${dog.id}, boks ${dog.kennel})` : "puste"}</div>
-                      <input placeholder="DogID" style={styles.input} onBlur={async (e) => { const dogId = e.target.value.trim(); if (!dogId) return; await apiPost(currentUser, "setScheduleSlot", { date: day.date, type: slotDef.type, slot: slotDef.slot, dogId }); loadAll(); }} />
+                      <input placeholder="ID psa" style={styles.input} onBlur={async (e) => { const dogId = e.target.value.trim(); if (!dogId) return; await apiPost(currentUser, "setScheduleSlot", { date: day.date, type: slotDef.type, slot: slotDef.slot, dogId }); loadAll(); }} />
                       <button style={{ ...styles.btn, background: "#f3f4f6" }} onClick={async () => { await apiPost(currentUser, "clearScheduleSlot", { date: day.date, type: slotDef.type, slot: slotDef.slot }); loadAll(); }}>Wyczyść</button>
                     </div>
                   );
@@ -146,23 +146,23 @@ function BehavioristPanel({ currentUser, dogs, onBack }) {
         {tab === "inbox" && inbox.map((item) => (
           <div key={item.id} style={styles.card}>
             <div style={{ fontWeight: 700 }}>{item.dogName} ({item.dogId})</div><div style={{ fontSize: 13 }}>Boks: {item.box || "-"} | Decyzja: {item.decision}</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>{["THERAPY", "WAIT", "REJECTED"].map((d) => <button key={d} style={{ ...styles.btn, background: "#e5e7eb" }} onClick={async () => { await apiPost(currentUser, "setTherapyDecision", { dogId: item.dogId, decision: d }); loadAll(); }}>{d}</button>)}</div>
+            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>{[["THERAPY", "TERAPIA"], ["WAIT", "OCZEKUJE"], ["REJECTED", "ODRZUCONY"]].map(([value, label]) => <button key={value} style={{ ...styles.btn, background: "#e5e7eb" }} onClick={async () => { await apiPost(currentUser, "setTherapyDecision", { dogId: item.dogId, decision: value }); loadAll(); }}>{label}</button>)}</div>
           </div>
         ))}
 
-        {tab === "todo" && toSchedule.map((dog) => <div key={dog.DogID} style={styles.card}>{dog.DogID} | due walk: {dog.NextWalkDue || "-"} | due box: {dog.NextBoxDue || "-"}</div>)}
+        {tab === "todo" && toSchedule.map((dog) => <div key={dog.DogID} style={styles.card}>{dog.DogID} | spacer do: {dog.NextWalkDue || "-"} | boks do: {dog.NextBoxDue || "-"}</div>)}
 
         {tab === "dog" && (
           <div>
-            <div style={styles.card}><input value={search} onChange={(e) => setSearch(e.target.value)} style={styles.input} placeholder="Szukaj po DogID / Box / Imię" /></div>
+            <div style={styles.card}><input value={search} onChange={(e) => setSearch(e.target.value)} style={styles.input} placeholder="Szukaj po ID psa / boksie / imieniu" /></div>
             {filteredDogs.slice(0, 30).map((dog) => <div key={dog.id} style={styles.card} onClick={async () => { setSelectedDogId(dog.id); setDogCard(await apiGet(currentUser, "getTherapyDog", { dogId: dog.id })); }}>{dog.name} ({dog.id}) boks {dog.kennel}</div>)}
             {selectedDogId && dogCard ? (
               <div style={styles.card}>
                 <div style={{ fontWeight: 800, marginBottom: 8 }}>Karta terapii: {selectedDogId}</div>
-                <select value={dogCard.TherapyStatus || "WAIT"} style={styles.input} onChange={(e) => setDogCard((prev) => ({ ...prev, TherapyStatus: e.target.value }))}><option>THERAPY</option><option>WAIT</option><option>HOLD</option><option>ADOPTION_READY</option></select>
-                <input value={dogCard.Priority || 2} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, Priority: e.target.value }))} placeholder="Priority 1..3" />
-                <input value={dogCard.WalkFreqDays || ""} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, WalkFreqDays: e.target.value }))} placeholder="WalkFreqDays" />
-                <input value={dogCard.BoxFreqDays || ""} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, BoxFreqDays: e.target.value }))} placeholder="BoxFreqDays" />
+                <select value={dogCard.TherapyStatus || "WAIT"} style={styles.input} onChange={(e) => setDogCard((prev) => ({ ...prev, TherapyStatus: e.target.value }))}><option value="THERAPY">Terapia</option><option value="WAIT">Oczekuje</option><option value="HOLD">Wstrzymany</option><option value="ADOPTION_READY">Gotowy do adopcji</option></select>
+                <input value={dogCard.Priority || 2} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, Priority: e.target.value }))} placeholder="Priorytet 1..3" />
+                <input value={dogCard.WalkFreqDays || ""} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, WalkFreqDays: e.target.value }))} placeholder="Częstotliwość spacerów (dni)" />
+                <input value={dogCard.BoxFreqDays || ""} style={styles.input} onChange={(e) => setDogCard((p) => ({ ...p, BoxFreqDays: e.target.value }))} placeholder="Częstotliwość pracy w boksie (dni)" />
                 <textarea value={dogCard.WorkAreas || ""} style={{ ...styles.input, minHeight: 70 }} onChange={(e) => setDogCard((p) => ({ ...p, WorkAreas: e.target.value }))} placeholder="Obszary pracy" />
                 <textarea value={dogCard.Exercises || ""} style={{ ...styles.input, minHeight: 90 }} onChange={(e) => setDogCard((p) => ({ ...p, Exercises: e.target.value }))} placeholder="Ćwiczenia (jedno na linię)" />
                 <button style={{ ...styles.btn, background: "#2563eb", color: "white" }} onClick={async () => { await apiPost(currentUser, "updateTherapyDog", { dogId: selectedDogId, therapyStatus: dogCard.TherapyStatus, priority: Number(dogCard.Priority), walkFreqDays: dogCard.WalkFreqDays, boxFreqDays: dogCard.BoxFreqDays, workAreas: dogCard.WorkAreas, exercises: dogCard.Exercises, notesShort: dogCard.NotesShort || "" }); loadAll(); }}>Zapisz kartę</button>
