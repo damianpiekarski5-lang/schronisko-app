@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
+import KartaPsa from "./components/KartaPsa";
 
 const API_URL = "/api/gs";
 
@@ -26,6 +27,28 @@ const daysSince = (iso) => {
   return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
 };
 
+const normalizeId = (value) => String(value || "").trim();
+const normalizeName = (value) => String(value || "").trim().toLowerCase();
+
+const detectSearchMode = (queryRaw) => {
+  const query = String(queryRaw || "").trim();
+  if (!query) return { mode: "none", term: "" };
+  if (query.startsWith("#")) return { mode: "id", term: query.slice(1).trim().toLowerCase() };
+  if (/^\d+$/.test(query)) return { mode: "id", term: query.toLowerCase() };
+  return { mode: "name", term: query.toLowerCase() };
+};
+
+const toCardDog = (row, dogsById) => {
+  const id = normalizeId(row?.["ID psa"] || row?.idPsa || row?.id);
+  const baseDog = dogsById[id] || {};
+  return {
+    id,
+    imie: row?.["Imię"] || row?.imie || baseDog.name || "Pies",
+    boks: row?.["Boks"] || row?.boks || (baseDog.pavilion && baseDog.box ? `${baseDog.pavilion} / Boks ${baseDog.box}` : ""),
+    photo: baseDog.photo || "",
+  };
+};
+
 const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
   const [widok, setWidok] = useState("pulpit");
   const [loading, setLoading] = useState(false);
@@ -43,10 +66,12 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
   const [planerForm, setPlanerForm] = useState({ dataPlanowana: "", godzina: "", idPsa: "", typSesji: "Spacer terapeutyczny", celSesji: "", ćwiczeniaSugerowane: [], notatka: "" });
   const [planForm, setPlanForm] = useState({ obszarPracy: "", cel: "", kryteriumSukcesu: "", ćwiczeniaPowiązane: [], notatka: "" });
   const [exerciseForm, setExerciseForm] = useState({ nazwaĆwiczenia: "", kategoria: "Spacer", poziomTrudności: 1, opis: "", wskazówki: "", typoweBłędy: "" });
+  const [planerSearch, setPlanerSearch] = useState("");
+  const [showAddDog, setShowAddDog] = useState(false);
+  const [addDogSearch, setAddDogSearch] = useState("");
 
   const dogsById = useMemo(() => Object.fromEntries((dogs || []).map((d) => [String(d.id), d])), [dogs]);
   const mapaPsow = useMemo(() => Object.fromEntries((dane.psy || []).map((p) => [String(p["ID psa"]), p])), [dane.psy]);
-  const mapaCwiczen = useMemo(() => Object.fromEntries((dane.ćwiczenia || []).map((c) => [String(c["ID ćwiczenia"]), c])), [dane.ćwiczenia]);
 
   const authHeaders = async () => {
     const token = await currentUser.getIdToken();
@@ -94,6 +119,7 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
   }, [currentUser]);
 
   const otworzKartePsa = async (idPsa, zgl = null, zakladka = "podsumowanie") => {
+    if (!idPsa) return;
     try {
       const details = await getAction("getDogCard", { idPsa });
       setKartaPsa({ ...details, aktywnaZakladka: zakladka });
@@ -150,9 +176,14 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
   };
 
   const dodajDoPlanera = async () => {
+    if (!planerForm.idPsa) {
+      setError("Wybierz psa z listy.");
+      return;
+    }
     await postAction("addPlannerSession", planerForm);
     setMessage("Dodano pozycję do planera.");
     setPlanerForm({ dataPlanowana: "", godzina: "", idPsa: "", typSesji: "Spacer terapeutyczny", celSesji: "", ćwiczeniaSugerowane: [], notatka: "" });
+    setPlanerSearch("");
     odswiezStart();
   };
 
@@ -170,32 +201,66 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
     odswiezStart();
   };
 
+  const dodajPsaDoTerapii = async (pies) => {
+    const idPsa = normalizeId(pies?.id);
+    if (!idPsa) return;
+    await postAction("addDogToTherapy", { idPsa, imie: pies.imie, boks: pies.boks, priorytet: "Średni", powod: "Dodano ręcznie z panelu" });
+    setMessage("Dodano psa do aktywnej terapii.");
+    setShowAddDog(false);
+    setAddDogSearch("");
+    await odswiezStart();
+    await otworzKartePsa(idPsa);
+  };
+
   const filtrowaneZgloszenia = useMemo(() => {
-    const term = szukaj.trim().toLowerCase();
+    const search = detectSearchMode(szukaj);
     return (dane.zgłoszenia || []).filter((z) => {
       if (statusFiltr !== "Wszystkie" && String(z["Status zgłoszenia"] || "") !== statusFiltr) return false;
-      if (!term) return true;
-      const id = String(z["ID psa"] || "").toLowerCase();
-      const box = String(z["Boks"] || "").toLowerCase();
-      const name = String(mapaPsow[z["ID psa"]]?.["Imię"] || dogsById[z["ID psa"]]?.name || "").toLowerCase();
-      return id.includes(term) || box.includes(term) || name.includes(term);
+      if (search.mode === "none") return true;
+      const dog = toCardDog({ ...z, Imię: mapaPsow[z["ID psa"]]?.["Imię"], Boks: z["Boks"] || mapaPsow[z["ID psa"]]?.["Boks"] }, dogsById);
+      if (search.mode === "id") return dog.id.toLowerCase().includes(search.term);
+      return normalizeName(dog.imie).includes(search.term);
     });
   }, [dane.zgłoszenia, szukaj, statusFiltr, mapaPsow, dogsById]);
 
   const psyWTerapii = useMemo(() => {
-    const term = szukaj.trim().toLowerCase();
+    const search = detectSearchMode(szukaj);
     return (dane.psy || [])
       .filter((p) => String(p["Status terapii"] || "").includes("terapi"))
       .filter((p) => {
-        if (!term) return true;
-        const id = String(p["ID psa"] || "").toLowerCase();
-        const box = String(p["Boks"] || "").toLowerCase();
-        const name = String(p["Imię"] || dogsById[p["ID psa"]]?.name || "").toLowerCase();
-        return id.includes(term) || box.includes(term) || name.includes(term);
+        if (search.mode === "none") return true;
+        const dog = toCardDog(p, dogsById);
+        if (search.mode === "id") return dog.id.toLowerCase().includes(search.term);
+        return normalizeName(dog.imie).includes(search.term);
       })
       .map((p) => ({ ...p, dni: daysSince(p["Data ostatniej sesji"]) }))
       .sort((a, b) => (priorytetWaga[b["Priorytet"]] || 0) - (priorytetWaga[a["Priorytet"]] || 0) || b.dni - a.dni);
   }, [dane.psy, szukaj, dogsById]);
+
+  const plannerSearchResults = useMemo(() => {
+    if (planerForm.idPsa) return [];
+    const search = detectSearchMode(planerSearch);
+    if (search.mode === "none") return [];
+    return (dane.psy || [])
+      .map((p) => toCardDog(p, dogsById))
+      .filter((dog) => (search.mode === "id" ? dog.id.toLowerCase().includes(search.term) : normalizeName(dog.imie).includes(search.term)))
+      .slice(0, 10);
+  }, [planerSearch, planerForm.idPsa, dane.psy, dogsById]);
+
+  const selectedPlanDog = useMemo(() => {
+    if (!planerForm.idPsa) return null;
+    const panelDog = (dane.psy || []).find((p) => normalizeId(p["ID psa"]) === normalizeId(planerForm.idPsa));
+    return toCardDog(panelDog || { "ID psa": planerForm.idPsa }, dogsById);
+  }, [planerForm.idPsa, dane.psy, dogsById]);
+
+  const addDogResults = useMemo(() => {
+    const search = detectSearchMode(addDogSearch);
+    if (search.mode === "none") return [];
+    return (dogs || [])
+      .map((d) => ({ id: String(d.id), imie: d.name, boks: d.pavilion && d.box ? `${d.pavilion} / Boks ${d.box}` : "", photo: d.photo }))
+      .filter((dog) => (search.mode === "id" ? dog.id.toLowerCase().includes(search.term) : normalizeName(dog.imie).includes(search.term)))
+      .slice(0, 20);
+  }, [addDogSearch, dogs]);
 
   const dzis = new Date().toISOString().slice(0, 10);
   const dzisiejszyPlan = (dane.planer || []).filter((p) => String(p["Data planowana"] || "").slice(0, 10) === dzis);
@@ -221,28 +286,17 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
             {!dzisiejszyPlan.length && <div>Brak zaplanowanych sesji na dziś.</div>}
             {dzisiejszyPlan.map((p) => (
               <div key={p["ID planu sesji"]} style={{ ...style.row, justifyContent: "space-between", marginBottom: "0.4rem" }}>
-                <div>
-                  <b>{p["ID psa"]}</b> · {mapaPsow[p["ID psa"]]?.["Imię"] || dogsById[p["ID psa"]]?.name || "Pies"} · {p["Typ sesji"]}
-                </div>
+                <div><b>{p["ID psa"]}</b> · {mapaPsow[p["ID psa"]]?.["Imię"] || dogsById[p["ID psa"]]?.name || "Pies"} · {p["Typ sesji"]}</div>
                 <button style={{ ...style.btn, background: "#16a34a", color: "white" }} onClick={() => startSesji(p["ID psa"], p)}>Start sesji</button>
               </div>
             ))}
           </div>
           <div style={style.card}>
-            <h3 style={{ marginTop: 0 }}>Top zgłoszeń</h3>
-            {(dane.zgłoszenia || []).slice(0, 5).map((z) => (
+            <h3 style={{ marginTop: 0 }}>Nowe zgłoszenia</h3>
+            {filtrowaneZgloszenia.slice(0, 5).map((z) => (
               <div key={z["ID zgłoszenia"]} style={{ ...style.row, justifyContent: "space-between", marginBottom: "0.3rem" }}>
                 <span>{z["ID psa"]} · {z["Opis problemu"] || "Brak opisu"}</span>
                 <button style={{ ...style.btn, background: "#e2e8f0" }} onClick={() => { setPodgladZgloszenia(z); setWidok("zgloszenia"); }}>Podgląd</button>
-              </div>
-            ))}
-          </div>
-          <div style={style.card}>
-            <h3 style={{ marginTop: 0 }}>Top psy w terapii</h3>
-            {psyWTerapii.slice(0, 5).map((p) => (
-              <div key={p["ID psa"]} style={{ ...style.row, justifyContent: "space-between", marginBottom: "0.3rem" }}>
-                <span>{p["Imię"] || dogsById[p["ID psa"]]?.name || p["ID psa"]} · {p["Priorytet"]} · {p.dni} dni od sesji</span>
-                <button style={{ ...style.btn, background: "#dbeafe" }} onClick={() => otworzKartePsa(p["ID psa"])}>Karta</button>
               </div>
             ))}
           </div>
@@ -253,17 +307,22 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
         <>
           <div style={style.card}>
             <div style={style.row}>
-              <input placeholder="Szukaj po ID psa / imię / boks" style={style.input} value={szukaj} onChange={(e) => setSzukaj(e.target.value)} />
+              <input placeholder="Szukaj domyślnie po imieniu (ID: #A123)" style={style.input} value={szukaj} onChange={(e) => setSzukaj(e.target.value)} />
               <select style={style.select} value={statusFiltr} onChange={(e) => setStatusFiltr(e.target.value)}>
                 <option>Wszystkie</option><option>Nowe</option><option>W trakcie</option><option>Zamknięte</option>
               </select>
             </div>
-            {filtrowaneZgloszenia.map((z) => (
-              <button key={z["ID zgłoszenia"]} onClick={() => setPodgladZgloszenia(z)} style={{ ...style.card, width: "100%", textAlign: "left", marginBottom: "0.35rem" }}>
-                <b>{z["ID psa"]} · {mapaPsow[z["ID psa"]]?.["Imię"] || dogsById[z["ID psa"]]?.name || "Pies"}</b>
-                <div>{z["Opis problemu"] || "Brak opisu"}</div>
-              </button>
-            ))}
+            <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))" }}>
+              {filtrowaneZgloszenia.map((z) => {
+                const dog = toCardDog({ ...z, Imię: mapaPsow[z["ID psa"]]?.["Imię"], Boks: z["Boks"] || mapaPsow[z["ID psa"]]?.["Boks"] }, dogsById);
+                return (
+                  <div key={z["ID zgłoszenia"]}>
+                    <KartaPsa pies={dog} wariant="duza" onClick={() => { setPodgladZgloszenia(z); otworzKartePsa(dog.id, z); }} />
+                    <div style={{ marginTop: "0.35rem", fontSize: "0.8rem", color: "#334155" }}>{z["Opis problemu"] || "Brak opisu"}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
           {podgladZgloszenia && (
             <div style={style.card}>
@@ -283,16 +342,34 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
 
       {widok === "psy" && (
         <div style={style.card}>
-          <input placeholder="Szukaj po ID psa / imię / boks" style={style.input} value={szukaj} onChange={(e) => setSzukaj(e.target.value)} />
-          {psyWTerapii.map((p) => (
-            <div key={p["ID psa"]} style={{ ...style.row, justifyContent: "space-between", marginTop: "0.4rem" }}>
-              <span>{p["ID psa"]} · {p["Imię"] || dogsById[p["ID psa"]]?.name} · {p["Priorytet"]} · {p.dni} dni</span>
-              <div style={style.row}>
-                <button style={{ ...style.btn, background: "#dbeafe" }} onClick={() => otworzKartePsa(p["ID psa"])}>Karta psa</button>
-                <button style={{ ...style.btn, background: "#16a34a", color: "white" }} onClick={() => startSesji(p["ID psa"])}>Start sesji</button>
+          <div style={{ ...style.row, marginBottom: "0.75rem" }}>
+            <input placeholder="Szukaj domyślnie po imieniu (ID: #A123)" style={style.input} value={szukaj} onChange={(e) => setSzukaj(e.target.value)} />
+            <button style={{ ...style.btn, background: "#2563eb", color: "white" }} onClick={() => setShowAddDog((v) => !v)}>+ Dodaj psa do terapii</button>
+          </div>
+
+          {showAddDog && (
+            <div style={{ ...style.card, background: "#f8fafc" }}>
+              <input placeholder="Wpisz imię psa lub #ID" style={style.input} value={addDogSearch} onChange={(e) => setAddDogSearch(e.target.value)} />
+              <div style={{ display: "grid", gap: "0.45rem", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", marginTop: "0.5rem" }}>
+                {addDogResults.map((dog) => <KartaPsa key={dog.id} pies={dog} wariant="duza" onClick={() => dodajPsaDoTerapii(dog)} />)}
               </div>
             </div>
-          ))}
+          )}
+
+          <div style={{ display: "grid", gap: "0.5rem", gridTemplateColumns: "repeat(auto-fit, minmax(270px, 1fr))" }}>
+            {psyWTerapii.map((p) => {
+              const dog = toCardDog(p, dogsById);
+              return (
+                <div key={p["ID psa"]}>
+                  <KartaPsa pies={dog} wariant="duza" onClick={() => otworzKartePsa(p["ID psa"])} />
+                  <div style={{ ...style.row, marginTop: "0.35rem" }}>
+                    <span style={{ fontSize: "0.8rem", color: "#475569" }}>{p["Priorytet"]} · {p.dni} dni od sesji</span>
+                    <button style={{ ...style.btn, background: "#16a34a", color: "white" }} onClick={() => startSesji(p["ID psa"])}>Start sesji</button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -301,7 +378,7 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
           <div style={style.card}>
             <h3 style={{ marginTop: 0 }}>Karta psa: {kartaPsa?.pies?.["Imię"] || dogsById[kartaPsa?.pies?.["ID psa"]]?.name || kartaPsa?.pies?.["ID psa"]}</h3>
             <div style={style.row}>
-              {[["podsumowanie", "Podsumowanie"], ["plan", "Plan pracy"], ["sesje", "Sesje"], ["zgloszenia", "Zgłoszenia"], ["notatki", "Notatki"]].map(([id, label]) => (
+              {[ ["podsumowanie", "Podsumowanie"], ["plan", "Plan pracy"], ["sesje", "Sesje"], ["zgloszenia", "Zgłoszenia"], ["notatki", "Notatki"] ].map(([id, label]) => (
                 <button key={id} style={{ ...style.btn, background: kartaPsa.aktywnaZakladka === id ? "#2563eb" : "#e2e8f0", color: kartaPsa.aktywnaZakladka === id ? "white" : "#0f172a" }} onClick={() => setKartaPsa((prev) => ({ ...prev, aktywnaZakladka: id }))}>{label}</button>
               ))}
             </div>
@@ -337,11 +414,7 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
           <div style={{ marginBottom: "0.45rem" }}><b>Ćwiczenia</b></div>
           {(dane.ćwiczenia || []).map((c) => (
             <label key={c["ID ćwiczenia"]} style={{ display: "block", marginBottom: "0.25rem" }}>
-              <input
-                type="checkbox"
-                checked={sessionForm.wybrane.includes(c["ID ćwiczenia"])}
-                onChange={(e) => setSessionForm((prev) => ({ ...prev, wybrane: e.target.checked ? [...prev.wybrane, c["ID ćwiczenia"]] : prev.wybrane.filter((id) => id !== c["ID ćwiczenia"]) }))}
-              /> {c["Nazwa ćwiczenia"]}
+              <input type="checkbox" checked={sessionForm.wybrane.includes(c["ID ćwiczenia"])} onChange={(e) => setSessionForm((prev) => ({ ...prev, wybrane: e.target.checked ? [...prev.wybrane, c["ID ćwiczenia"]] : prev.wybrane.filter((id) => id !== c["ID ćwiczenia"]) }))} /> {c["Nazwa ćwiczenia"]}
             </label>
           ))}
           <button style={{ ...style.btn, background: "#e2e8f0", marginBottom: "0.5rem" }} onClick={() => setNoweCwiczenieOpen((x) => !x)}>Dodaj nowe ćwiczenie</button>
@@ -364,12 +437,32 @@ const BehavioristPanel = ({ currentUser, dogs, onBack }) => {
       {widok === "cwiczenia" && (
         <div style={style.card}>
           <h3 style={{ marginTop: 0 }}>Baza ćwiczeń</h3>
-          {(dane.ćwiczenia || []).map((c) => (
-            <div key={c["ID ćwiczenia"]} style={{ marginBottom: "0.35rem" }}><b>{c["Nazwa ćwiczenia"]}</b> · {c["Kategoria"]} · poziom {c["Poziom trudności"]}</div>
-          ))}
+          {(dane.ćwiczenia || []).map((c) => <div key={c["ID ćwiczenia"]} style={{ marginBottom: "0.35rem" }}><b>{c["Nazwa ćwiczenia"]}</b> · {c["Kategoria"]} · poziom {c["Poziom trudności"]}</div>)}
           <h4>Planer sesji</h4>
           <input style={style.input} placeholder="Data planowana YYYY-MM-DD" value={planerForm.dataPlanowana} onChange={(e) => setPlanerForm((prev) => ({ ...prev, dataPlanowana: e.target.value }))} />
-          <input style={style.input} placeholder="ID psa" value={planerForm.idPsa} onChange={(e) => setPlanerForm((prev) => ({ ...prev, idPsa: e.target.value }))} />
+          {selectedPlanDog ? (
+            <div style={{ marginBottom: "0.5rem" }}>
+              <KartaPsa pies={selectedPlanDog} wariant="mala" onClick={() => {}} />
+              <button style={{ ...style.btn, background: "#e2e8f0", marginTop: "0.35rem" }} onClick={() => setPlanerForm((prev) => ({ ...prev, idPsa: "" }))}>Zmień psa</button>
+            </div>
+          ) : (
+            <>
+              <input style={style.input} placeholder="Wpisz imię psa..." value={planerSearch} onChange={(e) => setPlanerSearch(e.target.value)} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: "0.4rem", marginTop: "0.4rem" }}>
+                {plannerSearchResults.map((dog) => (
+                  <KartaPsa
+                    key={dog.id}
+                    pies={dog}
+                    wariant="mala"
+                    onClick={() => {
+                      setPlanerForm((prev) => ({ ...prev, idPsa: dog.id }));
+                      setPlanerSearch("");
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           <input style={style.input} placeholder="Cel sesji" value={planerForm.celSesji} onChange={(e) => setPlanerForm((prev) => ({ ...prev, celSesji: e.target.value }))} />
           <button style={{ ...style.btn, background: "#2563eb", color: "white" }} onClick={dodajDoPlanera}>Dodaj do planera</button>
         </div>

@@ -222,6 +222,10 @@ function doPost(e) {
       return json({ ok: true, data: addExercise_(payload) });
     }
 
+    if (action === "addDogToTherapy") {
+      return json({ ok: true, data: addDogToTherapy_(payload) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -763,6 +767,59 @@ function addExercise_(payload) {
     "Aktywne": "TAK",
   });
   return { ok: true, idĆwiczenia: id };
+}
+
+function addDogToTherapy_(payload) {
+  initBehawiorystaSheets_();
+  const idPsa = safeStr(payload?.idPsa);
+  if (!idPsa) throw new Error("Brak idPsa");
+
+  const imie = safeStr(payload?.imie);
+  const boks = safeStr(payload?.boks);
+  const priorytet = safeStr(payload?.priorytet) || "Średni";
+  const powod = safeStr(payload?.powod);
+
+  const psy = readRowsByHeaders_("Psy");
+  const istniejePies = psy.find((row) => safeStr(row["ID psa"]) === idPsa);
+
+  if (!istniejePies) {
+    appendRowByHeaders_("Psy", {
+      "ID psa": idPsa,
+      "Imię": imie,
+      "Boks": boks,
+      "Status terapii": "W terapii",
+      "Priorytet": priorytet,
+      "Data ostatniej sesji": "",
+      "Notatka ogólna": "",
+      "Aktywny": "TAK",
+    });
+  } else {
+    updateRowById_("Psy", "ID psa", idPsa, {
+      "Imię": imie || safeStr(istniejePies["Imię"]),
+      "Boks": boks || safeStr(istniejePies["Boks"]),
+      "Status terapii": "W terapii",
+      "Priorytet": priorytet,
+      "Aktywny": "TAK",
+    });
+  }
+
+  const terapie = readRowsByHeaders_("Terapie");
+  const aktywna = terapie.find((row) => safeStr(row["ID psa"]) === idPsa && safeStr(row["Aktywna"]).toUpperCase() === "TAK");
+  if (!aktywna) {
+    appendRowByHeaders_("Terapie", {
+      "ID terapii": "T" + Utilities.getUuid().slice(0, 8).toUpperCase(),
+      "ID psa": idPsa,
+      "Data rozpoczęcia": nowIso_(),
+      "Status terapii": "W terapii",
+      "Priorytet": priorytet,
+      "Główne cele": "",
+      "Główne problemy": powod,
+      "Uwagi": "",
+      "Aktywna": "TAK",
+    });
+  }
+
+  return { ok: true };
 }
 
 // ===============================
