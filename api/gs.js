@@ -24,6 +24,14 @@ const ADMIN_ACTIONS = new Set([
   "updateTherapyDog",
   "getToSchedule",
   "autoPlanWeek",
+  "panelStart",
+  "getDogCard",
+  "startBehaviorReport",
+  "closeBehaviorReport",
+  "saveBehaviorSession",
+  "addPlannerSession",
+  "addWorkPlan",
+  "addExercise",
 ]);
 
 function getAdminEmails() {

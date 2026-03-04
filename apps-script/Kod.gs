@@ -23,6 +23,16 @@ const THERAPY_STATUSES = ["THERAPY", "WAIT", "HOLD", "ADOPTION_READY"];
 const THERAPY_DECISIONS = ["THERAPY", "WAIT", "REJECTED"];
 const SLOT_STATUS = ["PLANNED", "DONE", "CANCELED", "EMPTY"];
 
+const BEHAWIORYSTA_SHEETS = {
+  "Psy": ["ID psa", "Imię", "Boks", "Status terapii", "Priorytet", "Data ostatniej sesji", "Notatka ogólna", "Aktywny"],
+  "Zgłoszenia behawioralne": ["ID zgłoszenia", "Data zgłoszenia", "Zgłaszający", "ID psa", "Boks", "Opis problemu", "Kategoria", "Priorytet", "Status zgłoszenia", "Przypisane do", "Data rozpoczęcia pracy", "Data zamknięcia", "Komentarz behawiorysty"],
+  "Terapie": ["ID terapii", "ID psa", "Data rozpoczęcia", "Status terapii", "Priorytet", "Główne cele", "Główne problemy", "Uwagi", "Aktywna"],
+  "Plan pracy": ["ID planu", "ID terapii", "Obszar pracy", "Cel", "Kryterium sukcesu", "Ćwiczenia powiązane (lista ID ćwiczeń, CSV)", "Status", "Data dodania", "Notatka"],
+  "Sesje": ["ID sesji", "Data sesji", "ID psa", "ID terapii", "Typ sesji", "Czas trwania (min)", "Ćwiczenia", "Przebieg sesji", "Wynik (1–5)", "Co działało", "Co nie działało", "Następny krok", "Prowadzący"],
+  "Planer sesji": ["ID planu sesji", "Data planowana", "Godzina (opcjonalnie)", "ID psa", "Typ sesji", "Cel sesji", "Ćwiczenia sugerowane (lista)", "Status", "ID sesji wykonanej", "Notatka"],
+  "Baza ćwiczeń": ["ID ćwiczenia", "Nazwa ćwiczenia", "Kategoria", "Poziom trudności", "Opis", "Wskazówki", "Typowe błędy", "Aktywne"],
+};
+
 const BEHAVIOR_SHEETS = {
   BehaviorCases: ["id", "dogId", "title", "stage", "priority", "tags", "assignedTo", "createdAt", "updatedAt", "startedAt", "closedAt"],
   Diagnoses: ["id", "caseId", "version", "createdAt", "createdBy", "mainProblem", "coProblems", "baselineEmotion", "triggers", "functionHypothesis", "riskNotes", "notes"],
@@ -102,6 +112,14 @@ function doGet(e) {
       return json({ ok: true, data: getToSchedule_(e?.parameter?.date, e?.parameter?.windowDays) });
     }
 
+    if (action === "panelStart") {
+      return json({ ok: true, data: panelStart_() });
+    }
+
+    if (action === "getDogCard") {
+      return json({ ok: true, data: getDogCard_(e?.parameter?.idPsa) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -178,6 +196,30 @@ function doPost(e) {
 
     if (action === "autoPlanWeek") {
       return json({ ok: true, data: autoPlanWeek_(payload) });
+    }
+
+    if (action === "startBehaviorReport") {
+      return json({ ok: true, data: startBehaviorReport_(payload) });
+    }
+
+    if (action === "closeBehaviorReport") {
+      return json({ ok: true, data: closeBehaviorReport_(payload) });
+    }
+
+    if (action === "saveBehaviorSession") {
+      return json({ ok: true, data: saveBehaviorSession_(payload) });
+    }
+
+    if (action === "addPlannerSession") {
+      return json({ ok: true, data: addPlannerSession_(payload) });
+    }
+
+    if (action === "addWorkPlan") {
+      return json({ ok: true, data: addWorkPlan_(payload) });
+    }
+
+    if (action === "addExercise") {
+      return json({ ok: true, data: addExercise_(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -514,6 +556,213 @@ function nowInPoland() {
 
 function nowInPolandText() {
   return Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+}
+
+function initBehawiorystaSheets_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  Object.keys(BEHAWIORYSTA_SHEETS).forEach((sheetName) => {
+    const sh = getOrCreateSheet(ss, sheetName);
+    ensureHeaders(sh, BEHAWIORYSTA_SHEETS[sheetName]);
+    sh.setFrozenRows(1);
+  });
+}
+
+function readRowsByHeaders_(sheetName) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) return [];
+  const values = sheet.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const headers = values[0].map((header) => safeStr(header));
+  return values.slice(1).map((row) => {
+    const out = {};
+    headers.forEach((header, idx) => {
+      out[header] = row[idx] === undefined ? "" : row[idx];
+    });
+    return out;
+  });
+}
+
+function appendRowByHeaders_(sheetName, payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error("Brak zakładki: " + sheetName);
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0].map((header) => safeStr(header));
+  const row = headers.map((header) => (payload[header] === undefined ? "" : payload[header]));
+  sheet.appendRow(row);
+  return payload;
+}
+
+function updateRowById_(sheetName, idHeader, idValue, patch) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sheet = ss.getSheetByName(sheetName);
+  if (!sheet) throw new Error("Brak zakładki: " + sheetName);
+  const values = sheet.getDataRange().getValues();
+  if (values.length === 0) throw new Error("Pusty arkusz: " + sheetName);
+  const map = headerMap(values[0]);
+  const idCol = map[idHeader];
+  if (idCol === undefined) throw new Error("Brak kolumny identyfikatora: " + idHeader);
+  const targetRow = values.findIndex((row, idx) => idx > 0 && safeStr(row[idCol]) === safeStr(idValue));
+  if (targetRow < 1) throw new Error("Nie znaleziono rekordu: " + idValue);
+  Object.keys(patch || {}).forEach((header) => {
+    const col = map[header];
+    if (col !== undefined) {
+      sheet.getRange(targetRow + 1, col + 1).setValue(patch[header]);
+    }
+  });
+}
+
+function panelStart_() {
+  initBehawiorystaSheets_();
+  const psy = readRowsByHeaders_("Psy");
+  const zgloszenia = readRowsByHeaders_("Zgłoszenia behawioralne")
+    .sort((a, b) => String(b["Data zgłoszenia"] || "").localeCompare(String(a["Data zgłoszenia"] || "")))
+    .slice(0, 100);
+  const odDzis = Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd");
+  const za14 = Utilities.formatDate(new Date(Date.now() + 14 * 24 * 60 * 60 * 1000), POLAND_TIMEZONE, "yyyy-MM-dd");
+  const planer = readRowsByHeaders_("Planer sesji")
+    .filter((row) => {
+      const data = safeStr(row["Data planowana"]);
+      if (!data) return false;
+      return data >= odDzis && data <= za14;
+    })
+    .sort((a, b) => String(a["Data planowana"] || "").localeCompare(String(b["Data planowana"] || "")));
+  const cwiczenia = readRowsByHeaders_("Baza ćwiczeń").filter((row) => safeStr(row["Aktywne"]).toUpperCase() !== "NIE");
+  return { psy: psy, zgłoszenia: zgloszenia, planer: planer, ćwiczenia: cwiczenia };
+}
+
+function getDogCard_(idPsa) {
+  initBehawiorystaSheets_();
+  const pies = readRowsByHeaders_("Psy").find((row) => safeStr(row["ID psa"]) === safeStr(idPsa)) || null;
+  const terapia = readRowsByHeaders_("Terapie").find((row) => safeStr(row["ID psa"]) === safeStr(idPsa) && safeStr(row["Aktywna"]).toUpperCase() === "TAK") || null;
+  const planPracy = terapia ? readRowsByHeaders_("Plan pracy").filter((row) => safeStr(row["ID terapii"]) === safeStr(terapia["ID terapii"])) : [];
+  const sesje = readRowsByHeaders_("Sesje")
+    .filter((row) => safeStr(row["ID psa"]) === safeStr(idPsa))
+    .sort((a, b) => String(b["Data sesji"] || "").localeCompare(String(a["Data sesji"] || "")))
+    .slice(0, 50);
+  const zgloszenia = readRowsByHeaders_("Zgłoszenia behawioralne")
+    .filter((row) => safeStr(row["ID psa"]) === safeStr(idPsa))
+    .sort((a, b) => String(b["Data zgłoszenia"] || "").localeCompare(String(a["Data zgłoszenia"] || "")));
+  return { pies: pies, terapia: terapia, planPracy: planPracy, sesje: sesje, zgłoszenia: zgloszenia };
+}
+
+function startBehaviorReport_(payload) {
+  initBehawiorystaSheets_();
+  const idZ = safeStr(payload?.idZgłoszenia);
+  if (!idZ) throw new Error("Brak idZgłoszenia");
+  const wszystkie = readRowsByHeaders_("Zgłoszenia behawioralne");
+  const zgl = wszystkie.find((row) => safeStr(row["ID zgłoszenia"]) === idZ);
+  if (!zgl) throw new Error("Nie znaleziono zgłoszenia");
+  const idPsa = safeStr(zgl["ID psa"]);
+  const teraz = nowIso_();
+  updateRowById_("Zgłoszenia behawioralne", "ID zgłoszenia", idZ, { "Status zgłoszenia": "W trakcie", "Data rozpoczęcia pracy": teraz });
+  const terapie = readRowsByHeaders_("Terapie");
+  let aktywna = terapie.find((row) => safeStr(row["ID psa"]) === idPsa && safeStr(row["Aktywna"]).toUpperCase() === "TAK");
+  if (!aktywna) {
+    aktywna = {
+      "ID terapii": "T" + Utilities.getUuid().slice(0, 8).toUpperCase(),
+      "ID psa": idPsa,
+      "Data rozpoczęcia": teraz,
+      "Status terapii": "W terapii",
+      "Priorytet": safeStr(zgl["Priorytet"]) || "Średni",
+      "Główne cele": "",
+      "Główne problemy": safeStr(zgl["Opis problemu"]),
+      "Uwagi": "",
+      "Aktywna": "TAK",
+    };
+    appendRowByHeaders_("Terapie", aktywna);
+  }
+  updateRowById_("Psy", "ID psa", idPsa, { "Status terapii": "W terapii", "Priorytet": safeStr(zgl["Priorytet"]) || "Średni" });
+  return { ok: true, idPsa: idPsa, idTerapia: aktywna["ID terapii"] };
+}
+
+function closeBehaviorReport_(payload) {
+  initBehawiorystaSheets_();
+  const idZ = safeStr(payload?.idZgłoszenia);
+  if (!idZ) throw new Error("Brak idZgłoszenia");
+  updateRowById_("Zgłoszenia behawioralne", "ID zgłoszenia", idZ, {
+    "Status zgłoszenia": "Zamknięte",
+    "Data zamknięcia": nowIso_(),
+    "Komentarz behawiorysty": safeStr(payload?.komentarzBehawiorysty),
+  });
+  return { ok: true };
+}
+
+function saveBehaviorSession_(payload) {
+  initBehawiorystaSheets_();
+  const idSesji = "S" + Utilities.getUuid().slice(0, 8).toUpperCase();
+  const record = {
+    "ID sesji": idSesji,
+    "Data sesji": nowIso_(),
+    "ID psa": safeStr(payload?.idPsa),
+    "ID terapii": safeStr(payload?.idTerapia),
+    "Typ sesji": safeStr(payload?.typSesji),
+    "Czas trwania (min)": Number(payload?.czasTrwaniaMin || 0),
+    "Ćwiczenia": Array.isArray(payload?.ćwiczenia) ? payload.ćwiczenia.join(",") : safeStr(payload?.ćwiczenia),
+    "Przebieg sesji": safeStr(payload?.przebiegSesji),
+    "Wynik (1–5)": Number(payload?.wynik || 0),
+    "Co działało": safeStr(payload?.coDziałało),
+    "Co nie działało": safeStr(payload?.coNieDziałało),
+    "Następny krok": safeStr(payload?.następnyKrok),
+    "Prowadzący": safeStr(payload?.prowadzący),
+  };
+  appendRowByHeaders_("Sesje", record);
+  updateRowById_("Psy", "ID psa", record["ID psa"], { "Data ostatniej sesji": record["Data sesji"] });
+  if (safeStr(payload?.idPlanuSesji)) {
+    updateRowById_("Planer sesji", "ID planu sesji", payload.idPlanuSesji, { "Status": "Wykonana", "ID sesji wykonanej": idSesji });
+  }
+  return { ok: true, idSesji: idSesji };
+}
+
+function addPlannerSession_(payload) {
+  initBehawiorystaSheets_();
+  const idPlanu = "PS" + Utilities.getUuid().slice(0, 8).toUpperCase();
+  appendRowByHeaders_("Planer sesji", {
+    "ID planu sesji": idPlanu,
+    "Data planowana": safeStr(payload?.dataPlanowana),
+    "Godzina (opcjonalnie)": safeStr(payload?.godzina),
+    "ID psa": safeStr(payload?.idPsa),
+    "Typ sesji": safeStr(payload?.typSesji),
+    "Cel sesji": safeStr(payload?.celSesji),
+    "Ćwiczenia sugerowane (lista)": Array.isArray(payload?.ćwiczeniaSugerowane) ? payload.ćwiczeniaSugerowane.join(",") : safeStr(payload?.ćwiczeniaSugerowane),
+    "Status": "Zaplanowana",
+    "ID sesji wykonanej": "",
+    "Notatka": safeStr(payload?.notatka),
+  });
+  return { ok: true, idPlanuSesji: idPlanu };
+}
+
+function addWorkPlan_(payload) {
+  initBehawiorystaSheets_();
+  const idPlanu = "PP" + Utilities.getUuid().slice(0, 8).toUpperCase();
+  appendRowByHeaders_("Plan pracy", {
+    "ID planu": idPlanu,
+    "ID terapii": safeStr(payload?.idTerapia),
+    "Obszar pracy": safeStr(payload?.obszarPracy),
+    "Cel": safeStr(payload?.cel),
+    "Kryterium sukcesu": safeStr(payload?.kryteriumSukcesu),
+    "Ćwiczenia powiązane (lista ID ćwiczeń, CSV)": Array.isArray(payload?.ćwiczeniaPowiązane) ? payload.ćwiczeniaPowiązane.join(",") : safeStr(payload?.ćwiczeniaPowiązane),
+    "Status": "Aktywny",
+    "Data dodania": nowIso_(),
+    "Notatka": safeStr(payload?.notatka),
+  });
+  return { ok: true, idPlanu: idPlanu };
+}
+
+function addExercise_(payload) {
+  initBehawiorystaSheets_();
+  const id = "C" + Utilities.getUuid().slice(0, 6).toUpperCase();
+  appendRowByHeaders_("Baza ćwiczeń", {
+    "ID ćwiczenia": id,
+    "Nazwa ćwiczenia": safeStr(payload?.nazwaĆwiczenia),
+    "Kategoria": safeStr(payload?.kategoria),
+    "Poziom trudności": Number(payload?.poziomTrudności || 1),
+    "Opis": safeStr(payload?.opis),
+    "Wskazówki": safeStr(payload?.wskazówki),
+    "Typowe błędy": safeStr(payload?.typoweBłędy),
+    "Aktywne": "TAK",
+  });
+  return { ok: true, idĆwiczenia: id };
 }
 
 // ===============================
