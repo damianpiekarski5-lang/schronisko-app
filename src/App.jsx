@@ -12,9 +12,12 @@ import {
   Clock,
   Star,
   LogOut,
+  Briefcase,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import HomeView from "./HomeView";
+import BehaviorystPanel from "./BehaviorystPanel";
+import BehaviorystDogCard from "./BehaviorystDogCard";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1126,6 +1129,15 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behavioryst")}
+          >
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1261,6 +1273,15 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behavioryst")}
+          >
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1443,6 +1464,15 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behavioryst")}
+          >
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1527,6 +1557,12 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behavioryst")}>
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1795,6 +1831,15 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behavioryst")}
+          >
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
       {showSurvey && (
         <WalkSurvey
@@ -1824,11 +1869,20 @@ const [currentUser, setCurrentUser] = useState(null);
 const [authReady, setAuthReady] = useState(false);
 const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
 const [loginError, setLoginError] = useState("");
-const [favoriteActionState, setFavoriteActionState] = useState({
+  const [favoriteActionState, setFavoriteActionState] = useState({
   loading: false,
   dogId: "",
   error: "",
 });
+const [behaviorystCache, setBehaviorystCache] = useState({
+  loadedAt: null,
+  psy: [],
+  zgloszenia: [],
+  planer: [],
+  cwiczenia: [],
+});
+const [selectedBehaviorDogId, setSelectedBehaviorDogId] = useState("");
+const [behaviorPlanContext, setBehaviorPlanContext] = useState(null);
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
@@ -2009,6 +2063,29 @@ const handleLogin = async () => {
     setCurrentView("dogCard");
   };
 
+  const getIdToken = async () => currentUser?.getIdToken?.();
+
+  const refreshBehaviorystCache = async () => {
+    const { behaviorystApi } = await import("./api/behawiorystaApi");
+    const result = await behaviorystApi.panelStart(getIdToken);
+    if (result.ok) {
+      const data = result.data || {};
+      setBehaviorystCache({
+        loadedAt: Date.now(),
+        psy: data.psy || [],
+        zgloszenia: data.zgłoszenia || data.zgloszenia || [],
+        planer: data.planer || [],
+        cwiczenia: data.ćwiczenia || data.cwiczenia || [],
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (currentView === "behavioryst" && isAdminUser && !behaviorystCache.loadedAt) {
+      refreshBehaviorystCache();
+    }
+  }, [currentView, isAdminUser, behaviorystCache.loadedAt]);
+
   const handleSurveySaved = async (dogId) => {
     const refreshedDogs = await fetchData();
     setSelectedDog((previousDog) => {
@@ -2108,6 +2185,40 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           setCurrentView={setCurrentView}
           isAdmin={isAdminUser}
+        />
+      )}
+      {currentView === "behavioryst" && isAdminUser && (
+        <BehaviorystPanel
+          cache={behaviorystCache}
+          getIdToken={getIdToken}
+          onRefresh={refreshBehaviorystCache}
+          onCachePatch={(patch) => setBehaviorystCache((prev) => ({ ...prev, ...patch }))}
+          onOpenDog={(idPsa, planContext) => {
+            setSelectedBehaviorDogId(idPsa);
+            setBehaviorPlanContext(planContext || null);
+            setCurrentView("behaviorystDog");
+          }}
+        />
+      )}
+      {currentView === "behaviorystDog" && isAdminUser && (
+        <BehaviorystDogCard
+          idPsa={selectedBehaviorDogId}
+          planContext={behaviorPlanContext}
+          currentUser={currentUser}
+          getIdToken={getIdToken}
+          onBack={() => setCurrentView("behavioryst")}
+          onPlannerUpdated={(completedPlanId, newPlanEntry) => {
+            setBehaviorystCache((prev) => ({
+              ...prev,
+              planer: (prev.planer || [])
+                .map((entry) =>
+                  completedPlanId && String(entry.idPlanuSesji) === String(completedPlanId)
+                    ? { ...entry, status: "Wykonana" }
+                    : entry
+                )
+                .concat(newPlanEntry ? [newPlanEntry] : []),
+            }));
+          }}
         />
       )}
       {currentView === "map" && (

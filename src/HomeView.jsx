@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Search, X, AlertCircle, MapPin, Home, Star } from "lucide-react";
+import { Search, X, AlertCircle, MapPin, Home, Star, Briefcase } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
 import KartaPsa from "./components/KartaPsa";
 
@@ -168,6 +168,7 @@ const HomeView = ({
   hoveredCard,
   setHoveredCard,
   setCurrentView,
+  isAdmin,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -327,6 +328,12 @@ const HomeView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behavioryst")}>
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
