@@ -32,6 +32,7 @@ const ADMIN_ACTIONS = new Set([
   "addPlannerSession",
   "addWorkPlan",
   "addExercise",
+  "addDogToTherapy",
 ]);
 
 function getAdminEmails() {
