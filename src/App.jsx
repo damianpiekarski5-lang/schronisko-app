@@ -8,17 +8,13 @@ import {
   Calendar,
   Hash,
   Home,
-  ClipboardPlus,
   ExternalLink,
   Clock,
   Star,
   LogOut,
-  Brain,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
-import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import BehavioristPanel from "./BehavioristPanel";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1547,7 +1543,6 @@ const DogCardView = ({
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
-  const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
   if (!selectedDog) return null;
 
@@ -1671,17 +1666,6 @@ const DogCardView = ({
                 </p>
               </div>
             )}
-            <button
-              onClick={() => setShowBehaviorReport(true)}
-              style={{
-                ...styles.walkButton,
-                backgroundColor: "#f59e0b",
-                boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
-              }}
-            >
-              <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
-              Zgłoszenie do pracy behawioralnej
-            </button>
             <div
               style={{
                 display: "grid",
@@ -1821,13 +1805,6 @@ const DogCardView = ({
             setShowSurvey(false);
             onSurveySaved && onSurveySaved(selectedDog.id);
           }}
-        />
-      )}
-      {showBehaviorReport && (
-        <BehaviorReport
-          dog={selectedDog}
-          currentUser={currentUser}
-          onClose={() => setShowBehaviorReport(false)}
         />
       )}
     </div>
@@ -2123,13 +2100,6 @@ const handleLogin = async () => {
           ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
         </div>
       )}
-      {currentView === "behaviorist" && isAdminUser && (
-        <BehavioristPanel
-          currentUser={currentUser}
-          dogs={dogs}
-          onBack={() => setCurrentView("home")}
-        />
-      )}
       {currentView === "home" && (
         <HomeView
           dogs={dogs}
@@ -2198,29 +2168,6 @@ const handleLogin = async () => {
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
         />
-      )}
-      {isAdminUser && currentView !== "behaviorist" && (
-        <button
-          onClick={() => setCurrentView("behaviorist")}
-          style={{
-            position: "fixed",
-            right: "1rem",
-            bottom: "5.5rem",
-            zIndex: 250,
-            border: "none",
-            borderRadius: "9999px",
-            background: "#2563eb",
-            color: "white",
-            boxShadow: "0 10px 25px rgba(37,99,235,0.35)",
-            padding: "0.75rem 0.9rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.45rem",
-            fontWeight: 700,
-          }}
-        >
-          <Brain size={18} /> Panel behawiorysty
-        </button>
       )}
     </>
   );
