@@ -51,6 +51,8 @@ function isAdminEmail(email) {
   return getAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
+const BEHAVIORYST_ASSIGN_EMAIL = "damian.piekarski5@gmail.com";
+
 const styles = {
   // Layout
   pageContainer: {
@@ -1582,6 +1584,8 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+  const isBehaviorystOwner =
+    String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
 
   return (
     <div style={styles.pageContainer}>
@@ -1709,6 +1713,29 @@ const DogCardView = ({
               <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
               Zgłoszenie do pracy behawioralnej
             </button>
+            {isBehaviorystOwner && (
+              <button
+                onClick={() => onToggleFavorite(selectedDog.id)}
+                disabled={!currentUser || isFavoriteToggleInProgress}
+                style={{
+                  ...styles.walkButton,
+                  backgroundColor: isFavorite ? "#16a34a" : "#2563eb",
+                  boxShadow: isFavorite
+                    ? "0 2px 4px rgba(22, 163, 74, 0.3)"
+                    : "0 2px 4px rgba(37, 99, 235, 0.3)",
+                  ...((!currentUser || isFavoriteToggleInProgress)
+                    ? styles.walkButtonDisabled
+                    : {}),
+                }}
+              >
+                <Star size={24} style={{ marginRight: "0.75rem" }} />
+                {isFavoriteToggleInProgress
+                  ? "Zapisywanie..."
+                  : isFavorite
+                  ? "Przypisany do mnie"
+                  : "Rozpocznij pracę"}
+              </button>
+            )}
             <div
               style={{
                 display: "grid",

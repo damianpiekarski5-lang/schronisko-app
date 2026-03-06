@@ -40,6 +40,8 @@ export async function postGs(action, payload = {}, getIdToken) {
 export const behaviorystApi = {
   panelStart: (getIdToken) => postGs("panelStart", {}, getIdToken),
   getDogCard: (idPsa, getIdToken) => postGs("getDogCard", { idPsa }, getIdToken),
+  getMyDogs: (getIdToken) => postGs("getMyDogs", {}, getIdToken),
+  toggleFavorite: (dogId, getIdToken) => postGs("toggleFavorite", { dogId }, getIdToken),
   startBehaviorReport: (idZgloszenia, getIdToken) =>
     postGs("startBehaviorReport", { idZgłoszenia: idZgloszenia }, getIdToken),
   closeBehaviorReport: (payload, getIdToken) =>

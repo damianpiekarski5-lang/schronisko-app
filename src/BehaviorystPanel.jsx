@@ -26,12 +26,40 @@ const statusBadge = (status) => ({
 });
 
 const sectionStyle = { background: "white", borderRadius: 12, border: "1px solid #e5e7eb", padding: 12, marginBottom: 12 };
+const myDogCardStyle = {
+  backgroundColor: "white",
+  border: "2px solid #e5e7eb",
+  borderRadius: "1rem",
+  padding: "1.25rem",
+  marginBottom: "1rem",
+};
 
-const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatch, onBackToVolunteer }) => {
+const myDogActionButtonStyle = {
+  marginTop: "0.85rem",
+  border: "none",
+  borderRadius: "0.75rem",
+  padding: "0.65rem 0.9rem",
+  background: "#2563eb",
+  color: "white",
+  fontWeight: 700,
+  cursor: "pointer",
+};
+
+const getAssignAllowedEmails = () => {
+  const emails = process.env.REACT_APP_BEHAVIORYST_ASSIGN_EMAILS || process.env.REACT_APP_ADMIN_EMAILS || "";
+  return emails
+    .split(",")
+    .map((value) => value.trim().toLowerCase())
+    .filter(Boolean);
+};
+
+const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatch, onBackToVolunteer, currentUser }) => {
   const [activeTab, setActiveTab] = useState("Psy");
   const [search, setSearch] = useState("");
   const [exerciseSearch, setExerciseSearch] = useState("");
   const [therapyDogId, setTherapyDogId] = useState("");
+  const [myDogIds, setMyDogIds] = useState(new Set());
+  const [assigningDogId, setAssigningDogId] = useState("");
 
   const debouncedSearch = debounce(search);
   const debouncedExerciseSearch = debounce(exerciseSearch);
@@ -90,6 +118,28 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
     });
   }, [psy, debouncedSearch]);
 
+  React.useEffect(() => {
+    const loadMyDogs = async () => {
+      if (!currentUser) {
+        setMyDogIds(new Set());
+        return;
+      }
+
+      const result = await behaviorystApi.getMyDogs(getIdToken);
+      if (result.ok && Array.isArray(result.data)) {
+        setMyDogIds(new Set(result.data.map((dog) => String(dog?.id || ""))));
+      }
+    };
+
+    loadMyDogs();
+  }, [currentUser, getIdToken]);
+
+  const canAssignToMe = useMemo(() => {
+    const allowedEmails = getAssignAllowedEmails();
+    const email = String(currentUser?.email || "").toLowerCase();
+    return Boolean(email) && allowedEmails.includes(email);
+  }, [currentUser]);
+
   const therapyDogs = useMemo(() => {
     const prioRank = { wysoki: 3, średni: 2, niski: 1 };
     return psy
@@ -109,6 +159,19 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
       setTherapyDogId("");
       onRefresh?.();
     }
+  };
+
+  const handleAssignDogToMe = async (dogId) => {
+    if (!dogId || assigningDogId) return;
+    setAssigningDogId(String(dogId));
+    const result = await behaviorystApi.toggleFavorite(dogId, getIdToken);
+    if (result.ok) {
+      const myDogs = await behaviorystApi.getMyDogs(getIdToken);
+      if (myDogs.ok && Array.isArray(myDogs.data)) {
+        setMyDogIds(new Set(myDogs.data.map((dog) => String(dog?.id || ""))));
+      }
+    }
+    setAssigningDogId("");
   };
 
   const handleStartReport = async (idZgloszenia, idPsa) => {
@@ -165,19 +228,46 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
             {filteredDogs.length === 0 ? (
               <div style={{ color: "#6b7280" }}>Brak psów pasujących do wyszukiwania.</div>
             ) : (
-              filteredDogs.map((p) => (
-                <div key={p.idPsa || p.id} style={{ marginBottom: 10 }}>
-                  <KartaPsa
-                    pies={{
-                      id: p.idPsa || p.id,
-                      imie: p.imie || p.name,
-                      boks: p.boks || `${p.pawilon || p.pavilion || ""} / Boks ${p.nrBoksu || p.box || ""}`,
-                      photo: p.photo || p.zdjecie,
-                    }}
-                    onClick={() => onOpenDog(p.idPsa || p.id)}
-                  />
+              filteredDogs.map((p) => {
+                const idPsa = String(p.idPsa || p.id || "");
+                const isMine = myDogIds.has(idPsa);
+
+                return (
+                <div key={idPsa} style={myDogCardStyle}>
+                  <div
+                    onClick={() => onOpenDog(idPsa)}
+                    style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start", cursor: "pointer" }}
+                  >
+                    <img
+                      src={p.photo || p.zdjecie || ""}
+                      alt={p.imie || p.name || "Pies"}
+                      style={{ width: "100%", aspectRatio: "1 / 1", objectFit: "cover", borderRadius: "0.75rem", background: "#f3f4f6" }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                    <div>
+                      <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827", margin: 0 }}>{p.imie || p.name || "Bez imienia"}</h3>
+                      <p style={{ color: "#374151", marginTop: "0.35rem", marginBottom: 0 }}>{(p.pawilon || p.pavilion || "-")} / Boks {p.nrBoksu || p.box || "-"}</p>
+                      <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>ID: {idPsa}</p>
+                    </div>
+                  </div>
+
+                  {canAssignToMe && (
+                    <button
+                      onClick={() => handleAssignDogToMe(idPsa)}
+                      disabled={assigningDogId === idPsa || isMine}
+                      style={{
+                        ...myDogActionButtonStyle,
+                        ...(isMine ? { background: "#16a34a", cursor: "default" } : {}),
+                        ...(assigningDogId === idPsa ? { opacity: 0.7, cursor: "wait" } : {}),
+                      }}
+                    >
+                      {assigningDogId === idPsa ? "Przypisywanie..." : isMine ? "Przypisany do mnie" : "Rozpocznij pracę"}
+                    </button>
+                  )}
                 </div>
-              ))
+              )})
             )}
           </div>
         </>
