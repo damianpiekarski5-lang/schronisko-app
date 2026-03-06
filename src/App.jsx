@@ -15,6 +15,7 @@ import {
   Briefcase,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
+import BehaviorReportSurvey from "./BehaviorReportSurvey";
 import HomeView from "./HomeView";
 import BehaviorystPanel from "./BehaviorystPanel";
 import BehaviorystDogCard from "./BehaviorystDogCard";
@@ -1579,6 +1580,7 @@ const DogCardView = ({
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
+  const [showBehaviorReportSurvey, setShowBehaviorReportSurvey] = useState(false);
 
   if (!selectedDog) return null;
 
@@ -1586,6 +1588,7 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+
 
   return (
     <div style={styles.pageContainer}>
@@ -1684,6 +1687,19 @@ const DogCardView = ({
             >
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
               Spacer
+            </button>
+            <button
+              onClick={() => setShowBehaviorReportSurvey(true)}
+              disabled={!currentUser}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: "#7c3aed",
+                boxShadow: "0 2px 4px rgba(124, 58, 237, 0.3)",
+                ...(!currentUser ? styles.walkButtonDisabled : {}),
+              }}
+            >
+              <Briefcase size={24} style={{ marginRight: "0.75rem" }} />
+              Zgłoś do behawiorysty
             </button>
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
@@ -1850,6 +1866,14 @@ const DogCardView = ({
             setShowSurvey(false);
             onSurveySaved && onSurveySaved(selectedDog.id);
           }}
+        />
+      )}
+      {showBehaviorReportSurvey && (
+        <BehaviorReportSurvey
+          dog={selectedDog}
+          currentUser={currentUser}
+          onClose={() => setShowBehaviorReportSurvey(false)}
+          onSave={() => setShowBehaviorReportSurvey(false)}
         />
       )}
     </div>
