@@ -1589,9 +1589,11 @@ const DogCardView = ({
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
   const isBehaviorystOwner =
     String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
-  const isBehaviorystDog = behaviorystDogIds.has(selectedDog.id);
+  const behaviorystIds = behaviorystDogIds instanceof Set ? behaviorystDogIds : new Set();
+  const behaviorystState = behaviorystActionState || { loading: false, dogId: "", error: "" };
+  const isBehaviorystDog = behaviorystIds.has(selectedDog.id);
   const isBehaviorystToggleInProgress =
-    behaviorystActionState?.loading && behaviorystActionState?.dogId === selectedDog.id;
+    behaviorystState.loading && behaviorystState.dogId === selectedDog.id;
 
   return (
     <div style={styles.pageContainer}>
@@ -1684,7 +1686,7 @@ const DogCardView = ({
                 {favoriteActionState.error}
               </div>
             )}
-            {behaviorystActionState?.error && isBehaviorystOwner && (
+            {behaviorystState.error && isBehaviorystOwner && (
               <div
                 style={{
                   marginBottom: "1rem",
@@ -1695,7 +1697,7 @@ const DogCardView = ({
                   fontSize: "0.875rem",
                 }}
               >
-                {behaviorystActionState.error}
+                {behaviorystState.error}
               </div>
             )}
             <button
