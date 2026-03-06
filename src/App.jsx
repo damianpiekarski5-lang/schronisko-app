@@ -2262,6 +2262,7 @@ const handleLogin = async () => {
   }
 
   const myDogs = dogs.filter((dog) => favoriteDogIds.has(dog.id));
+  const behaviorystDogs = dogs.filter((dog) => behaviorystDogIds.has(dog.id));
 
   return (
     <>
@@ -2355,8 +2356,11 @@ const handleLogin = async () => {
       {currentView === "panel" && isAdminUser && (
         <AdminPanelView
           currentUser={currentUser}
-          dogs={dogs}
+          behaviorystDogs={behaviorystDogs}
           setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
         />
       )}
     </>
