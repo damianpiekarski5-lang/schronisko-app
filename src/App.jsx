@@ -2192,6 +2192,7 @@ const handleLogin = async () => {
           cache={behaviorystCache}
           getIdToken={getIdToken}
           onRefresh={refreshBehaviorystCache}
+          onBackToVolunteer={() => setCurrentView("home")}
           onCachePatch={(patch) => setBehaviorystCache((prev) => ({ ...prev, ...patch }))}
           onOpenDog={(idPsa, planContext) => {
             setSelectedBehaviorDogId(idPsa);

@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { ArrowLeft, RefreshCw, Search } from "lucide-react";
 import KartaPsa from "./components/KartaPsa";
 import { behaviorystApi } from "./api/behawiorystaApi";
 
-const tabs = ["Dziś", "Planer", "Zgłoszenia", "W terapii", "Ćwiczenia"];
+const tabs = ["Psy", "Dziś", "Planer", "Zgłoszenia", "W terapii", "Ćwiczenia"];
 
 const debounce = (value, ms = 150) => {
   const [debounced, setDebounced] = React.useState(value);
@@ -27,12 +27,14 @@ const statusBadge = (status) => ({
 
 const sectionStyle = { background: "white", borderRadius: 12, border: "1px solid #e5e7eb", padding: 12, marginBottom: 12 };
 
-const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatch }) => {
-  const [activeTab, setActiveTab] = useState("Dziś");
+const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatch, onBackToVolunteer }) => {
+  const [activeTab, setActiveTab] = useState("Psy");
   const [search, setSearch] = useState("");
+  const [exerciseSearch, setExerciseSearch] = useState("");
   const [therapyDogId, setTherapyDogId] = useState("");
 
   const debouncedSearch = debounce(search);
+  const debouncedExerciseSearch = debounce(exerciseSearch);
   const psy = cache?.psy || [];
   const zgloszenia = cache?.zgloszenia || [];
   const planer = cache?.planer || [];
@@ -56,10 +58,37 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
   );
 
   const filteredExercises = useMemo(() => {
-    const term = debouncedSearch.toLowerCase().trim();
+    const term = debouncedExerciseSearch.toLowerCase().trim();
     if (!term) return cwiczenia;
     return cwiczenia.filter((c) => `${c.nazwaĆwiczenia || c.nazwa || ""} ${c.kategoria || ""}`.toLowerCase().includes(term));
-  }, [cwiczenia, debouncedSearch]);
+  }, [cwiczenia, debouncedExerciseSearch]);
+
+  const filteredDogs = useMemo(() => {
+    const term = debouncedSearch.toLowerCase().trim();
+    if (!term) return psy;
+
+    const pavilionBoxPattern = /^([a-ząćęłńóśżź]+)(\d+)$/i;
+    const match = term.match(pavilionBoxPattern);
+    if (match) {
+      const pavilion = match[1].toUpperCase();
+      const box = Number(match[2]);
+      return psy.filter((dog) => {
+        const dogPavilion = String(dog.pawilon || dog.pavilion || "").toUpperCase();
+        const dogBox = Number(dog.nrBoksu || dog.box || dog.boks || NaN);
+        return dogPavilion === pavilion && dogBox === box;
+      });
+    }
+
+    return psy.filter((dog) => {
+      const id = String(dog.idPsa || dog.id || "").toLowerCase();
+      const imie = String(dog.imie || dog.name || "").toLowerCase();
+      const boks = String(dog.boks || "").toLowerCase();
+      const pawilon = String(dog.pawilon || dog.pavilion || "").toLowerCase();
+      const nrBoksu = String(dog.nrBoksu || dog.box || "").toLowerCase();
+      const fullBoks = `${pawilon} ${nrBoksu}`.trim();
+      return id.includes(term) || imie.includes(term) || boks.includes(term) || pawilon.includes(term) || nrBoksu.includes(term) || fullBoks.includes(term);
+    });
+  }, [psy, debouncedSearch]);
 
   const therapyDogs = useMemo(() => {
     const prioRank = { wysoki: 3, średni: 2, niski: 1 };
@@ -99,12 +128,60 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
 
   return (
     <div style={{ padding: 12, paddingBottom: 90 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, gap: 8 }}>
+        <button
+          onClick={onBackToVolunteer}
+          style={{ border: "1px solid #d1d5db", background: "white", borderRadius: 999, padding: "0.45rem 0.8rem", display: "flex", alignItems: "center", gap: 6 }}
+        >
+          <ArrowLeft size={16} /> Wróć do wolontariuszy
+        </button>
+        <button onClick={onRefresh} style={{ border: "1px solid #d1d5db", background: "white", borderRadius: 999, padding: "0.45rem 0.8rem", display: "flex", alignItems: "center", gap: 6 }}><RefreshCw size={16} /> Odśwież</button>
+      </div>
+
       <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 12 }}>
         {tabs.map((tab) => (
           <button key={tab} onClick={() => setActiveTab(tab)} style={{ border: "1px solid #d1d5db", background: activeTab === tab ? "#dbeafe" : "white", borderRadius: 999, padding: "0.45rem 0.8rem", whiteSpace: "nowrap" }}>{tab}</button>
         ))}
-        <button onClick={onRefresh} style={{ marginLeft: "auto", border: "none", background: "transparent" }}><RefreshCw size={18} /></button>
       </div>
+
+      {activeTab === "Psy" && (
+        <>
+          <div style={{ ...sectionStyle, position: "sticky", top: 8, zIndex: 5 }}>
+            <h3 style={{ marginTop: 0 }}>Wyszukiwarka psów</h3>
+            <div style={{ position: "relative" }}>
+              <Search size={18} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#6b7280" }} />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Szukaj po imieniu, ID, boksie lub np. E12"
+                style={{ width: "100%", boxSizing: "border-box", border: "2px solid #e5e7eb", borderRadius: 10, padding: "0.75rem 0.8rem 0.75rem 2.2rem" }}
+              />
+            </div>
+            <small style={{ color: "#6b7280" }}>Wyniki: {filteredDogs.length} / {psy.length}</small>
+          </div>
+
+          <div style={sectionStyle}>
+            <h3 style={{ marginTop: 0 }}>Karty psów</h3>
+            {filteredDogs.length === 0 ? (
+              <div style={{ color: "#6b7280" }}>Brak psów pasujących do wyszukiwania.</div>
+            ) : (
+              filteredDogs.map((p) => (
+                <div key={p.idPsa || p.id} style={{ marginBottom: 10 }}>
+                  <KartaPsa
+                    pies={{
+                      id: p.idPsa || p.id,
+                      imie: p.imie || p.name,
+                      boks: p.boks || `${p.pawilon || p.pavilion || ""} / Boks ${p.nrBoksu || p.box || ""}`,
+                      photo: p.photo || p.zdjecie,
+                    }}
+                    onClick={() => onOpenDog(p.idPsa || p.id)}
+                  />
+                </div>
+              ))
+            )}
+          </div>
+        </>
+      )}
 
       {activeTab === "Dziś" && (
         <>
@@ -163,7 +240,7 @@ const BehaviorystPanel = ({ cache, onRefresh, onOpenDog, getIdToken, onCachePatc
 
       {activeTab === "Ćwiczenia" && (
         <div style={sectionStyle}>
-          <input placeholder="Szukaj ćwiczeń" value={search} onChange={(e) => setSearch(e.target.value)} />
+          <input placeholder="Szukaj ćwiczeń" value={exerciseSearch} onChange={(e) => setExerciseSearch(e.target.value)} />
           {filteredExercises.map((c, index) => <div key={c.idĆwiczenia || c.nazwaĆwiczenia || index}>{c.nazwaĆwiczenia || c.nazwa} • {c.kategoria}</div>)}
           <button onClick={async () => {
             const nazwaĆwiczenia = window.prompt("Nazwa ćwiczenia");
