@@ -8,16 +8,17 @@ import {
   Calendar,
   Hash,
   Home,
+  ClipboardPlus,
   ExternalLink,
   Clock,
   Star,
   LogOut,
-  Briefcase,
+  Shield,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
+import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import BehaviorystPanel from "./BehaviorystPanel";
-import BehaviorystDogCard from "./BehaviorystDogCard";
+import AdminPanelView from "./AdminPanelView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1114,7 +1115,7 @@ const MapView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1132,10 +1133,10 @@ const MapView = ({
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behavioryst")}
+            onClick={() => setCurrentView("panel")}
           >
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
       </div>
@@ -1258,7 +1259,7 @@ const BoxesView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1276,10 +1277,10 @@ const BoxesView = ({
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behavioryst")}
+            onClick={() => setCurrentView("panel")}
           >
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
       </div>
@@ -1449,7 +1450,7 @@ const DogsListView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
@@ -1467,10 +1468,10 @@ const DogsListView = ({
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behavioryst")}
+            onClick={() => setCurrentView("panel")}
           >
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
       </div>
@@ -1547,7 +1548,7 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
       <div style={styles.bottomNav}>
         <button style={styles.bottomNavButton} onClick={() => setCurrentView("home")}>
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button style={styles.bottomNavButton} onClick={() => setCurrentView("map")}>
           <MapPin size={24} />
@@ -1557,12 +1558,6 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-        {isAdmin && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behavioryst")}>
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
-          </button>
-        )}
       </div>
     </div>
   );
@@ -1579,11 +1574,7 @@ const DogCardView = ({
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
-  const [behaviorReportState, setBehaviorReportState] = useState({
-    loading: false,
-    success: "",
-    error: "",
-  });
+  const [showBehaviorReport, setShowBehaviorReport] = useState(false);
 
   if (!selectedDog) return null;
 
@@ -1591,61 +1582,6 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
-
-  const handleBehaviorReport = async () => {
-    if (!currentUser) return;
-
-    const reason = window.prompt("Opisz krótko problem do zgłoszenia behawiorystce/behawioryście:");
-    if (!reason || !reason.trim()) return;
-
-    setBehaviorReportState({ loading: true, success: "", error: "" });
-
-    try {
-      const token = await currentUser.getIdToken();
-      const response = await fetch("/api/gs", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          action: "reportBehavior",
-          dogName: selectedDog.name,
-          dogId: selectedDog.id,
-          reason: reason.trim(),
-          priority: "MEDIUM",
-          user: {
-            displayName: currentUser.displayName,
-            email: currentUser.email,
-          },
-        }),
-      });
-
-      const result = await response.json();
-
-      if (response.ok && result?.ok === true) {
-        setBehaviorReportState({
-          loading: false,
-          success: "Zgłoszenie do pracy behawioralnej zostało wysłane.",
-          error: "",
-        });
-        return;
-      }
-
-      setBehaviorReportState({
-        loading: false,
-        success: "",
-        error: result?.error || "Nie udało się wysłać zgłoszenia do behawiorysty.",
-      });
-    } catch (error) {
-      console.error("Błąd wysyłania zgłoszenia behawioralnego:", error);
-      setBehaviorReportState({
-        loading: false,
-        success: "",
-        error: "Wystąpił błąd połączenia podczas wysyłania zgłoszenia.",
-      });
-    }
-  };
 
   return (
     <div style={styles.pageContainer}>
@@ -1745,51 +1681,6 @@ const DogCardView = ({
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
               Spacer
             </button>
-            <button
-              onClick={handleBehaviorReport}
-              disabled={!currentUser || behaviorReportState.loading}
-              style={{
-                ...styles.walkButton,
-                backgroundColor: "#7c3aed",
-                boxShadow: "0 2px 4px rgba(124, 58, 237, 0.3)",
-                ...((!currentUser || behaviorReportState.loading)
-                  ? styles.walkButtonDisabled
-                  : {}),
-              }}
-            >
-              <Briefcase size={24} style={{ marginRight: "0.75rem" }} />
-              {behaviorReportState.loading
-                ? "Wysyłanie zgłoszenia..."
-                : "Zgłoś do behawiorysty"}
-            </button>
-            {behaviorReportState.success && (
-              <div
-                style={{
-                  marginBottom: "1rem",
-                  padding: "0.75rem",
-                  borderRadius: "0.75rem",
-                  backgroundColor: "#dcfce7",
-                  color: "#166534",
-                  fontSize: "0.875rem",
-                }}
-              >
-                {behaviorReportState.success}
-              </div>
-            )}
-            {behaviorReportState.error && (
-              <div
-                style={{
-                  marginBottom: "1rem",
-                  padding: "0.75rem",
-                  borderRadius: "0.75rem",
-                  backgroundColor: "#fee2e2",
-                  color: "#991b1b",
-                  fontSize: "0.875rem",
-                }}
-              >
-                {behaviorReportState.error}
-              </div>
-            )}
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
                 <h3 style={styles.sectionTitle}>
@@ -1807,6 +1698,17 @@ const DogCardView = ({
                 </p>
               </div>
             )}
+            <button
+              onClick={() => setShowBehaviorReport(true)}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: "#f59e0b",
+                boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+              }}
+            >
+              <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
+              Zgłoszenie do pracy behawioralnej
+            </button>
             <div
               style={{
                 display: "grid",
@@ -1920,7 +1822,7 @@ const DogCardView = ({
           onClick={() => setCurrentView("home")}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button
           style={styles.bottomNavButton}
@@ -1939,10 +1841,10 @@ const DogCardView = ({
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behavioryst")}
+            onClick={() => setCurrentView("panel")}
           >
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
       </div>
@@ -1955,6 +1857,13 @@ const DogCardView = ({
             setShowSurvey(false);
             onSurveySaved && onSurveySaved(selectedDog.id);
           }}
+        />
+      )}
+      {showBehaviorReport && (
+        <BehaviorReport
+          dog={selectedDog}
+          currentUser={currentUser}
+          onClose={() => setShowBehaviorReport(false)}
         />
       )}
     </div>
@@ -1974,20 +1883,11 @@ const [currentUser, setCurrentUser] = useState(null);
 const [authReady, setAuthReady] = useState(false);
 const [favoriteDogIds, setFavoriteDogIds] = useState(new Set());
 const [loginError, setLoginError] = useState("");
-  const [favoriteActionState, setFavoriteActionState] = useState({
+const [favoriteActionState, setFavoriteActionState] = useState({
   loading: false,
   dogId: "",
   error: "",
 });
-const [behaviorystCache, setBehaviorystCache] = useState({
-  loadedAt: null,
-  psy: [],
-  zgloszenia: [],
-  planer: [],
-  cwiczenia: [],
-});
-const [selectedBehaviorDogId, setSelectedBehaviorDogId] = useState("");
-const [behaviorPlanContext, setBehaviorPlanContext] = useState(null);
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
@@ -2168,29 +2068,6 @@ const handleLogin = async () => {
     setCurrentView("dogCard");
   };
 
-  const getIdToken = async () => currentUser?.getIdToken?.();
-
-  const refreshBehaviorystCache = async () => {
-    const { behaviorystApi } = await import("./api/behawiorystaApi");
-    const result = await behaviorystApi.panelStart(getIdToken);
-    if (result.ok) {
-      const data = result.data || {};
-      setBehaviorystCache({
-        loadedAt: Date.now(),
-        psy: data.psy || [],
-        zgloszenia: data.zgłoszenia || data.zgloszenia || [],
-        planer: data.planer || [],
-        cwiczenia: data.ćwiczenia || data.cwiczenia || [],
-      });
-    }
-  };
-
-  useEffect(() => {
-    if (currentView === "behavioryst" && isAdminUser && !behaviorystCache.loadedAt) {
-      refreshBehaviorystCache();
-    }
-  }, [currentView, isAdminUser, behaviorystCache.loadedAt]);
-
   const handleSurveySaved = async (dogId) => {
     const refreshedDogs = await fetchData();
     setSelectedDog((previousDog) => {
@@ -2292,41 +2169,6 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
         />
       )}
-      {currentView === "behavioryst" && isAdminUser && (
-        <BehaviorystPanel
-          cache={behaviorystCache}
-          getIdToken={getIdToken}
-          onRefresh={refreshBehaviorystCache}
-          onBackToVolunteer={() => setCurrentView("home")}
-          onCachePatch={(patch) => setBehaviorystCache((prev) => ({ ...prev, ...patch }))}
-          onOpenDog={(idPsa, planContext) => {
-            setSelectedBehaviorDogId(idPsa);
-            setBehaviorPlanContext(planContext || null);
-            setCurrentView("behaviorystDog");
-          }}
-        />
-      )}
-      {currentView === "behaviorystDog" && isAdminUser && (
-        <BehaviorystDogCard
-          idPsa={selectedBehaviorDogId}
-          planContext={behaviorPlanContext}
-          currentUser={currentUser}
-          getIdToken={getIdToken}
-          onBack={() => setCurrentView("behavioryst")}
-          onPlannerUpdated={(completedPlanId, newPlanEntry) => {
-            setBehaviorystCache((prev) => ({
-              ...prev,
-              planer: (prev.planer || [])
-                .map((entry) =>
-                  completedPlanId && String(entry.idPlanuSesji) === String(completedPlanId)
-                    ? { ...entry, status: "Wykonana" }
-                    : entry
-                )
-                .concat(newPlanEntry ? [newPlanEntry] : []),
-            }));
-          }}
-        />
-      )}
       {currentView === "map" && (
         <MapView
           dogs={dogs}
@@ -2384,6 +2226,13 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
+        />
+      )}
+      {currentView === "panel" && isAdminUser && (
+        <AdminPanelView
+          currentUser={currentUser}
+          dogs={dogs}
+          setCurrentView={setCurrentView}
         />
       )}
     </>

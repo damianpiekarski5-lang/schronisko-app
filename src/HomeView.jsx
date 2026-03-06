@@ -1,7 +1,16 @@
 import React, { useState } from "react";
-import { Search, X, AlertCircle, MapPin, Home, Star, Briefcase } from "lucide-react";
+import {
+  Search,
+  X,
+  Clock,
+  AlertCircle,
+  MapPin,
+  Hash,
+  Home,
+  Star,
+  Shield,
+} from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
-import KartaPsa from "./components/KartaPsa";
 
 const styles = {
   pageContainer: {
@@ -19,9 +28,6 @@ const styles = {
   },
   headerContent: {
     padding: "1rem",
-    maxWidth: "640px",
-    margin: "0 auto",
-    boxSizing: "border-box",
   },
   title: {
     fontSize: "1.5rem",
@@ -39,7 +45,6 @@ const styles = {
   },
   searchInput: {
     width: "100%",
-    boxSizing: "border-box",
     paddingLeft: "3rem",
     paddingRight: "3rem",
     paddingTop: "1rem",
@@ -70,9 +75,6 @@ const styles = {
   },
   content: {
     padding: "1rem",
-    maxWidth: "640px",
-    margin: "0 auto",
-    boxSizing: "border-box",
   },
   section: {
     marginBottom: "2rem",
@@ -126,16 +128,10 @@ const styles = {
   bottomNav: {
     position: "fixed",
     bottom: 0,
-    left: "50%",
-    transform: "translateX(-50%)",
-    width: "calc(100% - 2rem)",
-    maxWidth: "608px",
+    left: 0,
+    right: 0,
     backgroundColor: "white",
     borderTop: "1px solid #e5e7eb",
-    borderLeft: "1px solid #e5e7eb",
-    borderRight: "1px solid #e5e7eb",
-    borderTopLeftRadius: "0.75rem",
-    borderTopRightRadius: "0.75rem",
     padding: "0.75rem 0.25rem",
     display: "flex",
     justifyContent: "space-around",
@@ -161,6 +157,37 @@ const styles = {
     fontWeight: "600",
   },
 };
+
+const DogPhoto = ({ photo, name }) => {
+  const [imgError, setImgError] = useState(false);
+  const hasValidPhoto = typeof photo === "string" && photo.trim().length > 5;
+
+  if (!hasValidPhoto || imgError) {
+    return (
+      <div
+        style={{
+          ...styles.dogPhoto,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "4rem",
+        }}
+      >
+        🐕
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={photo}
+      alt={name}
+      style={styles.dogPhoto}
+      onError={() => setImgError(true)}
+    />
+  );
+};
+
 
 const HomeView = ({
   dogs,
@@ -264,7 +291,13 @@ const HomeView = ({
               </div>
             ) : (
               filteredDogs.map((dog) => (
-                <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
+                <DogCard
+                  key={dog.id}
+                  dog={dog}
+                  onClick={onDogClick}
+                  hoveredCard={hoveredCard}
+                  setHoveredCard={setHoveredCard}
+                />
               ))
             )}
           </div>
@@ -284,7 +317,14 @@ const HomeView = ({
                   </h2>
                 </div>
                 {dogsNeedingWalk.map((dog) => (
-                  <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
+                  <DogCard
+                    key={dog.id}
+                    dog={dog}
+                    onClick={onDogClick}
+                    hoveredCard={hoveredCard}
+                    setHoveredCard={setHoveredCard}
+                    urgent
+                  />
                 ))}
               </div>
             )}
@@ -300,7 +340,13 @@ const HomeView = ({
                 Wszystkie psy ({dogs.length})
               </h2>
               {allDogsSorted.map((dog) => (
-                <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
+                <DogCard
+                  key={dog.id}
+                  dog={dog}
+                  onClick={onDogClick}
+                  hoveredCard={hoveredCard}
+                  setHoveredCard={setHoveredCard}
+                />
               ))}
             </div>
           </>
@@ -312,7 +358,7 @@ const HomeView = ({
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Główna</span>
+          <span style={{ marginTop: "0.25rem" }}>Home</span>
         </button>
         <button
           style={styles.bottomNavButton}
@@ -329,11 +375,100 @@ const HomeView = ({
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
         {isAdmin && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behavioryst")}>
-            <Briefcase size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
+      </div>
+    </div>
+  );
+};
+
+const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
+  const walkPresentation = getLastWalkPresentation(dog.lastWalk);
+
+  return (
+    <div
+      onClick={() => onClick(dog)}
+      style={{
+        ...styles.dogCard,
+        ...(hoveredCard === dog.id ? styles.dogCardHover : {}),
+      }}
+      onTouchStart={() => setHoveredCard(dog.id)}
+      onTouchEnd={() => setHoveredCard(null)}
+    >
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "120px 1fr",
+          gap: "1rem",
+        }}
+      >
+        <DogPhoto photo={dog.photo} name={dog.name} />
+        <div>
+          <h3
+            style={{
+              fontSize: "1.25rem",
+              fontWeight: "bold",
+              color: "#111827",
+              marginBottom: "0.5rem",
+            }}
+          >
+            {dog.name}
+          </h3>
+          <p
+            style={{
+              fontSize: "0.875rem",
+              color: "#6b7280",
+              marginBottom: "0.5rem",
+            }}
+          >
+            {dog.breed}
+          </p>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "0.75rem",
+              color: "#9ca3af",
+              marginBottom: "0.5rem",
+            }}
+          >
+            <MapPin size={14} style={{ marginRight: "0.25rem" }} />
+            {dog.pavilion} / Boks {dog.box}
+          </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              fontSize: "0.75rem",
+              color: "#d1d5db",
+              marginBottom: "0.75rem",
+            }}
+          >
+            <Hash size={14} style={{ marginRight: "0.25rem" }} />
+            {dog.id}
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <Clock
+              size={16}
+              color={walkPresentation.color}
+            />
+            <span
+              style={{
+                fontSize: "0.875rem",
+                fontWeight: "600",
+                color: walkPresentation.color,
+              }}
+            >
+              {walkPresentation.label}
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );
