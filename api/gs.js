@@ -24,10 +24,22 @@ const ADMIN_ACTIONS = new Set([
   "updateTherapyDog",
   "getToSchedule",
   "autoPlanWeek",
+  "panelStart",
+  "getDogCard",
+  "startBehaviorReport",
+  "closeBehaviorReport",
+  "saveBehaviorSession",
+  "addPlannerSession",
+  "addWorkPlan",
+  "addExercise",
+  "addDogToTherapy",
 ]);
 
 function getAdminEmails() {
-  const source = process.env.ADMIN_EMAILS || FALLBACK_ADMIN_EMAILS.join(",");
+  const source =
+    process.env.ADMIN_EMAILS ||
+    process.env.REACT_APP_ADMIN_EMAILS ||
+    FALLBACK_ADMIN_EMAILS.join(",");
 
   return source
     .split(",")
@@ -62,6 +74,10 @@ function normalizeResult(raw, status = 200) {
   }
 
   if (raw?.ok === true && Array.isArray(raw?.data)) {
+    return { ok: true, data: raw.data };
+  }
+
+  if (raw?.ok === true && raw?.data !== undefined) {
     return { ok: true, data: raw.data };
   }
 

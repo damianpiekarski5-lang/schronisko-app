@@ -1,6 +1,7 @@
 import React, { useState } from "react";
-import { Search, X, Clock, AlertCircle, MapPin, Hash, Home, Star } from "lucide-react";
+import { Search, X, AlertCircle, MapPin, Home, Star, Briefcase } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
+import KartaPsa from "./components/KartaPsa";
 
 const styles = {
   pageContainer: {
@@ -161,43 +162,13 @@ const styles = {
   },
 };
 
-const DogPhoto = ({ photo, name }) => {
-  const [imgError, setImgError] = useState(false);
-  const hasValidPhoto = typeof photo === "string" && photo.trim().length > 5;
-
-  if (!hasValidPhoto || imgError) {
-    return (
-      <div
-        style={{
-          ...styles.dogPhoto,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "4rem",
-        }}
-      >
-        🐕
-      </div>
-    );
-  }
-
-  return (
-    <img
-      src={photo}
-      alt={name}
-      style={styles.dogPhoto}
-      onError={() => setImgError(true)}
-    />
-  );
-};
-
-
 const HomeView = ({
   dogs,
   onDogClick,
   hoveredCard,
   setHoveredCard,
   setCurrentView,
+  isAdmin,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -293,13 +264,7 @@ const HomeView = ({
               </div>
             ) : (
               filteredDogs.map((dog) => (
-                <DogCard
-                  key={dog.id}
-                  dog={dog}
-                  onClick={onDogClick}
-                  hoveredCard={hoveredCard}
-                  setHoveredCard={setHoveredCard}
-                />
+                <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
               ))
             )}
           </div>
@@ -319,14 +284,7 @@ const HomeView = ({
                   </h2>
                 </div>
                 {dogsNeedingWalk.map((dog) => (
-                  <DogCard
-                    key={dog.id}
-                    dog={dog}
-                    onClick={onDogClick}
-                    hoveredCard={hoveredCard}
-                    setHoveredCard={setHoveredCard}
-                    urgent
-                  />
+                  <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
                 ))}
               </div>
             )}
@@ -342,13 +300,7 @@ const HomeView = ({
                 Wszystkie psy ({dogs.length})
               </h2>
               {allDogsSorted.map((dog) => (
-                <DogCard
-                  key={dog.id}
-                  dog={dog}
-                  onClick={onDogClick}
-                  hoveredCard={hoveredCard}
-                  setHoveredCard={setHoveredCard}
-                />
+                <KartaPsa key={dog.id} pies={{ id: dog.id, imie: dog.name, boks: `${dog.pavilion} / Boks ${dog.box}`, photo: dog.photo }} onClick={() => onDogClick(dog)} />
               ))}
             </div>
           </>
@@ -360,7 +312,7 @@ const HomeView = ({
           style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
         >
           <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
+          <span style={{ marginTop: "0.25rem" }}>Główna</span>
         </button>
         <button
           style={styles.bottomNavButton}
@@ -376,92 +328,12 @@ const HomeView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
-      </div>
-    </div>
-  );
-};
-
-const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
-  const walkPresentation = getLastWalkPresentation(dog.lastWalk);
-
-  return (
-    <div
-      onClick={() => onClick(dog)}
-      style={{
-        ...styles.dogCard,
-        ...(hoveredCard === dog.id ? styles.dogCardHover : {}),
-      }}
-      onTouchStart={() => setHoveredCard(dog.id)}
-      onTouchEnd={() => setHoveredCard(null)}
-    >
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "120px 1fr",
-          gap: "1rem",
-        }}
-      >
-        <DogPhoto photo={dog.photo} name={dog.name} />
-        <div>
-          <h3
-            style={{
-              fontSize: "1.25rem",
-              fontWeight: "bold",
-              color: "#111827",
-              marginBottom: "0.5rem",
-            }}
-          >
-            {dog.name}
-          </h3>
-          <p
-            style={{
-              fontSize: "0.875rem",
-              color: "#6b7280",
-              marginBottom: "0.5rem",
-            }}
-          >
-            {dog.breed}
-          </p>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              fontSize: "0.75rem",
-              color: "#9ca3af",
-              marginBottom: "0.5rem",
-            }}
-          >
-            <MapPin size={14} style={{ marginRight: "0.25rem" }} />
-            {dog.pavilion} / Boks {dog.box}
-          </div>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              fontSize: "0.75rem",
-              color: "#d1d5db",
-              marginBottom: "0.75rem",
-            }}
-          >
-            <Hash size={14} style={{ marginRight: "0.25rem" }} />
-            {dog.id}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Clock
-              size={16}
-              color={walkPresentation.color}
-            />
-            <span
-              style={{
-                fontSize: "0.875rem",
-                fontWeight: "600",
-                color: walkPresentation.color,
-              }}
-            >
-              {walkPresentation.label}
-            </span>
-          </div>
-        </div>
+        {isAdmin && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behavioryst")}>
+            <Briefcase size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Behawiorysta</span>
+          </button>
+        )}
       </div>
     </div>
   );
