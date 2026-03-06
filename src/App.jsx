@@ -1579,6 +1579,11 @@ const DogCardView = ({
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
+  const [behaviorReportState, setBehaviorReportState] = useState({
+    loading: false,
+    success: "",
+    error: "",
+  });
 
   if (!selectedDog) return null;
 
@@ -1586,6 +1591,61 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+
+  const handleBehaviorReport = async () => {
+    if (!currentUser) return;
+
+    const reason = window.prompt("Opisz krótko problem do zgłoszenia behawiorystce/behawioryście:");
+    if (!reason || !reason.trim()) return;
+
+    setBehaviorReportState({ loading: true, success: "", error: "" });
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "reportBehavior",
+          dogName: selectedDog.name,
+          dogId: selectedDog.id,
+          reason: reason.trim(),
+          priority: "MEDIUM",
+          user: {
+            displayName: currentUser.displayName,
+            email: currentUser.email,
+          },
+        }),
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result?.ok === true) {
+        setBehaviorReportState({
+          loading: false,
+          success: "Zgłoszenie do pracy behawioralnej zostało wysłane.",
+          error: "",
+        });
+        return;
+      }
+
+      setBehaviorReportState({
+        loading: false,
+        success: "",
+        error: result?.error || "Nie udało się wysłać zgłoszenia do behawiorysty.",
+      });
+    } catch (error) {
+      console.error("Błąd wysyłania zgłoszenia behawioralnego:", error);
+      setBehaviorReportState({
+        loading: false,
+        success: "",
+        error: "Wystąpił błąd połączenia podczas wysyłania zgłoszenia.",
+      });
+    }
+  };
 
   return (
     <div style={styles.pageContainer}>
@@ -1685,6 +1745,51 @@ const DogCardView = ({
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
               Spacer
             </button>
+            <button
+              onClick={handleBehaviorReport}
+              disabled={!currentUser || behaviorReportState.loading}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: "#7c3aed",
+                boxShadow: "0 2px 4px rgba(124, 58, 237, 0.3)",
+                ...((!currentUser || behaviorReportState.loading)
+                  ? styles.walkButtonDisabled
+                  : {}),
+              }}
+            >
+              <Briefcase size={24} style={{ marginRight: "0.75rem" }} />
+              {behaviorReportState.loading
+                ? "Wysyłanie zgłoszenia..."
+                : "Zgłoś do behawiorysty"}
+            </button>
+            {behaviorReportState.success && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: "#dcfce7",
+                  color: "#166534",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {behaviorReportState.success}
+              </div>
+            )}
+            {behaviorReportState.error && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: "#fee2e2",
+                  color: "#991b1b",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {behaviorReportState.error}
+              </div>
+            )}
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
                 <h3 style={styles.sectionTitle}>
