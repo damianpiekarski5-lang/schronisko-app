@@ -11,6 +11,7 @@ const REPORTS_SHEET_NAME = "Zgłoszenia";
 const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
 const FAVORITES_SHEET_NAME = "Favorites";
+const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 
@@ -84,6 +85,14 @@ function doPost(e) {
 
     if (action === "getMyDogs") {
       return json({ ok: true, data: getMyDogs(payload) });
+    }
+
+    if (action === "toggleBehaviorystDog") {
+      return json({ ok: true, data: toggleBehaviorystDog(payload) });
+    }
+
+    if (action === "getBehaviorystDogs") {
+      return json({ ok: true, data: getBehaviorystDogs(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -306,6 +315,54 @@ function getMyDogs(payload) {
 
   const favoriteRows = favSheet.getDataRange().getValues().slice(1);
   const dogIds = favoriteRows
+    .filter((row) => safeStr(row[0]) === uid)
+    .map((row) => safeStr(row[1]))
+    .filter(Boolean);
+
+  if (!dogIds.length) return [];
+
+  const dogs = getDogs(false);
+  const byId = {};
+  dogs.forEach((dog) => {
+    byId[safeStr(dog.id)] = dog;
+  });
+
+  return dogIds.map((dogId) => byId[dogId]).filter(Boolean);
+}
+
+
+function toggleBehaviorystDog(payload) {
+  const uid = safeStr(payload?.user?.uid);
+  const dogId = safeStr(payload?.dogId);
+  if (!uid) throw new Error("Brak uid użytkownika");
+  if (!dogId) throw new Error("Brak dogId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, BEHAVIORYST_DOGS_SHEET_NAME);
+  ensureHeaders(sh, ["uid", "dogId", "addedAt"]);
+
+  const values = sh.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][0]) === uid && safeStr(values[i][1]) === dogId) {
+      sh.deleteRow(i + 1);
+      return { success: true, assigned: false, dogId };
+    }
+  }
+
+  sh.appendRow([uid, dogId, nowInPolandText()]);
+  return { success: true, assigned: true, dogId };
+}
+
+function getBehaviorystDogs(payload) {
+  const uid = safeStr(payload?.user?.uid);
+  if (!uid) throw new Error("Brak uid użytkownika");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const workSheet = getOrCreateSheet(ss, BEHAVIORYST_DOGS_SHEET_NAME);
+  ensureHeaders(workSheet, ["uid", "dogId", "addedAt"]);
+
+  const workRows = workSheet.getDataRange().getValues().slice(1);
+  const dogIds = workRows
     .filter((row) => safeStr(row[0]) === uid)
     .map((row) => safeStr(row[1]))
     .filter(Boolean);

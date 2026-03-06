@@ -51,6 +51,8 @@ function isAdminEmail(email) {
   return getAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
+const BEHAVIORYST_ASSIGN_EMAIL = "damian.piekarski5@gmail.com";
+
 const styles = {
   // Layout
   pageContainer: {
@@ -1571,6 +1573,9 @@ const DogCardView = ({
   favoriteDogIds,
   onToggleFavorite,
   favoriteActionState,
+  behaviorystDogIds,
+  onToggleBehaviorystDog,
+  behaviorystActionState,
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
@@ -1582,6 +1587,11 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+  const isBehaviorystOwner =
+    String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
+  const isBehaviorystDog = behaviorystDogIds.has(selectedDog.id);
+  const isBehaviorystToggleInProgress =
+    behaviorystActionState?.loading && behaviorystActionState?.dogId === selectedDog.id;
 
   return (
     <div style={styles.pageContainer}>
@@ -1674,6 +1684,20 @@ const DogCardView = ({
                 {favoriteActionState.error}
               </div>
             )}
+            {behaviorystActionState?.error && isBehaviorystOwner && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: "#fee2e2",
+                  color: "#991b1b",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {behaviorystActionState.error}
+              </div>
+            )}
             <button
               onClick={() => setShowSurvey(true)}
               style={styles.walkButton}
@@ -1709,6 +1733,29 @@ const DogCardView = ({
               <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
               Zgłoszenie do pracy behawioralnej
             </button>
+            {isBehaviorystOwner && (
+              <button
+                onClick={() => onToggleBehaviorystDog(selectedDog.id)}
+                disabled={!currentUser || isBehaviorystToggleInProgress}
+                style={{
+                  ...styles.walkButton,
+                  backgroundColor: isBehaviorystDog ? "#16a34a" : "#2563eb",
+                  boxShadow: isBehaviorystDog
+                    ? "0 2px 4px rgba(22, 163, 74, 0.3)"
+                    : "0 2px 4px rgba(37, 99, 235, 0.3)",
+                  ...((!currentUser || isBehaviorystToggleInProgress)
+                    ? styles.walkButtonDisabled
+                    : {}),
+                }}
+              >
+                <Star size={24} style={{ marginRight: "0.75rem" }} />
+                {isBehaviorystToggleInProgress
+                  ? "Zapisywanie..."
+                  : isBehaviorystDog
+                  ? "Odłącz z panelu behawiorysty"
+                  : "Rozpocznij pracę"}
+              </button>
+            )}
             <div
               style={{
                 display: "grid",
@@ -1888,6 +1935,12 @@ const [favoriteActionState, setFavoriteActionState] = useState({
   dogId: "",
   error: "",
 });
+const [behaviorystDogIds, setBehaviorystDogIds] = useState(new Set());
+const [behaviorystActionState, setBehaviorystActionState] = useState({
+  loading: false,
+  dogId: "",
+  error: "",
+});
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
@@ -1901,6 +1954,7 @@ useEffect(() => {
     setAuthReady(true);
     setCurrentUser(null);
     setFavoriteDogIds(new Set());
+    setBehaviorystDogIds(new Set());
     return undefined;
   }
 
@@ -1909,9 +1963,10 @@ useEffect(() => {
     setAuthReady(true);
     setLoginError("");
     if (user) {
-      await fetchMyDogs(user);
+      await Promise.all([fetchMyDogs(user), fetchBehaviorystDogs(user)]);
     } else {
       setFavoriteDogIds(new Set());
+      setBehaviorystDogIds(new Set());
     }
   });
 
@@ -1988,6 +2043,32 @@ useEffect(() => {
     }
   };
 
+
+  const fetchBehaviorystDogs = async (user = currentUser) => {
+    if (!user) {
+      setBehaviorystDogIds(new Set());
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "getBehaviorystDogs" }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true && Array.isArray(result?.data)) {
+        setBehaviorystDogIds(new Set(result.data.map((dog) => cleanText(dog?.id))));
+      }
+    } catch (error) {
+      console.error("Błąd pobierania psów panelu behawiorysty:", error);
+    }
+  };
+
   const handleToggleFavorite = async (dogId) => {
     if (!currentUser || !dogId) return;
 
@@ -2018,6 +2099,44 @@ useEffect(() => {
     } catch (error) {
       console.error("Błąd przypinania psa:", error);
       setFavoriteActionState({
+        loading: false,
+        dogId: "",
+        error: "Wystąpił błąd połączenia podczas zapisywania. Spróbuj ponownie.",
+      });
+    }
+  };
+
+
+  const handleToggleBehaviorystDog = async (dogId) => {
+    if (!currentUser || !dogId) return;
+
+    setBehaviorystActionState({ loading: true, dogId, error: "" });
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "toggleBehaviorystDog", dogId }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true) {
+        await fetchBehaviorystDogs(currentUser);
+        setBehaviorystActionState({ loading: false, dogId: "", error: "" });
+        return;
+      }
+
+      setBehaviorystActionState({
+        loading: false,
+        dogId: "",
+        error: result?.error || "Nie udało się zapisać zmiany w panelu behawiorysty.",
+      });
+    } catch (error) {
+      console.error("Błąd przypisywania psa do panelu behawiorysty:", error);
+      setBehaviorystActionState({
         loading: false,
         dogId: "",
         error: "Wystąpił błąd połączenia podczas zapisywania. Spróbuj ponownie.",
@@ -2214,6 +2333,9 @@ const handleLogin = async () => {
           favoriteDogIds={favoriteDogIds}
           onToggleFavorite={handleToggleFavorite}
           favoriteActionState={favoriteActionState}
+          behaviorystDogIds={behaviorystDogIds}
+          onToggleBehaviorystDog={handleToggleBehaviorystDog}
+          behaviorystActionState={behaviorystActionState}
           isAdmin={isAdminUser}
         />
       )}
