@@ -2110,7 +2110,7 @@ useEffect(() => {
 
 
   const handleToggleBehaviorystDog = async (dogId) => {
-    if (!currentUser || !dogId) return;
+    if (!currentUser || !dogId) return false;
 
     setBehaviorystActionState({ loading: true, dogId, error: "" });
 
@@ -2128,7 +2128,7 @@ useEffect(() => {
       if (response.ok && result?.ok === true) {
         await fetchBehaviorystDogs(currentUser);
         setBehaviorystActionState({ loading: false, dogId: "", error: "" });
-        return;
+        return true;
       }
 
       setBehaviorystActionState({
@@ -2136,6 +2136,7 @@ useEffect(() => {
         dogId: "",
         error: result?.error || "Nie udało się zapisać zmiany w panelu behawiorysty.",
       });
+      return false;
     } catch (error) {
       console.error("Błąd przypisywania psa do panelu behawiorysty:", error);
       setBehaviorystActionState({
@@ -2143,7 +2144,14 @@ useEffect(() => {
         dogId: "",
         error: "Wystąpił błąd połączenia podczas zapisywania. Spróbuj ponownie.",
       });
+      return false;
     }
+  };
+
+  const handleStartBehaviorystWork = async (dogId) => {
+    if (!dogId) return false;
+    if (behaviorystDogIds.has(dogId)) return true;
+    return handleToggleBehaviorystDog(dogId);
   };
 
 const handleLogin = async () => {
@@ -2357,10 +2365,12 @@ const handleLogin = async () => {
         <AdminPanelView
           currentUser={currentUser}
           behaviorystDogs={behaviorystDogs}
+          dogs={dogs}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
+          onStartWork={handleStartBehaviorystWork}
         />
       )}
     </>

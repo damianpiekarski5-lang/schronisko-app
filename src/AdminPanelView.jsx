@@ -1,5 +1,5 @@
-import React from "react";
-import { Shield, Home, MapPin, Star } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft } from "lucide-react";
 
 const styles = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "90px" },
@@ -7,6 +7,9 @@ const styles = {
   title: { display: "flex", alignItems: "center", gap: "0.5rem", fontWeight: "800", fontSize: "1.2rem", color: "#111827" },
   subtitle: { color: "#6b7280", fontSize: "0.875rem", marginTop: "0.35rem" },
   content: { padding: "1rem" },
+  tabs: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.5rem", marginBottom: "1rem" },
+  tabButton: { border: "1px solid #d1d5db", background: "white", padding: "0.75rem", borderRadius: "0.75rem", fontWeight: 700, cursor: "pointer", color: "#374151" },
+  tabButtonActive: { background: "#eff6ff", borderColor: "#3b82f6", color: "#1d4ed8" },
   dogCard: {
     backgroundColor: "white",
     borderRadius: "1rem",
@@ -14,7 +17,6 @@ const styles = {
     marginBottom: "1rem",
     boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
     transition: "all 0.2s",
-    cursor: "pointer",
   },
   dogCardHover: { boxShadow: "0 4px 12px rgba(0,0,0,0.15)", transform: "translateY(-2px)" },
   emptyCard: {
@@ -31,6 +33,13 @@ const styles = {
     objectFit: "cover",
     borderRadius: "0.75rem",
     background: "#f3f4f6",
+  },
+  actionBtn: {
+    border: "none",
+    borderRadius: "0.7rem",
+    padding: "0.7rem 1rem",
+    fontWeight: 700,
+    cursor: "pointer",
   },
   bottomNav: {
     position: "fixed",
@@ -65,54 +74,293 @@ const styles = {
   },
 };
 
+const normalizeText = (value) => String(value || "").trim();
+
+const getReportText = (report) => {
+  const parts = [
+    report?.reason,
+    report?.incident3P,
+    report?.description,
+    report?.content,
+    report?.text,
+  ]
+    .map(normalizeText)
+    .filter(Boolean);
+
+  return parts.join("\n\n");
+};
+
 const AdminPanelView = ({
   currentUser,
   behaviorystDogs,
+  dogs,
   setCurrentView,
   setSelectedDog,
   hoveredCard,
   setHoveredCard,
+  onStartWork,
 }) => {
+  const [activeTab, setActiveTab] = useState("reports");
+  const [reports, setReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(false);
+  const [reportsError, setReportsError] = useState("");
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [processingReportId, setProcessingReportId] = useState("");
+
+  const dogsById = useMemo(() => {
+    const map = new Map();
+    (dogs || []).forEach((dog) => map.set(String(dog.id), dog));
+    return map;
+  }, [dogs]);
+
   const sortedDogs = [...(behaviorystDogs || [])].sort((a, b) => a.name.localeCompare(b.name, "pl"));
+
+  const fetchReports = async () => {
+    if (!currentUser) return;
+
+    setLoadingReports(true);
+    setReportsError("");
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "adminGetBehaviorReports" }),
+      });
+      const result = await response.json();
+
+      if (!response.ok || result?.ok !== true || !Array.isArray(result?.data)) {
+        throw new Error(result?.error || "Nie udało się pobrać zgłoszeń");
+      }
+
+      setReports(result.data);
+    } catch (error) {
+      console.error("Błąd pobierania zgłoszeń:", error);
+      setReportsError(String(error?.message || error));
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [currentUser]);
+
+  const pendingReports = useMemo(() => {
+    return reports.filter((report) => {
+      const status = normalizeText(report?.status || report?.state).toLowerCase();
+      return !status || status.includes("now") || status.includes("oczek") || status.includes("do konsultacji");
+    });
+  }, [reports]);
+
+  const updateReportStatus = async (report, status) => {
+    if (!currentUser || !report) return false;
+
+    const reportId = String(report?.idZgloszenia || report?.id || report?.reportId || "");
+    setProcessingReportId(reportId);
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "adminUpdateBehaviorReport",
+          idZgloszenia: reportId,
+          idZgłoszenia: reportId,
+          reportId,
+          status,
+          decision: status,
+          dogId: String(report?.dogId || ""),
+        }),
+      });
+
+      const result = await response.json();
+      if (!response.ok || result?.ok !== true) {
+        throw new Error(result?.error || "Nie udało się zapisać decyzji");
+      }
+
+      await fetchReports();
+      return true;
+    } catch (error) {
+      console.error("Błąd aktualizacji zgłoszenia:", error);
+      setReportsError(String(error?.message || error));
+      return false;
+    } finally {
+      setProcessingReportId("");
+    }
+  };
+
+  const handleStartWork = async () => {
+    if (!selectedReport) return;
+
+    const dogId = String(selectedReport?.dogId || "");
+    const saved = await updateReportStatus(selectedReport, "W_PRACY");
+    if (!saved) return;
+
+    if (dogId && onStartWork) {
+      await onStartWork(dogId);
+    }
+
+    setSelectedReport(null);
+    setActiveTab("work");
+  };
+
+  const handleReject = async () => {
+    if (!selectedReport) return;
+
+    const saved = await updateReportStatus(selectedReport, "ODRZUCONE");
+    if (saved) {
+      setSelectedReport(null);
+    }
+  };
+
+  const selectedDog = selectedReport ? dogsById.get(String(selectedReport?.dogId || "")) : null;
 
   return (
     <div style={styles.page}>
       <div style={styles.header}>
         <div style={styles.title}><Shield size={20} /> Panel Behawiorysty</div>
-        <p style={styles.subtitle}>Psy w pracy: {sortedDogs.length} • {currentUser?.email || "-"}</p>
+        <p style={styles.subtitle}>Zalogowano: {currentUser?.email || "-"}</p>
       </div>
 
       <div style={styles.content}>
-        {sortedDogs.length === 0 ? (
-          <div style={styles.emptyCard}>Brak psów dodanych przez „Rozpocznij pracę”.</div>
-        ) : (
-          sortedDogs.map((dog) => (
-            <div
-              key={dog.id}
-              onClick={() => {
-                setSelectedDog(dog);
-                setCurrentView("dogCard");
-              }}
-              style={{
-                ...styles.dogCard,
-                ...(hoveredCard === `panel-${dog.id}` ? styles.dogCardHover : {}),
-              }}
-              onTouchStart={() => setHoveredCard(`panel-${dog.id}`)}
-              onTouchEnd={() => setHoveredCard(null)}
-            >
-              <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
-                <img src={dog.photo || ""} alt={dog.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
-                <div>
-                  <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827", margin: 0 }}>{dog.name || "Bez imienia"}</h3>
-                  <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>{dog.breed || "-"}</p>
-                  <p style={{ color: "#374151", marginTop: "0.35rem", marginBottom: 0 }}>
-                    {dog.pavilion || "-"} / Boks {dog.box || "-"}
-                  </p>
-                  <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>ID: {dog.id}</p>
-                </div>
+        {!selectedReport && (
+          <>
+            <div style={styles.tabs}>
+              <button
+                onClick={() => setActiveTab("reports")}
+                style={{ ...styles.tabButton, ...(activeTab === "reports" ? styles.tabButtonActive : {}) }}
+              >
+                <ClipboardList size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Zgłoszenia ({pendingReports.length})
+              </button>
+              <button
+                onClick={() => setActiveTab("work")}
+                style={{ ...styles.tabButton, ...(activeTab === "work" ? styles.tabButtonActive : {}) }}
+              >
+                <Briefcase size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Psy w pracy ({sortedDogs.length})
+              </button>
+            </div>
+
+            {reportsError && <div style={{ ...styles.emptyCard, color: "#991b1b", marginBottom: "1rem" }}>{reportsError}</div>}
+
+            {activeTab === "reports" && (
+              <>
+                <button onClick={fetchReports} style={{ ...styles.tabButton, width: "100%", marginBottom: "1rem" }}>
+                  <RefreshCw size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Odśwież zgłoszenia
+                </button>
+
+                {loadingReports ? (
+                  <div style={styles.emptyCard}>Ładowanie zgłoszeń...</div>
+                ) : pendingReports.length === 0 ? (
+                  <div style={styles.emptyCard}>Brak nowych zgłoszeń od wolontariuszy.</div>
+                ) : (
+                  pendingReports.map((report, index) => {
+                    const dog = dogsById.get(String(report?.dogId || ""));
+                    const reportText = getReportText(report);
+                    const reportKey = String(report?.idZgloszenia || report?.id || index);
+
+                    return (
+                      <div key={reportKey} style={styles.dogCard}>
+                        <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
+                          <img
+                            src={dog?.photo || ""}
+                            alt={dog?.name || "Pies"}
+                            style={{ ...styles.photo, cursor: "pointer" }}
+                            onClick={() => setSelectedReport(report)}
+                            onError={(e) => { e.currentTarget.style.display = "none"; }}
+                          />
+                          <div>
+                            <h3 style={{ fontSize: "1.1rem", margin: 0 }}>{dog?.name || "Nieznany pies"}</h3>
+                            <p style={{ color: "#374151", margin: "0.35rem 0 0" }}>ID: {report?.dogId || "-"}</p>
+                            <p style={{ color: "#374151", margin: "0.35rem 0 0" }}>Boks: {dog?.box || "-"}</p>
+                            <p style={{ color: "#6b7280", margin: "0.5rem 0 0" }}>{reportText || "Brak treści zgłoszenia."}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </>
+            )}
+
+            {activeTab === "work" && (
+              sortedDogs.length === 0 ? (
+                <div style={styles.emptyCard}>Brak psów dodanych przez „Rozpocznij pracę”.</div>
+              ) : (
+                sortedDogs.map((dog) => (
+                  <div
+                    key={dog.id}
+                    onClick={() => {
+                      setSelectedDog(dog);
+                      setCurrentView("dogCard");
+                    }}
+                    style={{
+                      ...styles.dogCard,
+                      cursor: "pointer",
+                      ...(hoveredCard === `panel-${dog.id}` ? styles.dogCardHover : {}),
+                    }}
+                    onTouchStart={() => setHoveredCard(`panel-${dog.id}`)}
+                    onTouchEnd={() => setHoveredCard(null)}
+                  >
+                    <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
+                      <img src={dog.photo || ""} alt={dog.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                      <div>
+                        <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827", margin: 0 }}>{dog.name || "Bez imienia"}</h3>
+                        <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>{dog.breed || "-"}</p>
+                        <p style={{ color: "#374151", marginTop: "0.35rem", marginBottom: 0 }}>
+                          {dog.pavilion || "-"} / Boks {dog.box || "-"}
+                        </p>
+                        <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>ID: {dog.id}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )
+            )}
+          </>
+        )}
+
+        {selectedReport && (
+          <div style={styles.dogCard}>
+            <button onClick={() => setSelectedReport(null)} style={{ ...styles.tabButton, marginBottom: "0.75rem" }}>
+              <ArrowLeft size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Powrót do zgłoszeń
+            </button>
+            <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
+              <img src={selectedDog?.photo || ""} alt={selectedDog?.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              <div>
+                <h3 style={{ margin: 0 }}>{selectedDog?.name || "Nieznany pies"}</h3>
+                <p style={{ margin: "0.35rem 0 0", color: "#374151" }}>ID: {selectedReport?.dogId || "-"}</p>
+                <p style={{ margin: "0.35rem 0 0", color: "#374151" }}>{selectedDog?.pavilion || "-"} / Boks {selectedDog?.box || "-"}</p>
               </div>
             </div>
-          ))
+            <div style={{ marginTop: "1rem", background: "#f9fafb", borderRadius: "0.75rem", padding: "0.75rem", whiteSpace: "pre-wrap" }}>
+              {getReportText(selectedReport) || "Brak treści zgłoszenia."}
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.75rem", marginTop: "1rem" }}>
+              <button
+                onClick={handleStartWork}
+                disabled={!!processingReportId}
+                style={{ ...styles.actionBtn, background: "#16a34a", color: "white", opacity: processingReportId ? 0.7 : 1 }}
+              >
+                Rozpocznij pracę
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!!processingReportId}
+                style={{ ...styles.actionBtn, background: "#dc2626", color: "white", opacity: processingReportId ? 0.7 : 1 }}
+              >
+                Odrzuć
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
