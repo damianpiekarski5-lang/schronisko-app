@@ -14,6 +14,7 @@ const FAVORITES_SHEET_NAME = "Favorites";
 const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
+const REPORT_RESOLVED_STATUSES = ["W_PRACY", "ODRZUCONE", "ROZPATRZONE", "ZAAKCEPTOWANE"];
 
 const H = {
   PAVILION: "PAWILON",
@@ -93,6 +94,14 @@ function doPost(e) {
 
     if (action === "getBehaviorystDogs") {
       return json({ ok: true, data: getBehaviorystDogs(payload) });
+    }
+
+    if (action === "adminGetBehaviorReports") {
+      return json({ ok: true, data: adminGetBehaviorReports() });
+    }
+
+    if (action === "adminUpdateBehaviorReport") {
+      return json({ ok: true, data: adminUpdateBehaviorReport(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -263,6 +272,10 @@ function reportBehavior(payload) {
     "tagsWelfare",
     "risk",
     "priority",
+    "status",
+    "resolved",
+    "reviewedAt",
+    "reviewedBy",
   ]);
 
   reportsSheet.appendRow([
@@ -277,7 +290,119 @@ function reportBehavior(payload) {
     safeStr(payload?.tagsWelfare),
     safeStr(payload?.risk),
     safeStr(payload?.priority),
+    "NOWE",
+    false,
+    "",
+    "",
   ]);
+}
+
+function adminGetBehaviorReports() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+
+  ensureHeaders(reportsSheet, [
+    "timestamp",
+    "dogName",
+    "dogId",
+    "volunteerName",
+    "reason",
+    "incident3P",
+    "tagsEmotions",
+    "tagsRelations",
+    "tagsWelfare",
+    "risk",
+    "priority",
+    "status",
+    "resolved",
+    "reviewedAt",
+    "reviewedBy",
+  ]);
+
+  const data = reportsSheet.getDataRange().getValues();
+  if (data.length < 2) return [];
+
+  const headers = data[0];
+
+  return data
+    .slice(1)
+    .map((row, index) => {
+      const item = { id: String(index + 2) };
+      headers.forEach((header, colIndex) => {
+        const key = safeStr(header);
+        if (key) item[key] = row[colIndex];
+      });
+
+      item.idZgloszenia = item.id;
+      item.reportId = item.id;
+      item.status = safeStr(item.status);
+      item.resolved = toBoolean_(item.resolved);
+      item.dogId = safeStr(item.dogId);
+      item.dogName = safeStr(item.dogName);
+      item.reason = safeStr(item.reason);
+      item.incident3P = safeStr(item.incident3P);
+      item.volunteerName = safeStr(item.volunteerName);
+
+      return item;
+    })
+    .filter((item) => item.dogId || item.dogName || item.reason || item.incident3P)
+    .reverse();
+}
+
+function adminUpdateBehaviorReport(payload) {
+  const reportId = Number(safeStr(payload?.idZgloszenia || payload?.idZgłoszenia || payload?.reportId || payload?.id));
+  const status = safeStr(payload?.status || payload?.decision);
+  if (!reportId || reportId < 2) throw new Error("Brak poprawnego id zgłoszenia");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const reportsSheet = getOrCreateSheet(ss, REPORTS_SHEET_NAME);
+
+  ensureHeaders(reportsSheet, [
+    "timestamp",
+    "dogName",
+    "dogId",
+    "volunteerName",
+    "reason",
+    "incident3P",
+    "tagsEmotions",
+    "tagsRelations",
+    "tagsWelfare",
+    "risk",
+    "priority",
+    "status",
+    "resolved",
+    "reviewedAt",
+    "reviewedBy",
+  ]);
+
+  if (reportId > reportsSheet.getLastRow()) {
+    throw new Error("Nie znaleziono zgłoszenia o ID: " + reportId);
+  }
+
+  const headers = reportsSheet.getRange(1, 1, 1, reportsSheet.getLastColumn()).getValues()[0];
+  const map = headerMap(headers);
+
+  if (map.status !== undefined && status) {
+    reportsSheet.getRange(reportId, map.status + 1).setValue(status);
+  }
+
+  const resolved = status ? REPORT_RESOLVED_STATUSES.indexOf(status) > -1 : toBoolean_(payload?.resolved);
+
+  if (map.resolved !== undefined) {
+    reportsSheet.getRange(reportId, map.resolved + 1).setValue(Boolean(resolved));
+  }
+
+  if (map.reviewedAt !== undefined) {
+    reportsSheet.getRange(reportId, map.reviewedAt + 1).setValue(nowInPolandText());
+  }
+
+  if (map.reviewedBy !== undefined) {
+    reportsSheet.getRange(reportId, map.reviewedBy + 1).setValue(
+      safeStr(payload?.user?.email) || safeStr(payload?.user?.displayName)
+    );
+  }
+
+  return { success: true, id: String(reportId), status: status || "", resolved: Boolean(resolved) };
 }
 
 // ===============================
@@ -458,6 +583,12 @@ function json(payload) {
 function safeStr(value) {
   if (value === null || value === undefined) return "";
   return String(value).trim();
+}
+
+function toBoolean_(value) {
+  if (value === true || value === false) return value;
+  const normalized = safeStr(value).toLowerCase();
+  return normalized === "true" || normalized === "1" || normalized === "tak" || normalized === "yes";
 }
 
 function headerMap(headerRow) {
