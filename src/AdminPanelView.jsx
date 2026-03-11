@@ -152,8 +152,12 @@ const AdminPanelView = ({
 
   const pendingReports = useMemo(() => {
     return reports.filter((report) => {
-      const status = normalizeText(report?.status || report?.state).toLowerCase();
-      return !status || status.includes("now") || status.includes("oczek") || status.includes("do konsultacji");
+      const resolvedValue = report?.resolved;
+      const isResolved =
+        resolvedValue === true ||
+        normalizeText(resolvedValue).toLowerCase() === "true" ||
+        normalizeText(resolvedValue).toLowerCase() === "1";
+      return !isResolved;
     });
   }, [reports]);
 
@@ -202,7 +206,7 @@ const AdminPanelView = ({
     if (!selectedReport) return;
 
     const dogId = String(selectedReport?.dogId || "");
-    const saved = await updateReportStatus(selectedReport, "W_PRACY");
+    const saved = await updateReportStatus(selectedReport, "ZAAKCEPTOWANE");
     if (!saved) return;
 
     if (dogId && onStartWork) {
@@ -350,7 +354,7 @@ const AdminPanelView = ({
                 disabled={!!processingReportId}
                 style={{ ...styles.actionBtn, background: "#16a34a", color: "white", opacity: processingReportId ? 0.7 : 1 }}
               >
-                Rozpocznij pracę
+                Zaakceptuj
               </button>
               <button
                 onClick={handleReject}
