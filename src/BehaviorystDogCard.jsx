@@ -49,6 +49,8 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
   const terapia = dogCard?.terapia || {};
   const planPracy = dogCard?.planPracy || [];
   const sesje = dogCard?.sesje || [];
+  const zaplanowaneSesje =
+    dogCard?.zaplanowaneSesje || dogCard?.planSesji || dogCard?.planerSesji || dogCard?.planner || [];
   const zgloszenia = dogCard?.zgłoszenia || [];
 
   const addWorkPlan = async () => {
@@ -102,7 +104,15 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
       notatka: plannerForm.notatka,
     };
     const result = await behaviorystApi.addPlannerSession(payload, getIdToken);
-    if (result.ok) onPlannerUpdated?.(null, result.data || payload);
+    if (result.ok) {
+      const savedPlanner = result.data || payload;
+      setDogCard((prev) => ({
+        ...prev,
+        zaplanowaneSesje: [savedPlanner, ...(prev?.zaplanowaneSesje || [])],
+      }));
+      onPlannerUpdated?.(null, savedPlanner);
+      setPlannerForm((prev) => ({ ...prev, celSesji: "", notatka: "", godzina: "" }));
+    }
   };
 
   return (
@@ -111,7 +121,7 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
       <KartaPsa pies={{ id: pies.idPsa || pies.id, imie: pies.imie || pies.name, boks: pies.boks, photo: pies.photo, priorytet: terapia?.priorytet }} />
       <div style={box}><b>Terapia</b><div>Status: {terapia?.status || "-"}</div><div>Priorytet: {terapia?.priorytet || "-"}</div></div>
       <div style={box}>
-        <b>Plan pracy (formularz)</b>
+        <b>Plan pracy</b>
         <label style={label}>Obszar pracy
           <input value={workPlanForm.obszarPracy} onChange={(e) => setWorkPlanForm((prev) => ({ ...prev, obszarPracy: e.target.value }))} style={field} />
         </label>
@@ -125,10 +135,14 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
           <textarea value={workPlanForm.notatka} onChange={(e) => setWorkPlanForm((prev) => ({ ...prev, notatka: e.target.value }))} style={{ ...field, minHeight: 64 }} />
         </label>
         <button onClick={addWorkPlan} style={{ marginTop: 10 }}>Dodaj cel do planu pracy</button>
-        {planPracy.map((p, i) => <div key={p.idCelu || i} style={{ marginTop: 8 }}>{p.obszarPracy} • {p.cel}</div>)}
+        {planPracy.length === 0 ? (
+          <div style={{ marginTop: 10, color: "#6b7280" }}>Brak zapisanych celów w planie pracy.</div>
+        ) : (
+          planPracy.map((p, i) => <div key={p.idCelu || i} style={{ marginTop: 8 }}>{p.obszarPracy} • {p.cel}</div>)
+        )}
       </div>
       <div style={box}>
-        <b>Sesje (formularz)</b>
+        <b>Sesje treningowe</b>
         <label style={label}>Typ sesji
           <select value={sessionForm.typSesji} onChange={(e) => setSessionForm((prev) => ({ ...prev, typSesji: e.target.value }))} style={field}><option value="WALK">WALK</option><option value="BOX">BOX</option></select>
         </label>
@@ -151,11 +165,15 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
           <textarea value={sessionForm.nastepnyKrok} onChange={(e) => setSessionForm((prev) => ({ ...prev, nastepnyKrok: e.target.value }))} style={{ ...field, minHeight: 64 }} />
         </label>
         <button onClick={addSession} style={{ marginTop: 10 }}>Dodaj sesję (log)</button>
-        {sesje.slice(0, 50).map((s, i) => <div key={s.idSesji || i} style={{ marginTop: 8 }}>{s.dataSesji || ""} • {s.typSesji} • wynik {s.wynik}</div>)}
+        {sesje.length === 0 ? (
+          <div style={{ marginTop: 10, color: "#6b7280" }}>Brak zapisanych sesji treningowych.</div>
+        ) : (
+          sesje.slice(0, 50).map((s, i) => <div key={s.idSesji || i} style={{ marginTop: 8 }}>{s.dataSesji || ""} • {s.typSesji} • wynik {s.wynik}</div>)
+        )}
       </div>
       <div style={box}><b>Zgłoszenia</b>{zgloszenia.map((z, i) => <div key={z.idZgłoszenia || i}>{z.idZgłoszenia || z.id} • {z.status}</div>)}</div>
       <div style={box}>
-        <b>Planowanie sesji (formularz)</b>
+        <b>Planowanie sesji</b>
         <label style={label}>Data
           <input type="date" value={plannerForm.dataPlanowana} onChange={(e) => setPlannerForm((prev) => ({ ...prev, dataPlanowana: e.target.value }))} style={field} />
         </label>
@@ -172,6 +190,16 @@ const BehaviorystDogCard = ({ idPsa, planContext, getIdToken, currentUser, onBac
           <textarea value={plannerForm.notatka} onChange={(e) => setPlannerForm((prev) => ({ ...prev, notatka: e.target.value }))} style={{ ...field, minHeight: 64 }} />
         </label>
         <button onClick={addPlanner} style={{ marginTop: 10 }}>Zaplanuj sesję</button>
+        {zaplanowaneSesje.length === 0 ? (
+          <div style={{ marginTop: 10, color: "#6b7280" }}>Brak zaplanowanych sesji.</div>
+        ) : (
+          zaplanowaneSesje.slice(0, 50).map((sesja, i) => (
+            <div key={sesja.idPlanuSesji || i} style={{ marginTop: 8 }}>
+              {(sesja.dataPlanowana || "Brak daty")} {sesja.godzina ? `• ${sesja.godzina}` : ""} • {sesja.typSesji || "-"}
+              {sesja.celSesji ? ` • ${sesja.celSesji}` : ""}
+            </div>
+          ))
+        )}
       </div>
     </div>
   );

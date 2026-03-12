@@ -96,6 +96,7 @@ const AdminPanelView = ({
   dogs,
   setCurrentView,
   setSelectedDog,
+  onOpenBehaviorystDog,
   hoveredCard,
   setHoveredCard,
   onStartWork,
@@ -303,6 +304,10 @@ const AdminPanelView = ({
                   <div
                     key={dog.id}
                     onClick={() => {
+                      if (onOpenBehaviorystDog) {
+                        onOpenBehaviorystDog(dog);
+                        return;
+                      }
                       setSelectedDog(dog);
                       setCurrentView("dogCard");
                     }}

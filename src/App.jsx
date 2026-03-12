@@ -19,6 +19,7 @@ import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
+import BehaviorystDogCard from "./BehaviorystDogCard";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -2197,6 +2198,11 @@ const handleLogin = async () => {
     setCurrentView("dogCard");
   };
 
+  const handleOpenBehaviorystDogCard = (dog) => {
+    setSelectedDog(dog);
+    setCurrentView("behaviorystDogCard");
+  };
+
   const handleSurveySaved = async (dogId) => {
     const refreshedDogs = await fetchData();
     setSelectedDog((previousDog) => {
@@ -2350,6 +2356,14 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
         />
       )}
+      {currentView === "behaviorystDogCard" && (
+        <BehaviorystDogCard
+          idPsa={selectedDog?.id}
+          getIdToken={() => currentUser?.getIdToken?.()}
+          currentUser={currentUser}
+          onBack={() => setCurrentView("panel")}
+        />
+      )}
       {currentView === "myDogs" && (
         <MyDogsView
           myDogs={myDogs}
@@ -2368,6 +2382,7 @@ const handleLogin = async () => {
           dogs={dogs}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
+          onOpenBehaviorystDog={handleOpenBehaviorystDogCard}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           onStartWork={handleStartBehaviorystWork}
