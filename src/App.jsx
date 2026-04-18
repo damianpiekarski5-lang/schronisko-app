@@ -214,6 +214,36 @@ const styles = {
     boxShadow: "0 2px 4px rgba(34, 197, 94, 0.3)",
     marginBottom: "1rem",
   },
+  behaviorButton: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    width: "100%",
+    padding: "1rem",
+    backgroundColor: "#f59e0b",
+    color: "white",
+    border: "none",
+    borderRadius: "0.75rem",
+    fontSize: "1rem",
+    fontWeight: "700",
+    cursor: "pointer",
+    transition: "all 0.2s",
+    boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+    marginBottom: "0.75rem",
+  },
+  behaviorInput: {
+    width: "100%",
+    minHeight: "100px",
+    border: "2px solid #fde68a",
+    borderRadius: "0.75rem",
+    padding: "0.75rem",
+    fontSize: "0.95rem",
+    fontFamily: "inherit",
+    resize: "vertical",
+    marginBottom: "0.75rem",
+    outline: "none",
+    boxSizing: "border-box",
+  },
   walkButtonDisabled: {
     backgroundColor: "#9ca3af",
     cursor: "not-allowed",
@@ -1525,6 +1555,12 @@ const DogCardView = ({
     type: "",
     message: "",
   });
+  const [behaviorReportState, setBehaviorReportState] = useState({
+    loading: false,
+    type: "",
+    message: "",
+  });
+  const [behaviorWorkDescription, setBehaviorWorkDescription] = useState("");
 
   if (!selectedDog) return null;
 
@@ -1599,6 +1635,93 @@ const DogCardView = ({
     } catch (error) {
       console.error("Błąd zapisu spaceru:", error);
       setWalkSaveState({
+        loading: false,
+        type: "error",
+        message: "❌ Błąd połączenia z serwerem.",
+      });
+    }
+  };
+
+  const handleSubmitBehaviorReport = async () => {
+    if (behaviorReportState.loading) return;
+
+    if (!currentUser) {
+      setBehaviorReportState({
+        loading: false,
+        type: "error",
+        message: "❌ Zaloguj się, aby wysłać zgłoszenie do behawiorysty.",
+      });
+      return;
+    }
+
+    const dogId = String(selectedDog?.id ?? "").trim();
+    const dogName = String(selectedDog?.name ?? "").trim();
+    const description = behaviorWorkDescription.trim();
+
+    if (!dogId || !dogName) {
+      setBehaviorReportState({
+        loading: false,
+        type: "error",
+        message: "❌ Brak imienia lub ID psa.",
+      });
+      return;
+    }
+
+    if (description.length < 10) {
+      setBehaviorReportState({
+        loading: false,
+        type: "error",
+        message: "❌ Opisz krótko (minimum 10 znaków), nad czym należy popracować.",
+      });
+      return;
+    }
+
+    setBehaviorReportState({ loading: true, type: "", message: "" });
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "reportBehavior",
+          dogName,
+          dogId,
+          reason: `Obszar do pracy: ${description}`,
+          incident3P: description,
+          priority: "Do konsultacji",
+        }),
+      });
+
+      const result = await response.json();
+      const isSuccess =
+        response.ok &&
+        result?.ok === true &&
+        (result?.data?.success === true || result?.success === true);
+
+      if (!isSuccess) {
+        setBehaviorReportState({
+          loading: false,
+          type: "error",
+          message:
+            "❌ Nie udało się wysłać zgłoszenia. " +
+            (result?.error || "Spróbuj ponownie za chwilę."),
+        });
+        return;
+      }
+
+      setBehaviorReportState({
+        loading: false,
+        type: "success",
+        message: "✅ Zgłoszenie wysłane do panelu behawiorysty.",
+      });
+      setBehaviorWorkDescription("");
+    } catch (error) {
+      console.error("Błąd zgłoszenia behawioralnego:", error);
+      setBehaviorReportState({
         loading: false,
         type: "error",
         message: "❌ Błąd połączenia z serwerem.",
@@ -1708,6 +1831,40 @@ const DogCardView = ({
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
               {walkSaveState.loading ? "Zapisywanie spaceru..." : "Zapisz spacer"}
             </button>
+            <textarea
+              value={behaviorWorkDescription}
+              onChange={(e) => setBehaviorWorkDescription(e.target.value)}
+              style={styles.behaviorInput}
+              placeholder="Napisz krótko, nad czym behawiorysta powinien popracować z tym psem..."
+              maxLength={500}
+            />
+            <button
+              onClick={handleSubmitBehaviorReport}
+              disabled={behaviorReportState.loading}
+              style={{
+                ...styles.behaviorButton,
+                ...(behaviorReportState.loading ? styles.walkButtonDisabled : {}),
+              }}
+            >
+              <AlertCircle size={20} style={{ marginRight: "0.5rem" }} />
+              {behaviorReportState.loading ? "Wysyłanie zgłoszenia..." : "Zgłoś do pracy z behawiorystą"}
+            </button>
+            {behaviorReportState.message && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor:
+                    behaviorReportState.type === "success" ? "#dcfce7" : "#fee2e2",
+                  color: behaviorReportState.type === "success" ? "#166534" : "#991b1b",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                }}
+              >
+                {behaviorReportState.message}
+              </div>
+            )}
             {walkSaveState.message && (
               <div
                 style={{
