@@ -13,7 +13,6 @@ import {
   Star,
   LogOut,
 } from "lucide-react";
-import WalkSurvey from "./WalkSurvey";
 import HomeView from "./HomeView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -1521,7 +1520,11 @@ const DogCardView = ({
   onToggleFavorite,
   favoriteActionState,
 }) => {
-  const [showSurvey, setShowSurvey] = useState(false);
+  const [walkSaveState, setWalkSaveState] = useState({
+    loading: false,
+    type: "",
+    message: "",
+  });
 
   if (!selectedDog) return null;
 
@@ -1529,6 +1532,80 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+
+  const handleSaveWalk = async () => {
+    if (walkSaveState.loading) return;
+
+    if (!currentUser) {
+      setWalkSaveState({
+        loading: false,
+        type: "error",
+        message: "❌ Zaloguj się, aby zapisać spacer.",
+      });
+      return;
+    }
+
+    const dogId = String(selectedDog?.id ?? "").trim();
+    const dogName = String(selectedDog?.name ?? "").trim();
+
+    if (!dogId || !dogName) {
+      setWalkSaveState({
+        loading: false,
+        type: "error",
+        message: "❌ Brak imienia lub ID psa.",
+      });
+      return;
+    }
+
+    setWalkSaveState({ loading: true, type: "", message: "" });
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          action: "recordWalk",
+          dogName,
+          dogId,
+        }),
+      });
+      const result = await response.json();
+      const isSuccess =
+        response.ok &&
+        result?.ok === true &&
+        (result?.data?.success === true || result?.success === true);
+
+      if (!isSuccess) {
+        setWalkSaveState({
+          loading: false,
+          type: "error",
+          message:
+            "❌ Nie udało się zapisać spaceru. " +
+            (result?.error || "Spróbuj ponownie za chwilę."),
+        });
+        return;
+      }
+
+      setWalkSaveState({
+        loading: false,
+        type: "success",
+        message: "✅ Spacer zapisany.",
+      });
+      onSurveySaved && onSurveySaved(dogId);
+    } catch (error) {
+      console.error("Błąd zapisu spaceru:", error);
+      setWalkSaveState({
+        loading: false,
+        type: "error",
+        message: "❌ Błąd połączenia z serwerem.",
+      });
+    }
+  };
+
   return (
     <div style={styles.pageContainer}>
       <div style={styles.header}>
@@ -1621,12 +1698,32 @@ const DogCardView = ({
               </div>
             )}
             <button
-              onClick={() => setShowSurvey(true)}
-              style={styles.walkButton}
+              onClick={handleSaveWalk}
+              disabled={walkSaveState.loading}
+              style={{
+                ...styles.walkButton,
+                ...(walkSaveState.loading ? styles.walkButtonDisabled : {}),
+              }}
             >
               <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
-              Spacer
+              {walkSaveState.loading ? "Zapisywanie spaceru..." : "Zapisz spacer"}
             </button>
+            {walkSaveState.message && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor:
+                    walkSaveState.type === "success" ? "#dcfce7" : "#fee2e2",
+                  color: walkSaveState.type === "success" ? "#166534" : "#991b1b",
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                }}
+              >
+                {walkSaveState.message}
+              </div>
+            )}
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
                 <h3 style={styles.sectionTitle}>
@@ -1774,17 +1871,6 @@ const DogCardView = ({
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
       </div>
-      {showSurvey && (
-        <WalkSurvey
-          dog={selectedDog}
-          currentUser={currentUser}
-          onClose={() => setShowSurvey(false)}
-          onSave={() => {
-            setShowSurvey(false);
-            onSurveySaved && onSurveySaved(selectedDog.id);
-          }}
-        />
-      )}
     </div>
   );
 };
