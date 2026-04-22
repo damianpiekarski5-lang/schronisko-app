@@ -2315,7 +2315,7 @@ const handleLogin = async () => {
       )}
       {!isAuthEnabled && (
         <div style={{ padding: "0.75rem 1rem", backgroundColor: "#fff7ed", color: "#9a3412", borderBottom: "1px solid #fdba74" }}>
-          ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
+          ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_* lub FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
         </div>
       )}
       {currentView === "home" && (
