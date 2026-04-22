@@ -1,5 +1,15 @@
 import React, { useState } from "react";
-import { Search, X, Clock, AlertCircle, MapPin, Hash, Home, Star } from "lucide-react";
+import {
+  Search,
+  X,
+  Clock,
+  AlertCircle,
+  MapPin,
+  Hash,
+  Home,
+  Star,
+  Shield,
+} from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
 
 const styles = {
@@ -185,6 +195,7 @@ const HomeView = ({
   hoveredCard,
   setHoveredCard,
   setCurrentView,
+  isAdmin,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
 
@@ -363,6 +374,15 @@ const HomeView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );

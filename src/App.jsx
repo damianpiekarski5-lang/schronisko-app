@@ -13,12 +13,13 @@ import {
   Clock,
   Star,
   LogOut,
-  Brain,
+  Shield,
 } from "lucide-react";
 import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import BehavioristPanel from "./BehavioristPanel";
+import AdminPanelView from "./AdminPanelView";
+import BehaviorystDogCard from "./BehaviorystDogCard";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -28,6 +29,7 @@ import {
 } from "./firebase";
 import {
   onAuthStateChanged,
+  signInWithRedirect,
   signInWithPopup,
   signOut,
 } from "firebase/auth";
@@ -50,6 +52,8 @@ function isAdminEmail(email) {
   if (!email) return false;
   return getAdminEmails().includes(String(email).trim().toLowerCase());
 }
+
+const BEHAVIORYST_ASSIGN_EMAIL = "damian.piekarski5@gmail.com";
 
 const styles = {
   // Layout
@@ -1130,6 +1134,15 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1265,6 +1278,15 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1447,6 +1469,15 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1544,6 +1575,9 @@ const DogCardView = ({
   favoriteDogIds,
   onToggleFavorite,
   favoriteActionState,
+  behaviorystDogIds,
+  onToggleBehaviorystDog,
+  behaviorystActionState,
   isAdmin,
 }) => {
   const [showSurvey, setShowSurvey] = useState(false);
@@ -1555,6 +1589,13 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
+  const isBehaviorystOwner =
+    String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
+  const behaviorystIds = behaviorystDogIds instanceof Set ? behaviorystDogIds : new Set();
+  const behaviorystState = behaviorystActionState || { loading: false, dogId: "", error: "" };
+  const isBehaviorystDog = behaviorystIds.has(selectedDog.id);
+  const isBehaviorystToggleInProgress =
+    behaviorystState.loading && behaviorystState.dogId === selectedDog.id;
 
   return (
     <div style={styles.pageContainer}>
@@ -1647,6 +1688,20 @@ const DogCardView = ({
                 {favoriteActionState.error}
               </div>
             )}
+            {behaviorystState.error && isBehaviorystOwner && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: "#fee2e2",
+                  color: "#991b1b",
+                  fontSize: "0.875rem",
+                }}
+              >
+                {behaviorystState.error}
+              </div>
+            )}
             <button
               onClick={() => setShowSurvey(true)}
               style={styles.walkButton}
@@ -1682,6 +1737,29 @@ const DogCardView = ({
               <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
               Zgłoszenie do pracy behawioralnej
             </button>
+            {isBehaviorystOwner && (
+              <button
+                onClick={() => onToggleBehaviorystDog(selectedDog.id)}
+                disabled={!currentUser || isBehaviorystToggleInProgress}
+                style={{
+                  ...styles.walkButton,
+                  backgroundColor: isBehaviorystDog ? "#16a34a" : "#2563eb",
+                  boxShadow: isBehaviorystDog
+                    ? "0 2px 4px rgba(22, 163, 74, 0.3)"
+                    : "0 2px 4px rgba(37, 99, 235, 0.3)",
+                  ...((!currentUser || isBehaviorystToggleInProgress)
+                    ? styles.walkButtonDisabled
+                    : {}),
+                }}
+              >
+                <Star size={24} style={{ marginRight: "0.75rem" }} />
+                {isBehaviorystToggleInProgress
+                  ? "Zapisywanie..."
+                  : isBehaviorystDog
+                  ? "Odłącz z panelu behawiorysty"
+                  : "Rozpocznij pracę"}
+              </button>
+            )}
             <div
               style={{
                 display: "grid",
@@ -1811,6 +1889,15 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("panel")}
+          >
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
       {showSurvey && (
         <WalkSurvey
@@ -1852,6 +1939,12 @@ const [favoriteActionState, setFavoriteActionState] = useState({
   dogId: "",
   error: "",
 });
+const [behaviorystDogIds, setBehaviorystDogIds] = useState(new Set());
+const [behaviorystActionState, setBehaviorystActionState] = useState({
+  loading: false,
+  dogId: "",
+  error: "",
+});
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
@@ -1865,6 +1958,7 @@ useEffect(() => {
     setAuthReady(true);
     setCurrentUser(null);
     setFavoriteDogIds(new Set());
+    setBehaviorystDogIds(new Set());
     return undefined;
   }
 
@@ -1873,9 +1967,10 @@ useEffect(() => {
     setAuthReady(true);
     setLoginError("");
     if (user) {
-      await fetchMyDogs(user);
+      await Promise.all([fetchMyDogs(user), fetchBehaviorystDogs(user)]);
     } else {
       setFavoriteDogIds(new Set());
+      setBehaviorystDogIds(new Set());
     }
   });
 
@@ -1952,6 +2047,32 @@ useEffect(() => {
     }
   };
 
+
+  const fetchBehaviorystDogs = async (user = currentUser) => {
+    if (!user) {
+      setBehaviorystDogIds(new Set());
+      return;
+    }
+
+    try {
+      const token = await user.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "getBehaviorystDogs" }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true && Array.isArray(result?.data)) {
+        setBehaviorystDogIds(new Set(result.data.map((dog) => cleanText(dog?.id))));
+      }
+    } catch (error) {
+      console.error("Błąd pobierania psów panelu behawiorysty:", error);
+    }
+  };
+
   const handleToggleFavorite = async (dogId) => {
     if (!currentUser || !dogId) return;
 
@@ -1989,6 +2110,52 @@ useEffect(() => {
     }
   };
 
+
+  const handleToggleBehaviorystDog = async (dogId) => {
+    if (!currentUser || !dogId) return false;
+
+    setBehaviorystActionState({ loading: true, dogId, error: "" });
+
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ action: "toggleBehaviorystDog", dogId }),
+      });
+      const result = await response.json();
+      if (response.ok && result?.ok === true) {
+        await fetchBehaviorystDogs(currentUser);
+        setBehaviorystActionState({ loading: false, dogId: "", error: "" });
+        return true;
+      }
+
+      setBehaviorystActionState({
+        loading: false,
+        dogId: "",
+        error: result?.error || "Nie udało się zapisać zmiany w panelu behawiorysty.",
+      });
+      return false;
+    } catch (error) {
+      console.error("Błąd przypisywania psa do panelu behawiorysty:", error);
+      setBehaviorystActionState({
+        loading: false,
+        dogId: "",
+        error: "Wystąpił błąd połączenia podczas zapisywania. Spróbuj ponownie.",
+      });
+      return false;
+    }
+  };
+
+  const handleStartBehaviorystWork = async (dogId) => {
+    if (!dogId) return false;
+    if (behaviorystDogIds.has(dogId)) return true;
+    return handleToggleBehaviorystDog(dogId);
+  };
+
 const handleLogin = async () => {
   if (!isAuthEnabled) return;
 
@@ -1998,6 +2165,19 @@ const handleLogin = async () => {
     await signInWithPopup(auth, googleProvider);
   } catch (error) {
     console.error("Błąd logowania Google:", error);
+
+    if (
+      error?.code === "auth/popup-blocked" ||
+      error?.code === "auth/popup-closed-by-user" ||
+      error?.code === "auth/cancelled-popup-request"
+    ) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      } catch (redirectError) {
+        console.error("Błąd logowania Google przez przekierowanie:", redirectError);
+      }
+    }
 
     if (error?.code === "auth/configuration-not-found") {
       setLoginError(
@@ -2013,7 +2193,9 @@ const handleLogin = async () => {
       return;
     }
 
-    setLoginError("Nie udało się zalogować przez Google. Spróbuj ponownie za chwilę.");
+    setLoginError(
+      "Nie udało się zalogować przez Google. Jeśli jesteś na laptopie, sprawdź czy przeglądarka nie blokuje popupów i spróbuj ponownie."
+    );
   }
 };
 
@@ -2030,6 +2212,11 @@ const handleLogin = async () => {
   const handleDogClickFromDashboard = (dog) => {
     setSelectedDog(dog);
     setCurrentView("dogCard");
+  };
+
+  const handleOpenBehaviorystDogCard = (dog) => {
+    setSelectedDog(dog);
+    setCurrentView("behaviorystDogCard");
   };
 
   const handleSurveySaved = async (dogId) => {
@@ -2105,6 +2292,7 @@ const handleLogin = async () => {
   }
 
   const myDogs = dogs.filter((dog) => favoriteDogIds.has(dog.id));
+  const behaviorystDogs = dogs.filter((dog) => behaviorystDogIds.has(dog.id));
 
   return (
     <>
@@ -2122,13 +2310,6 @@ const handleLogin = async () => {
         <div style={{ padding: "0.75rem 1rem", backgroundColor: "#fff7ed", color: "#9a3412", borderBottom: "1px solid #fdba74" }}>
           ⚠️ Firebase nie jest skonfigurowany (REACT_APP_FIREBASE_*). Logowanie Google oraz "Moje psy" będą nieaktywne.
         </div>
-      )}
-      {currentView === "behaviorist" && isAdminUser && (
-        <BehavioristPanel
-          currentUser={currentUser}
-          dogs={dogs}
-          onBack={() => setCurrentView("home")}
-        />
       )}
       {currentView === "home" && (
         <HomeView
@@ -2185,7 +2366,18 @@ const handleLogin = async () => {
           favoriteDogIds={favoriteDogIds}
           onToggleFavorite={handleToggleFavorite}
           favoriteActionState={favoriteActionState}
+          behaviorystDogIds={behaviorystDogIds}
+          onToggleBehaviorystDog={handleToggleBehaviorystDog}
+          behaviorystActionState={behaviorystActionState}
           isAdmin={isAdminUser}
+        />
+      )}
+      {currentView === "behaviorystDogCard" && (
+        <BehaviorystDogCard
+          idPsa={selectedDog?.id}
+          getIdToken={() => currentUser?.getIdToken?.()}
+          currentUser={currentUser}
+          onBack={() => setCurrentView("panel")}
         />
       )}
       {currentView === "myDogs" && (
@@ -2199,28 +2391,18 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
         />
       )}
-      {isAdminUser && currentView !== "behaviorist" && (
-        <button
-          onClick={() => setCurrentView("behaviorist")}
-          style={{
-            position: "fixed",
-            right: "1rem",
-            bottom: "5.5rem",
-            zIndex: 250,
-            border: "none",
-            borderRadius: "9999px",
-            background: "#2563eb",
-            color: "white",
-            boxShadow: "0 10px 25px rgba(37,99,235,0.35)",
-            padding: "0.75rem 0.9rem",
-            display: "flex",
-            alignItems: "center",
-            gap: "0.45rem",
-            fontWeight: 700,
-          }}
-        >
-          <Brain size={18} /> Panel behawiorysty
-        </button>
+      {currentView === "panel" && isAdminUser && (
+        <AdminPanelView
+          currentUser={currentUser}
+          behaviorystDogs={behaviorystDogs}
+          dogs={dogs}
+          setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          onOpenBehaviorystDog={handleOpenBehaviorystDogCard}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+          onStartWork={handleStartBehaviorystWork}
+        />
       )}
     </>
   );
