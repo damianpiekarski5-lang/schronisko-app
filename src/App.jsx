@@ -29,6 +29,7 @@ import {
 } from "./firebase";
 import {
   onAuthStateChanged,
+  signInWithRedirect,
   signInWithPopup,
   signOut,
 } from "firebase/auth";
@@ -2165,6 +2166,19 @@ const handleLogin = async () => {
   } catch (error) {
     console.error("Błąd logowania Google:", error);
 
+    if (
+      error?.code === "auth/popup-blocked" ||
+      error?.code === "auth/popup-closed-by-user" ||
+      error?.code === "auth/cancelled-popup-request"
+    ) {
+      try {
+        await signInWithRedirect(auth, googleProvider);
+        return;
+      } catch (redirectError) {
+        console.error("Błąd logowania Google przez przekierowanie:", redirectError);
+      }
+    }
+
     if (error?.code === "auth/configuration-not-found") {
       setLoginError(
         "Firebase Auth nie jest poprawnie skonfigurowany dla tego projektu (CONFIGURATION_NOT_FOUND). Włącz metodę Google w Firebase Console → Authentication → Sign-in method oraz sprawdź czy używasz właściwego klucza API/projektu."
@@ -2179,7 +2193,9 @@ const handleLogin = async () => {
       return;
     }
 
-    setLoginError("Nie udało się zalogować przez Google. Spróbuj ponownie za chwilę.");
+    setLoginError(
+      "Nie udało się zalogować przez Google. Jeśli jesteś na laptopie, sprawdź czy przeglądarka nie blokuje popupów i spróbuj ponownie."
+    );
   }
 };
 
