@@ -255,7 +255,6 @@ const WalkSurvey = ({ dog, onClose, onSave, currentUser }) => {
       });
 
       const result = await response.json();
-      console.log("recordWalk response:", result);
 
       const isSuccess =
         result?.ok === true &&

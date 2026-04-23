@@ -46,18 +46,6 @@ export async function postGs(action, payload = {}, getIdToken) {
 }
 
 export const behaviorystApi = {
-  panelStart: (getIdToken) => postGs("panelStart", {}, getIdToken),
-  getDogCard: (idPsa, getIdToken) => postGs("getDogCard", { idPsa }, getIdToken),
   getBehaviorystDogs: (getIdToken) => postGs("getBehaviorystDogs", {}, getIdToken),
   toggleBehaviorystDog: (dogId, getIdToken) => postGs("toggleBehaviorystDog", { dogId }, getIdToken),
-  startBehaviorReport: (idZgloszenia, getIdToken) =>
-    postGs("startBehaviorReport", { idZgłoszenia: idZgloszenia }, getIdToken),
-  closeBehaviorReport: (payload, getIdToken) =>
-    postGs("closeBehaviorReport", payload, getIdToken),
-  saveBehaviorSession: (payload, getIdToken) =>
-    postGs("saveBehaviorSession", payload, getIdToken),
-  addPlannerSession: (payload, getIdToken) => postGs("addPlannerSession", payload, getIdToken),
-  addWorkPlan: (payload, getIdToken) => postGs("addWorkPlan", payload, getIdToken),
-  addExercise: (payload, getIdToken) => postGs("addExercise", payload, getIdToken),
-  addDogToTherapy: (payload, getIdToken) => postGs("addDogToTherapy", payload, getIdToken),
 };

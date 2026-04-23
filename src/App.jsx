@@ -19,7 +19,6 @@ import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
-import BehaviorystDogCard from "./BehaviorystDogCard";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -32,6 +31,7 @@ import {
   signInWithRedirect,
   signInWithPopup,
   signOut,
+  getRedirectResult,
 } from "firebase/auth";
 
 // Mobile-optimized styles
@@ -1962,6 +1962,18 @@ useEffect(() => {
     return undefined;
   }
 
+  getRedirectResult(auth).catch((error) => {
+    if (error?.code === "auth/unauthorized-domain") {
+      setLoginError(
+        "Ta domena nie jest dozwolona w Firebase Auth. Dodaj domenę aplikacji w Firebase Console → Authentication → Settings → Authorized domains."
+      );
+    } else if (error?.code && error.code !== "auth/null-user") {
+      setLoginError(
+        "Nie udało się zalogować przez Google: " + (error.message || error.code)
+      );
+    }
+  });
+
   const unsub = onAuthStateChanged(auth, async (user) => {
     setCurrentUser(user || null);
     setAuthReady(true);
@@ -2214,11 +2226,6 @@ const handleLogin = async () => {
     setCurrentView("dogCard");
   };
 
-  const handleOpenBehaviorystDogCard = (dog) => {
-    setSelectedDog(dog);
-    setCurrentView("behaviorystDogCard");
-  };
-
   const handleSurveySaved = async (dogId) => {
     const refreshedDogs = await fetchData();
     setSelectedDog((previousDog) => {
@@ -2372,14 +2379,6 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
         />
       )}
-      {currentView === "behaviorystDogCard" && (
-        <BehaviorystDogCard
-          idPsa={selectedDog?.id}
-          getIdToken={() => currentUser?.getIdToken?.()}
-          currentUser={currentUser}
-          onBack={() => setCurrentView("panel")}
-        />
-      )}
       {currentView === "myDogs" && (
         <MyDogsView
           myDogs={myDogs}
@@ -2398,7 +2397,6 @@ const handleLogin = async () => {
           dogs={dogs}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
-          onOpenBehaviorystDog={handleOpenBehaviorystDogCard}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           onStartWork={handleStartBehaviorystWork}
