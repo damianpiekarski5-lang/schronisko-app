@@ -215,7 +215,6 @@ const BehaviorReport = ({ dog, onClose, currentUser }) => {
       });
 
       const result = await response.json();
-      console.log("reportBehavior response:", result);
 
       if (result?.ok === true && result?.data?.success === true) {
         setMessage({
