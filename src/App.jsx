@@ -9,13 +9,13 @@ import {
   Hash,
   Home,
   ClipboardPlus,
-  ExternalLink,
+  CheckCircle,
   Clock,
   Star,
   LogOut,
   Shield,
+  Users,
 } from "lucide-react";
-import WalkSurvey from "./WalkSurvey";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
@@ -1586,8 +1586,68 @@ const DogCardView = ({
   behaviorystActionState,
   isAdmin,
 }) => {
-  const [showSurvey, setShowSurvey] = useState(false);
   const [showBehaviorReport, setShowBehaviorReport] = useState(false);
+  const [savingWalk, setSavingWalk] = useState(false);
+  const [walkMessage, setWalkMessage] = useState(null);
+  const [opiekunowie, setOpiekunowie] = useState([]);
+  const [togglingOpiekun, setTogglingOpiekun] = useState(false);
+
+  useEffect(() => {
+    if (!selectedDog?.id) return;
+    fetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`)
+      .then((r) => r.json())
+      .then((result) => {
+        if (result?.ok && Array.isArray(result?.data)) setOpiekunowie(result.data);
+      })
+      .catch(() => {});
+  }, [selectedDog?.id]);
+
+  const handleSaveWalk = async () => {
+    if (!currentUser || savingWalk) return;
+    setSavingWalk(true);
+    setWalkMessage(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const response = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name }),
+      });
+      const result = await response.json();
+      if (result?.ok) {
+        setWalkMessage({ type: "success", text: "✅ Spacer zapisany!" });
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setWalkMessage(null), 3000);
+      } else {
+        setWalkMessage({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu spaceru") });
+      }
+    } catch {
+      setWalkMessage({ type: "error", text: "❌ Błąd połączenia" });
+    } finally {
+      setSavingWalk(false);
+    }
+  };
+
+  const handleToggleOpiekun = async () => {
+    if (!currentUser || togglingOpiekun) return;
+    setTogglingOpiekun(true);
+    try {
+      const token = await currentUser.getIdToken();
+      await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "toggleOpiekun", dogId: selectedDog.id }),
+      });
+      const r2 = await fetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const r2json = await r2.json();
+      if (r2json?.ok && Array.isArray(r2json?.data)) setOpiekunowie(r2json.data);
+    } catch {
+    } finally {
+      setTogglingOpiekun(false);
+    }
+  };
+
+  const isOpiekun = opiekunowie.some((o) => o.uid === currentUser?.uid);
 
   if (!selectedDog) return null;
 
@@ -1650,6 +1710,11 @@ const DogCardView = ({
             <p style={{ color: "rgba(255,255,255,0.9)", fontSize: "1rem" }}>
               {selectedDog.breed}
             </p>
+            {opiekunowie.length > 0 && (
+              <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
+                👤 {opiekunowie.map((o) => o.displayName || o.email).join(" · ")}
+              </p>
+            )}
           </div>
           <div style={{ padding: "1.5rem", paddingBottom: 0 }}>
             <DogPhoto
@@ -1709,12 +1774,31 @@ const DogCardView = ({
               </div>
             )}
             <button
-              onClick={() => setShowSurvey(true)}
-              style={styles.walkButton}
+              onClick={handleSaveWalk}
+              disabled={!currentUser || savingWalk}
+              style={{
+                ...styles.walkButton,
+                ...(!currentUser || savingWalk ? styles.walkButtonDisabled : {}),
+              }}
             >
-              <ExternalLink size={24} style={{ marginRight: "0.75rem" }} />
-              Spacer
+              <CheckCircle size={24} style={{ marginRight: "0.75rem" }} />
+              {savingWalk ? "Zapisywanie..." : "Zapisz spacer"}
             </button>
+            {walkMessage && (
+              <div
+                style={{
+                  marginBottom: "1rem",
+                  padding: "0.75rem",
+                  borderRadius: "0.75rem",
+                  backgroundColor: walkMessage.type === "success" ? "#dcfce7" : "#fee2e2",
+                  color: walkMessage.type === "success" ? "#166534" : "#991b1b",
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                }}
+              >
+                {walkMessage.text}
+              </div>
+            )}
             {formattedLastWalk && (
               <div style={styles.sectionYellow}>
                 <h3 style={styles.sectionTitle}>
@@ -1742,6 +1826,25 @@ const DogCardView = ({
             >
               <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
               Zgłoszenie do pracy behawioralnej
+            </button>
+            <button
+              onClick={handleToggleOpiekun}
+              disabled={!currentUser || togglingOpiekun}
+              style={{
+                ...styles.walkButton,
+                backgroundColor: isOpiekun ? "#16a34a" : "#6b7280",
+                boxShadow: isOpiekun
+                  ? "0 2px 4px rgba(22,163,74,0.3)"
+                  : "0 2px 4px rgba(107,114,128,0.3)",
+                ...(!currentUser || togglingOpiekun ? styles.walkButtonDisabled : {}),
+              }}
+            >
+              <Users size={24} style={{ marginRight: "0.75rem" }} />
+              {togglingOpiekun
+                ? "Zapisywanie..."
+                : isOpiekun
+                ? "Jesteś opiekunem psa ✓"
+                : "Zostań opiekunem psa"}
             </button>
             {isBehaviorystOwner && (
               <button
@@ -1905,17 +2008,6 @@ const DogCardView = ({
           </button>
         )}
       </div>
-      {showSurvey && (
-        <WalkSurvey
-          dog={selectedDog}
-          currentUser={currentUser}
-          onClose={() => setShowSurvey(false)}
-          onSave={() => {
-            setShowSurvey(false);
-            onSurveySaved && onSurveySaved(selectedDog.id);
-          }}
-        />
-      )}
       {showBehaviorReport && (
         <BehaviorReport
           dog={selectedDog}
