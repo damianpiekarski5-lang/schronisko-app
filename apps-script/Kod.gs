@@ -12,6 +12,7 @@ const ARCHIVE_SHEET_NAME = "Archiwum";
 const ARCHIVE_HEADER_NAME = "Archiwum";
 const FAVORITES_SHEET_NAME = "Favorites";
 const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
+const OPIEKUNOWIE_SHEET_NAME = "Opiekunowie";
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 const REPORT_RESOLVED_STATUSES = ["W_PRACY", "ODRZUCONE", "ROZPATRZONE", "ZAAKCEPTOWANE"];
@@ -48,6 +49,11 @@ function doGet(e) {
     if (action === "getDogs") {
       const includeArchived = String(e?.parameter?.includeArchived || "false") === "true";
       return json({ ok: true, data: getDogs(includeArchived) });
+    }
+
+    if (action === "getOpiekunowie") {
+      const dogId = safeStr(e?.parameter?.dogId);
+      return json({ ok: true, data: getOpiekunowie(dogId) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -102,6 +108,10 @@ function doPost(e) {
 
     if (action === "adminUpdateBehaviorReport") {
       return json({ ok: true, data: adminUpdateBehaviorReport(payload) });
+    }
+
+    if (action === "toggleOpiekun") {
+      return json({ ok: true, data: toggleOpiekun(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -501,6 +511,53 @@ function getBehaviorystDogs(payload) {
   });
 
   return dogIds.map((dogId) => byId[dogId]).filter(Boolean);
+}
+
+// ===============================
+// CORE – OPIEKUNOWIE
+// ===============================
+function getOpiekunowie(dogId) {
+  if (!dogId) return [];
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, OPIEKUNOWIE_SHEET_NAME);
+  ensureHeaders(sh, ["uid", "dogId", "displayName", "email", "addedAt"]);
+
+  const values = sh.getDataRange().getValues().slice(1);
+  return values
+    .filter((row) => safeStr(row[1]) === safeStr(dogId))
+    .map((row) => ({
+      uid: safeStr(row[0]),
+      dogId: safeStr(row[1]),
+      displayName: safeStr(row[2]),
+      email: safeStr(row[3]),
+      addedAt: safeStr(row[4]),
+    }));
+}
+
+function toggleOpiekun(payload) {
+  const uid = safeStr(payload?.user?.uid);
+  const dogId = safeStr(payload?.dogId);
+  const displayName = safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email);
+  const email = safeStr(payload?.user?.email);
+
+  if (!uid) throw new Error("Brak uid użytkownika");
+  if (!dogId) throw new Error("Brak dogId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, OPIEKUNOWIE_SHEET_NAME);
+  ensureHeaders(sh, ["uid", "dogId", "displayName", "email", "addedAt"]);
+
+  const values = sh.getDataRange().getValues();
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][0]) === uid && safeStr(values[i][1]) === dogId) {
+      sh.deleteRow(i + 1);
+      return { success: true, isOpiekun: false, dogId };
+    }
+  }
+
+  sh.appendRow([uid, dogId, displayName, email, nowInPolandText()]);
+  return { success: true, isOpiekun: true, dogId };
 }
 
 function validateSharedSecret(payload) {
