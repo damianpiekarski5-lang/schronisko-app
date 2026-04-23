@@ -1562,6 +1562,12 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {isAdmin && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("panel")}>
+            <Shield size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
       </div>
     </div>
   );
