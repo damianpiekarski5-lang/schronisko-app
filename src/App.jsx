@@ -1591,6 +1591,16 @@ const DogCardView = ({
   const [walkMessage, setWalkMessage] = useState(null);
   const [opiekunowie, setOpiekunowie] = useState([]);
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
+  const [lastWalkInfo, setLastWalkInfo] = useState(null);
+
+  useEffect(() => {
+    if (!selectedDog?.id) return;
+    setLastWalkInfo(null);
+    fetch(`/api/gs?action=getLastWalkInfo&dogId=${encodeURIComponent(selectedDog.id)}`)
+      .then((r) => r.json())
+      .then((result) => { if (result?.ok && result?.data) setLastWalkInfo(result.data); })
+      .catch(() => {});
+  }, [selectedDog?.id]);
 
   useEffect(() => {
     if (!selectedDog?.id) return;
@@ -1805,15 +1815,14 @@ const DogCardView = ({
                   <Clock size={20} style={{ marginRight: "0.5rem" }} />
                   Ostatni spacer
                 </h3>
-                <p
-                  style={{
-                    color: "#374151",
-                    fontSize: "1.125rem",
-                    fontWeight: "600",
-                  }}
-                >
+                <p style={{ color: "#374151", fontSize: "1.125rem", fontWeight: "600" }}>
                   {formattedLastWalk}
                 </p>
+                {lastWalkInfo?.volunteer && (
+                  <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>
+                    👤 {lastWalkInfo.volunteer}
+                  </p>
+                )}
               </div>
             )}
             <button
