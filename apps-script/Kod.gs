@@ -62,6 +62,10 @@ function doGet(e) {
       return json({ ok: true, data: getDogHistory(safeStr(e?.parameter?.dogId)) });
     }
 
+    if (action === "getLastWalkInfo") {
+      return json({ ok: true, data: getLastWalkInfo(safeStr(e?.parameter?.dogId)) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -594,6 +598,7 @@ function moveRowBetweenSheets_(sourceSheet, sourceRow, targetSheetName, archiveC
 }
 
 // ===============================
+<<<<<<< Updated upstream
 // CORE – HISTORIA PSA
 // ===============================
 function addDogHistory(payload) {
@@ -626,6 +631,28 @@ function getDogHistory(dogId) {
       headers.forEach((h, i) => { if (safeStr(h)) item[safeStr(h)] = row[i]; });
       return item;
     }).reverse();
+=======
+// CORE – LAST WALK INFO
+// ===============================
+function getLastWalkInfo(dogId) {
+  if (!dogId) return null;
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh) return null;
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return null;
+  const map = headerMap(values[0]);
+  let lastWalk = null;
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][map["DogId"]]) === safeStr(dogId)) {
+      lastWalk = {
+        date: safeStr(values[i][map["Data spaceru"]]),
+        volunteer: safeStr(values[i][map["Wolontariusz"]]),
+      };
+    }
+  }
+  return lastWalk;
+>>>>>>> Stashed changes
 }
 
 // ===============================
