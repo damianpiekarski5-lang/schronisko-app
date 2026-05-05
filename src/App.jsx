@@ -1611,7 +1611,7 @@ const DogCardView = ({
       const response = await fetch("/api/gs", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name }),
+        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name, notes: "" }),
       });
       const result = await response.json();
       if (result?.ok) {
@@ -1929,6 +1929,12 @@ const DogCardView = ({
                   </div>
                 </div>
               )}
+              {selectedDog.weight && (
+                <div style={styles.infoBox}>
+                  <div style={styles.infoLabel}>⚖️ Waga</div>
+                  <div style={styles.infoValue}>{selectedDog.weight}</div>
+                </div>
+              )}
             </div>
             {selectedDog.appearance && (
               <div style={styles.sectionBlue}>
@@ -2112,6 +2118,7 @@ useEffect(() => {
           notes: cleanText(dog?.extra),
           photo: normalizePhotoUrl(dog?.photo),
           lastWalk: cleanText(dog?.lastWalk),
+          weight: cleanText(dog?.weight),
         }))
         .filter((dog) => dog.name && dog.pavilion)
         .reduce((acc, dog) => {

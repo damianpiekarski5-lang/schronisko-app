@@ -13,6 +13,7 @@ const ARCHIVE_HEADER_NAME = "Archiwum";
 const FAVORITES_SHEET_NAME = "Favorites";
 const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
 const OPIEKUNOWIE_SHEET_NAME = "Opiekunowie";
+const HISTORY_SHEET_NAME = "HistoriaPsa";
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 const REPORT_RESOLVED_STATUSES = ["W_PRACY", "ODRZUCONE", "ROZPATRZONE", "ZAAKCEPTOWANE"];
@@ -33,6 +34,7 @@ const H = {
   PHOTO: "Zdjęcie",
   LAST_WALK: "Ostatni spacer",
   ARCHIVE: "Archiwum",
+  WEIGHT: "WAGA",
 };
 
 // ===============================
@@ -54,6 +56,10 @@ function doGet(e) {
     if (action === "getOpiekunowie") {
       const dogId = safeStr(e?.parameter?.dogId);
       return json({ ok: true, data: getOpiekunowie(dogId) });
+    }
+
+    if (action === "getDogHistory") {
+      return json({ ok: true, data: getDogHistory(safeStr(e?.parameter?.dogId)) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -112,6 +118,11 @@ function doPost(e) {
 
     if (action === "toggleOpiekun") {
       return json({ ok: true, data: toggleOpiekun(payload) });
+    }
+
+    if (action === "addDogHistory") {
+      addDogHistory(payload);
+      return json({ ok: true, data: { success: true } });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -175,6 +186,7 @@ function getDogs(includeArchived) {
       extra: safeStr(row[map[H.EXTRA]]),
       photo: safeStr(row[map[H.PHOTO]]),
       lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
+      weight: safeStr(row[map[H.WEIGHT]]),
       archived,
     });
   }
@@ -233,16 +245,8 @@ function recordWalk(payload) {
     "Pawilon",
     "Boks",
     "Wolontariusz",
-    "Kontakt",
-    "Smycz",
-    "Psy",
-    "Ludzie",
-    "Ruch",
-    "Stan emocjonalny",
     "Uwagi",
   ]);
-
-  const responses = payload?.responses || {};
 
   walksSheet.appendRow([
     now,
@@ -251,13 +255,7 @@ function recordWalk(payload) {
     safeStr(dogRow[map[H.PAVILION]]),
     safeStr(dogRow[map[H.KENNEL]]),
     safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email) || "Wolontariusz",
-    safeStr(responses.contact || payload?.contact),
-    safeStr(responses.walking || payload?.walking),
-    safeStr(responses.dogs || payload?.dogs),
-    safeStr(responses.people || payload?.people),
-    safeStr(responses.traffic || payload?.traffic),
-    safeStr(responses.emotionalState || payload?.emotionalState),
-    safeStr(responses.notes || payload?.notes),
+    safeStr(payload?.notes),
   ]);
 
   dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
@@ -275,13 +273,7 @@ function reportBehavior(payload) {
     "dogName",
     "dogId",
     "volunteerName",
-    "reason",
-    "incident3P",
-    "tagsEmotions",
-    "tagsRelations",
-    "tagsWelfare",
-    "risk",
-    "priority",
+    "opis",
     "status",
     "resolved",
     "reviewedAt",
@@ -293,13 +285,7 @@ function reportBehavior(payload) {
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
     safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email),
-    safeStr(payload?.reason),
-    safeStr(payload?.incident3P),
-    safeStr(payload?.tagsEmotions),
-    safeStr(payload?.tagsRelations),
-    safeStr(payload?.tagsWelfare),
-    safeStr(payload?.risk),
-    safeStr(payload?.priority),
+    safeStr(payload?.opis),
     "NOWE",
     false,
     "",
@@ -316,13 +302,7 @@ function adminGetBehaviorReports() {
     "dogName",
     "dogId",
     "volunteerName",
-    "reason",
-    "incident3P",
-    "tagsEmotions",
-    "tagsRelations",
-    "tagsWelfare",
-    "risk",
-    "priority",
+    "opis",
     "status",
     "resolved",
     "reviewedAt",
@@ -349,13 +329,12 @@ function adminGetBehaviorReports() {
       item.resolved = toBoolean_(item.resolved);
       item.dogId = safeStr(item.dogId);
       item.dogName = safeStr(item.dogName);
-      item.reason = safeStr(item.reason);
-      item.incident3P = safeStr(item.incident3P);
+      item.reason = safeStr(item.opis);
       item.volunteerName = safeStr(item.volunteerName);
 
       return item;
     })
-    .filter((item) => item.dogId || item.dogName || item.reason || item.incident3P)
+    .filter((item) => item.dogId || item.dogName || item.reason)
     .reverse();
 }
 
@@ -372,13 +351,7 @@ function adminUpdateBehaviorReport(payload) {
     "dogName",
     "dogId",
     "volunteerName",
-    "reason",
-    "incident3P",
-    "tagsEmotions",
-    "tagsRelations",
-    "tagsWelfare",
-    "risk",
-    "priority",
+    "opis",
     "status",
     "resolved",
     "reviewedAt",
@@ -577,14 +550,6 @@ function onEdit(e) {
   handleArchiveCheckboxEdit(e.range, e.value);
 }
 
-function testOnEditArchiveFromCurrentCell() {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getActiveSheet();
-  const range = sheet.getActiveCell();
-  const value = String(range.getValue());
-  handleArchiveCheckboxEdit(range, value);
-}
-
 function handleArchiveCheckboxEdit(range, rawValue) {
   const sheet = range.getSheet();
   const row = range.getRow();
@@ -626,6 +591,41 @@ function moveRowBetweenSheets_(sourceSheet, sourceRow, targetSheetName, archiveC
   targetSheet.getRange(targetRow, archiveCol).setValue(archiveChecked);
 
   sourceSheet.deleteRow(sourceRow);
+}
+
+// ===============================
+// CORE – HISTORIA PSA
+// ===============================
+function addDogHistory(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const kategoria = safeStr(payload?.kategoria);
+  if (!dogId) throw new Error("Brak dogId");
+  if (!kategoria) throw new Error("Brak kategorii");
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, HISTORY_SHEET_NAME);
+  ensureHeaders(sh, ["timestamp","dogId","dogName","kategoria","wartość","uwagi","autor"]);
+  sh.appendRow([
+    nowInPolandText(), dogId, safeStr(payload?.dogName),
+    kategoria, safeStr(payload?.wartosc), safeStr(payload?.uwagi),
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email),
+  ]);
+}
+
+function getDogHistory(dogId) {
+  if (!dogId) return [];
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(HISTORY_SHEET_NAME);
+  if (!sh) return [];
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const headers = values[0];
+  return values.slice(1)
+    .filter(row => safeStr(row[1]) === safeStr(dogId))
+    .map(row => {
+      const item = {};
+      headers.forEach((h, i) => { if (safeStr(h)) item[safeStr(h)] = row[i]; });
+      return item;
+    }).reverse();
 }
 
 // ===============================
@@ -681,7 +681,7 @@ function getOrCreateSheet(ss, sheetName) {
 function ensureHeaders(sheet, headers) {
   if (sheet.getLastRow() === 0) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    if (sheet.getName() === WALKS_SHEET_NAME) sheet.setFrozenRows(1);
+    sheet.setFrozenRows(1);
     return;
   }
 
@@ -690,6 +690,6 @@ function ensureHeaders(sheet, headers) {
 
   if (!matches) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    if (sheet.getName() === WALKS_SHEET_NAME) sheet.setFrozenRows(1);
+    sheet.setFrozenRows(1);
   }
 }
