@@ -21,18 +21,28 @@ const styles = {
   content: { padding: "1.5rem" },
   label: { display: "block", fontSize: "0.875rem", fontWeight: "600", color: "#374151", marginBottom: "0.5rem" },
   required: { color: "#ef4444", marginLeft: "0.25rem" },
+  textareaWrapper: { position: "relative" },
   textarea: {
     width: "100%",
     padding: "0.75rem",
+    paddingBottom: "1.75rem",
     border: "2px solid #e5e7eb",
     borderRadius: "0.5rem",
     fontSize: "0.95rem",
     outline: "none",
-    minHeight: "140px",
+    minHeight: "160px",
     resize: "vertical",
     fontFamily: "inherit",
+    boxSizing: "border-box",
   },
-  helper: { color: "#6b7280", fontSize: "0.8rem", marginTop: "0.35rem" },
+  counter: {
+    position: "absolute",
+    bottom: "0.4rem",
+    right: "0.6rem",
+    fontSize: "0.75rem",
+    color: "#9ca3af",
+    pointerEvents: "none",
+  },
   successMessage: { padding: "1rem", backgroundColor: "#dcfce7", color: "#166534", borderRadius: "0.5rem", marginBottom: "1rem", textAlign: "center", fontWeight: "700" },
   errorMessage: { padding: "1rem", backgroundColor: "#fee2e2", color: "#991b1b", borderRadius: "0.5rem", marginBottom: "1rem", textAlign: "center", fontWeight: "700" },
   saveButton: {
@@ -48,16 +58,18 @@ const styles = {
   saveButtonDisabled: { backgroundColor: "#9ca3af", cursor: "not-allowed", boxShadow: "none" },
 };
 
+const MAX_CHARS = 800;
+
 const BehaviorReport = ({ dog, onClose, currentUser }) => {
   const [opis, setOpis] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState(null);
 
-  const isValid = opis.trim().length > 5;
+  const isValid = opis.trim().length >= 10;
 
   const handleSave = async () => {
     if (!isValid) {
-      setMessage({ type: "error", text: "❌ Opisz problem (minimum 6 znaków)." });
+      setMessage({ type: "error", text: "❌ Opisz problem (minimum 10 znaków)." });
       return;
     }
     if (!currentUser) {
@@ -77,13 +89,7 @@ const BehaviorReport = ({ dog, onClose, currentUser }) => {
           action: "reportBehavior",
           dogName: dog?.name || "",
           dogId: dog?.id || "",
-          reason: opis.trim(),
-          incident3P: "",
-          tagsEmotions: "",
-          tagsRelations: "",
-          tagsWelfare: "",
-          risk: "",
-          priority: "Do konsultacji",
+          opis: opis.trim(),
         }),
       });
 
@@ -96,11 +102,14 @@ const BehaviorReport = ({ dog, onClose, currentUser }) => {
         setMessage({ type: "error", text: "❌ " + (result?.error || "Nie udało się zapisać zgłoszenia") });
       }
     } catch {
-      setMessage({ type: "error", text: "❌ Błąd połączenia" });
+      setMessage({ type: "error", text: "❌ Błąd połączenia. Spróbuj ponownie." });
     } finally {
       setSaving(false);
     }
   };
+
+  const location = [dog?.pavilion, dog?.box ? `Boks ${dog.box}` : ""].filter(Boolean).join(" / ");
+  const subtitle = [dog?.name, location].filter(Boolean).join(" · ");
 
   return (
     <div style={styles.overlay}>
@@ -110,7 +119,7 @@ const BehaviorReport = ({ dog, onClose, currentUser }) => {
             <div style={styles.headerTop}>
               <div>
                 <h2 style={styles.title}>🧠 Zgłoszenie do behawiorysty</h2>
-                <p style={styles.subtitle}>{dog?.name} ({dog?.id})</p>
+                <p style={styles.subtitle}>{subtitle}</p>
               </div>
               <button onClick={onClose} style={styles.closeButton}><X size={24} /></button>
             </div>
@@ -124,16 +133,18 @@ const BehaviorReport = ({ dog, onClose, currentUser }) => {
             )}
 
             <label style={styles.label}>
-              Na czym polega problem?<span style={styles.required}> *</span>
+              Opisz problem behawioralny<span style={styles.required}> *</span>
             </label>
-            <textarea
-              value={opis}
-              onChange={(e) => setOpis(e.target.value.slice(0, 600))}
-              style={styles.textarea}
-              placeholder="Opisz zachowanie psa, które Twoim zdaniem wymaga konsultacji behawioralnej..."
-              autoFocus
-            />
-            <div style={styles.helper}>{opis.length}/600 znaków</div>
+            <div style={styles.textareaWrapper}>
+              <textarea
+                value={opis}
+                onChange={(e) => setOpis(e.target.value.slice(0, MAX_CHARS))}
+                style={styles.textarea}
+                placeholder="Opisz zachowanie psa, które Twoim zdaniem wymaga konsultacji behawioralnej..."
+                autoFocus
+              />
+              <span style={styles.counter}>{opis.length}/{MAX_CHARS}</span>
+            </div>
 
             <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "1rem" }}>
               Twoje imię i czas zgłoszenia zostaną zapisane automatycznie z konta Google.
