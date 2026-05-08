@@ -19,6 +19,7 @@ import {
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
+import MapEditor from "./MapEditor";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -873,16 +874,17 @@ const MapView = ({
         ) : (
           <>
             <div style={styles.card}>
-              <h2
-                style={{
-                  fontSize: "1.125rem",
-                  fontWeight: "bold",
-                  color: "#111827",
-                  marginBottom: "1rem",
-                }}
-              >
-                🗺️ Mapa pawilonów
-              </h2>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+                <h2 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "#111827", margin: 0 }}>
+                  🗺️ Mapa pawilonów
+                </h2>
+                <button
+                  onClick={() => setCurrentView("mapEditor")}
+                  style={{ padding: "0.4rem 0.75rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "0.5rem", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
+                >
+                  ✏️ Edytuj mapę
+                </button>
+              </div>
               <p
                 style={{
                   fontSize: "0.875rem",
@@ -2495,6 +2497,9 @@ const handleLogin = async () => {
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
         />
+      )}
+      {currentView === "mapEditor" && (
+        <MapEditor onBack={() => setCurrentView("map")} />
       )}
       {currentView === "panel" && isAdminUser && (
         <AdminPanelView
