@@ -598,7 +598,6 @@ function moveRowBetweenSheets_(sourceSheet, sourceRow, targetSheetName, archiveC
 }
 
 // ===============================
-<<<<<<< Updated upstream
 // CORE – HISTORIA PSA
 // ===============================
 function addDogHistory(payload) {
@@ -631,7 +630,9 @@ function getDogHistory(dogId) {
       headers.forEach((h, i) => { if (safeStr(h)) item[safeStr(h)] = row[i]; });
       return item;
     }).reverse();
-=======
+}
+
+// ===============================
 // CORE – LAST WALK INFO
 // ===============================
 function getLastWalkInfo(dogId) {
@@ -652,7 +653,6 @@ function getLastWalkInfo(dogId) {
     }
   }
   return lastWalk;
->>>>>>> Stashed changes
 }
 
 // ===============================
