@@ -166,6 +166,8 @@ function getDogs(includeArchived) {
   const map = headerMap(values[0]);
   requireHeaders(map, [H.ID, H.NAME, H.ARCHIVE]);
 
+  const lastVolunteerMap = buildLastVolunteerMap_(ss);
+
   const out = [];
   for (let r = 1; r < values.length; r++) {
     const row = values[r];
@@ -190,12 +192,28 @@ function getDogs(includeArchived) {
       extra: safeStr(row[map[H.EXTRA]]),
       photo: safeStr(row[map[H.PHOTO]]),
       lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
+      lastVolunteer: lastVolunteerMap[dogId] || "",
       weight: safeStr(row[map[H.WEIGHT]]),
       archived,
     });
   }
 
   return out;
+}
+
+function buildLastVolunteerMap_(ss) {
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh) return {};
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return {};
+  const wMap = headerMap(values[0]);
+  const result = {};
+  for (let i = 1; i < values.length; i++) {
+    const dogId = safeStr(values[i][wMap["DogId"]]);
+    const vol = safeStr(values[i][wMap["Wolontariusz"]]);
+    if (dogId && vol) result[dogId] = vol;
+  }
+  return result;
 }
 
 function setArchive(payload) {

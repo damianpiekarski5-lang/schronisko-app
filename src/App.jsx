@@ -1591,16 +1591,6 @@ const DogCardView = ({
   const [walkMessage, setWalkMessage] = useState(null);
   const [opiekunowie, setOpiekunowie] = useState([]);
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
-  const [lastWalkInfo, setLastWalkInfo] = useState(null);
-
-  useEffect(() => {
-    if (!selectedDog?.id) return;
-    setLastWalkInfo(null);
-    fetch(`/api/gs?action=getLastWalkInfo&dogId=${encodeURIComponent(selectedDog.id)}`)
-      .then((r) => r.json())
-      .then((result) => { if (result?.ok && result?.data) setLastWalkInfo(result.data); })
-      .catch(() => {});
-  }, [selectedDog?.id]);
 
   useEffect(() => {
     if (!selectedDog?.id) return;
@@ -1627,7 +1617,6 @@ const DogCardView = ({
       if (result?.ok) {
         const volunteerName = currentUser.displayName || currentUser.email || "Wolontariusz";
         setWalkMessage({ type: "success", text: `✅ Spacer zapisany przez ${volunteerName}!` });
-        setLastWalkInfo({ date: new Date().toLocaleString("pl-PL"), volunteer: volunteerName });
         onSurveySaved?.(selectedDog.id);
         setTimeout(() => setWalkMessage(null), 5000);
       } else {
@@ -1820,9 +1809,9 @@ const DogCardView = ({
                 <p style={{ color: "#374151", fontSize: "1.125rem", fontWeight: "600" }}>
                   {formattedLastWalk}
                 </p>
-                {lastWalkInfo?.volunteer && (
+                {selectedDog.lastVolunteer && (
                   <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-                    👤 {lastWalkInfo.volunteer}
+                    👤 {selectedDog.lastVolunteer}
                   </p>
                 )}
               </div>
@@ -2129,6 +2118,7 @@ useEffect(() => {
           notes: cleanText(dog?.extra),
           photo: normalizePhotoUrl(dog?.photo),
           lastWalk: cleanText(dog?.lastWalk),
+          lastVolunteer: cleanText(dog?.lastVolunteer),
           weight: cleanText(dog?.weight),
         }))
         .filter((dog) => dog.name && dog.pavilion)
