@@ -59,6 +59,10 @@ function normalizeResult(raw, status = 200) {
     return { ok: true, data: { success: true } };
   }
 
+  if (raw?.ok === true) {
+    return { ok: true, data: raw.data ?? null };
+  }
+
   if (raw?.ok === false) {
     return { ok: false, error: raw?.error || "Błąd backendu" };
   }
