@@ -1785,7 +1785,7 @@ const DogCardView = ({
               }}
             >
               <CheckCircle size={24} style={{ marginRight: "0.75rem" }} />
-              {savingWalk ? "Zapisywanie..." : "Zapisz spacer"}
+              {savingWalk ? "Zapisywanie..." : "Wychodzę z psem 🦮"}
             </button>
             {walkMessage && (
               <div
