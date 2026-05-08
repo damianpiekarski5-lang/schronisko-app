@@ -20,6 +20,7 @@ import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
 import MapEditor from "./MapEditor";
+import InstallPrompt from "./InstallPrompt";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -2411,6 +2412,7 @@ const handleLogin = async () => {
 
   return (
     <>
+      <InstallPrompt />
       {isAuthEnabled && currentUser && (
         <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
           <button
