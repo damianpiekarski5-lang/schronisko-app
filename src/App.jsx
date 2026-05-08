@@ -1625,9 +1625,11 @@ const DogCardView = ({
       });
       const result = await response.json();
       if (result?.ok) {
-        setWalkMessage({ type: "success", text: "✅ Spacer zapisany!" });
+        const volunteerName = currentUser.displayName || currentUser.email || "Wolontariusz";
+        setWalkMessage({ type: "success", text: `✅ Spacer zapisany przez ${volunteerName}!` });
+        setLastWalkInfo({ date: new Date().toLocaleString("pl-PL"), volunteer: volunteerName });
         onSurveySaved?.(selectedDog.id);
-        setTimeout(() => setWalkMessage(null), 3000);
+        setTimeout(() => setWalkMessage(null), 5000);
       } else {
         setWalkMessage({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu spaceru") });
       }
