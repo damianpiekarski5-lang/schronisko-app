@@ -170,10 +170,10 @@ const DogPhoto = ({ photo, name }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: "4rem",
+          backgroundColor: "#f3f4f6",
         }}
       >
-        🐕
+        <img src="/icon-192.png" alt="pies" style={{ width: "60%", opacity: 0.25 }} />
       </div>
     );
   }
@@ -249,7 +249,10 @@ const HomeView = ({
 
       <div style={styles.header}>
         <div style={styles.headerContent}>
-          <h1 style={styles.title}>🐕 Psy w schronisku</h1>
+          <h1 style={{ ...styles.title, display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <img src="/icon-192.png" alt="logo" style={{ width: "2rem", height: "2rem", borderRadius: "6px" }} />
+            Psy w schronisku
+          </h1>
           <p style={styles.subtitle}>{dogs.length} psów czeka na spacer</p>
 
           <div style={styles.searchContainer}>

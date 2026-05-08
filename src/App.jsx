@@ -603,11 +603,15 @@ const DogPhoto = ({ photo, name, size = "normal" }) => {
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          fontSize: size === "large" ? "6rem" : "4rem",
           marginBottom: size === "large" ? "0" : "1rem",
+          backgroundColor: "#f3f4f6",
         }}
       >
-        🐕
+        <img
+          src="/icon-192.png"
+          alt="pies"
+          style={{ width: size === "large" ? "50%" : "60%", opacity: 0.25 }}
+        />
       </div>
     );
   }
