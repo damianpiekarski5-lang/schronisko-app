@@ -2325,7 +2325,9 @@ useEffect(() => {
       setCurrentView("boxes");
     } else if (view === "boxes") {
       setCurrentView("map");
-    } else if (["map", "myDogs", "panel", "mapEditor"].includes(view)) {
+    } else if (["map", "myDogs", "mapEditor"].includes(view)) {
+      setCurrentView("home");
+    } else if (view === "panel") {
       setCurrentView("home");
     }
     history.pushState(null, "", window.location.href);
@@ -2477,6 +2479,14 @@ useEffect(() => {
 
     setFavoriteActionState({ loading: true, dogId, error: "" });
 
+    const wasFavorite = favoriteDogIds.has(dogId);
+    setFavoriteDogIds((prev) => {
+      const next = new Set(prev);
+      if (wasFavorite) next.delete(dogId);
+      else next.add(dogId);
+      return next;
+    });
+
     try {
       const token = await currentUser.getIdToken();
       const response = await fetch("/api/gs", {
@@ -2494,6 +2504,12 @@ useEffect(() => {
         return;
       }
 
+      setFavoriteDogIds((prev) => {
+        const next = new Set(prev);
+        if (wasFavorite) next.add(dogId);
+        else next.delete(dogId);
+        return next;
+      });
       setFavoriteActionState({
         loading: false,
         dogId: "",
@@ -2501,6 +2517,12 @@ useEffect(() => {
       });
     } catch (error) {
       console.error("Błąd przypinania psa:", error);
+      setFavoriteDogIds((prev) => {
+        const next = new Set(prev);
+        if (wasFavorite) next.add(dogId);
+        else next.delete(dogId);
+        return next;
+      });
       setFavoriteActionState({
         loading: false,
         dogId: "",
@@ -2793,6 +2815,7 @@ const handleLogin = async () => {
           dogs={dogs}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           onStartWork={handleStartBehaviorystWork}
