@@ -15,6 +15,7 @@ const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
 const OPIEKUNOWIE_SHEET_NAME = "Opiekunowie";
 const HISTORY_SHEET_NAME = "HistoriaPsa";
 const ROLES_SHEET_NAME = "Roles";
+const MEDICAL_FLAGS_SHEET_NAME = "MedicalFlags";
 const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
@@ -66,6 +67,10 @@ function doGet(e) {
 
     if (action === "getLastWalkInfo") {
       return json({ ok: true, data: getLastWalkInfo(safeStr(e?.parameter?.dogId)) });
+    }
+
+    if (action === "getMedicalFlags") {
+      return json({ ok: true, data: getMedicalFlags_(safeStr(e?.parameter?.dogId)) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -143,6 +148,16 @@ function doPost(e) {
 
     if (action === "listUsersForAdmin") {
       return json({ ok: true, data: listUsersForAdmin_() });
+    }
+
+    if (action === "setMedicalFlag") {
+      setMedicalFlag_(payload);
+      return json({ ok: true, data: { success: true } });
+    }
+
+    if (action === "deactivateMedicalFlag") {
+      deactivateMedicalFlag_(payload);
+      return json({ ok: true, data: { success: true } });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -806,5 +821,112 @@ function ensureHeaders(sheet, headers) {
   if (!matches) {
     sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
     sheet.setFrozenRows(1);
+  }
+}
+
+// ===============================
+// MEDICAL FLAGS
+// ===============================
+const MEDICAL_FLAGS_HEADERS = ["id", "dog_id", "flag_type", "is_active", "note", "valid_from", "valid_until", "created_by", "created_at"];
+
+function getMedicalFlags_(dogId) {
+  if (!dogId) return { noFood: null, walkBlocked: null };
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, MEDICAL_FLAGS_SHEET_NAME);
+  ensureHeaders(sh, MEDICAL_FLAGS_HEADERS);
+
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return { noFood: null, walkBlocked: null };
+
+  const map = headerMap(values[0]);
+  const now = new Date();
+  const active = {};
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["dog_id"]]) !== safeStr(dogId)) continue;
+    if (!toBoolean_(row[map["is_active"]])) continue;
+
+    const validFromStr = safeStr(row[map["valid_from"]]);
+    const validUntilStr = safeStr(row[map["valid_until"]]);
+    if (validFromStr && new Date(validFromStr) > now) continue;
+    if (validUntilStr && new Date(validUntilStr) <= now) continue;
+
+    const flagType = safeStr(row[map["flag_type"]]);
+    active[flagType] = {
+      id: safeStr(row[map["id"]]),
+      note: safeStr(row[map["note"]]),
+      validFrom: validFromStr || null,
+      validUntil: validUntilStr || null,
+      createdBy: safeStr(row[map["created_by"]]),
+    };
+  }
+
+  return {
+    noFood: active["no_food"] || null,
+    walkBlocked: active["walk_blocked"] || null,
+  };
+}
+
+function setMedicalFlag_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (role !== "ambulatorium" && role !== "admin") {
+    throw new Error("Brak uprawnien: wymagana rola ambulatorium lub admin");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  const flagType = safeStr(payload?.flagType);
+  if (!dogId || !flagType) throw new Error("Brakuje dogId lub flagType");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, MEDICAL_FLAGS_SHEET_NAME);
+  ensureHeaders(sh, MEDICAL_FLAGS_HEADERS);
+
+  const values = sh.getDataRange().getValues();
+  if (values.length > 1) {
+    const map = headerMap(values[0]);
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      if (safeStr(row[map["dog_id"]]) === dogId && safeStr(row[map["flag_type"]]) === flagType && toBoolean_(row[map["is_active"]])) {
+        sh.getRange(i + 1, map["is_active"] + 1).setValue(false);
+      }
+    }
+  }
+
+  const id = "mf_" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+  const validFrom = new Date().toISOString();
+  const validUntil = safeStr(payload?.validUntil) || "";
+  const note = safeStr(payload?.note) || "";
+  const createdBy = safeStr(payload?.createdBy) || userEmail;
+  const createdAt = nowInPolandText();
+
+  sh.appendRow([id, dogId, flagType, true, note, validFrom, validUntil, createdBy, createdAt]);
+}
+
+function deactivateMedicalFlag_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (role !== "ambulatorium" && role !== "admin") {
+    throw new Error("Brak uprawnien: wymagana rola ambulatorium lub admin");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  const flagType = safeStr(payload?.flagType);
+  if (!dogId || !flagType) throw new Error("Brakuje dogId lub flagType");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(MEDICAL_FLAGS_SHEET_NAME);
+  if (!sh) return;
+
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return;
+
+  const map = headerMap(values[0]);
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["dog_id"]]) === dogId && safeStr(row[map["flag_type"]]) === flagType && toBoolean_(row[map["is_active"]])) {
+      sh.getRange(i + 1, map["is_active"] + 1).setValue(false);
+    }
   }
 }
