@@ -1588,6 +1588,13 @@ function formatFlagTime(date) {
   return date.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
+function toDatetimeLocal(date) {
+  if (!date) return "";
+  const d = new Date(date);
+  d.setSeconds(0, 0);
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+
 const MedicalAlert = ({ icon, title, flag }) => (
   <div style={{ backgroundColor: "#DC2626", color: "white", padding: "12px 14px", borderRadius: "8px", marginBottom: "8px" }}>
     <p style={{ fontWeight: "bold", fontSize: "18px", margin: 0 }}>{icon} {title}</p>
@@ -1596,8 +1603,7 @@ const MedicalAlert = ({ icon, title, flag }) => (
       Ustawione przez: {flag.createdBy}
     </p>
     <p style={{ margin: "2px 0 0", fontSize: "13px", opacity: 0.9 }}>
-      od {flag.validFrom ? flag.validFrom.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) : "—"}
-      {" "}do {formatFlagTime(flag.validUntil)}
+      od {flag.validFrom ? formatFlagTime(flag.validFrom) : "—"}{" "}do {formatFlagTime(flag.validUntil)}
     </p>
   </div>
 );
@@ -1611,12 +1617,19 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
   const updateForm = (patch) =>
     setFlagForm((s) => ({ ...s, [flagType]: { ...s[flagType], ...patch } }));
 
+  const hasFlag = currentFlag.active || currentFlag.pending;
+
   return (
     <div style={{ border: "1px solid #fca5a5", borderRadius: "8px", padding: "14px", marginBottom: "12px", backgroundColor: "#fff5f5" }}>
       <p style={{ fontWeight: 700, fontSize: "15px", margin: "0 0 10px", color: "#991b1b" }}>{title}</p>
       {currentFlag.active && (
         <p style={{ fontSize: "13px", color: "#dc2626", marginBottom: "8px", fontWeight: 600 }}>
-          ⚠ Aktywny — {currentFlag.note || "brak opisu"} | do: {formatFlagTime(currentFlag.validUntil)}
+          ⚠ Aktywny — {currentFlag.note || "brak opisu"} | od: {formatFlagTime(currentFlag.validFrom)} | do: {formatFlagTime(currentFlag.validUntil)}
+        </p>
+      )}
+      {currentFlag.pending && (
+        <p style={{ fontSize: "13px", color: "#b45309", marginBottom: "8px", fontWeight: 600 }}>
+          🕐 Zaplanowano — od: {formatFlagTime(currentFlag.validFrom)} | do: {formatFlagTime(currentFlag.validUntil)}
         </p>
       )}
       <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Powód (opcjonalnie)</label>
@@ -1627,23 +1640,26 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
         placeholder="np. zabieg, dieta specjalna..."
         style={{ ...flagInputStyle, marginBottom: "10px" }}
       />
-      <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "6px" }}>Czas trwania</label>
-      {["today", "tomorrow", "indefinite"].map((opt) => (
-        <label key={opt} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", fontSize: "14px", cursor: "pointer" }}>
-          <input type="radio" name={`dur_${flagType}`} value={opt} checked={form.durationType === opt} onChange={() => updateForm({ durationType: opt })} />
-          {opt === "today" && "Do godziny (dziś)"}
-          {opt === "tomorrow" && "Do jutra do godziny"}
-          {opt === "indefinite" && "Bezterminowo"}
-        </label>
-      ))}
-      {(form.durationType === "today" || form.durationType === "tomorrow") && (
-        <input
-          type="time"
-          value={form.time}
-          onChange={(e) => updateForm({ time: e.target.value })}
-          style={{ ...flagInputStyle, marginBottom: "10px" }}
-        />
-      )}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Od (puste = teraz)</label>
+          <input
+            type="datetime-local"
+            value={form.validFrom}
+            onChange={(e) => updateForm({ validFrom: e.target.value })}
+            style={flagInputStyle}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Do (puste = bezterminowo)</label>
+          <input
+            type="datetime-local"
+            value={form.validUntil}
+            onChange={(e) => updateForm({ validUntil: e.target.value })}
+            style={flagInputStyle}
+          />
+        </div>
+      </div>
       <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
         <button
           onClick={() => onSave(flagType)}
@@ -1652,13 +1668,13 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
         >
           {saving ? "Zapisywanie..." : "Zapisz"}
         </button>
-        {currentFlag.active && (
+        {hasFlag && (
           <button
             onClick={() => onDeactivate(flagType)}
             disabled={saving}
             style={{ flex: 1, padding: "8px", backgroundColor: saving ? "#9ca3af" : "#6b7280", color: "white", border: "none", borderRadius: "6px", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "14px" }}
           >
-            Odwołaj zakaz
+            Odwołaj
           </button>
         )}
       </div>
@@ -1721,19 +1737,10 @@ const DogCardView = ({
   const { role } = useUserRole();
   const { noFood, walkBlocked, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
 
-  const initFlagForm = { note: "", durationType: "indefinite", time: "" };
+  const initFlagForm = { note: "", validFrom: "", validUntil: "" };
   const [flagForm, setFlagForm] = useState({ no_food: initFlagForm, walk_blocked: initFlagForm });
   const [savingFlag, setSavingFlag] = useState({ no_food: false, walk_blocked: false });
   const [flagMsg, setFlagMsg] = useState({ no_food: null, walk_blocked: null });
-
-  function computeValidUntil(durationType, time) {
-    if (durationType === "indefinite" || !time) return null;
-    const [h, m] = time.split(":").map(Number);
-    const d = new Date();
-    if (durationType === "tomorrow") d.setDate(d.getDate() + 1);
-    d.setHours(h, m, 0, 0);
-    return d.toISOString();
-  }
 
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
@@ -1750,7 +1757,8 @@ const DogCardView = ({
           dogId: selectedDog.id,
           flagType,
           note: form.note,
-          validUntil: computeValidUntil(form.durationType, form.time),
+          validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
+          validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : null,
           createdBy: currentUser.displayName || currentUser.email,
         }),
       });
