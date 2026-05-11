@@ -23,7 +23,7 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog } from "./lib/roles";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1751,6 +1751,11 @@ const DogCardView = ({
   const [savingFlag, setSavingFlag] = useState({ no_food: false, walk_blocked: false });
   const [flagMsg, setFlagMsg] = useState({ no_food: null, walk_blocked: null });
 
+  const [editingLocation, setEditingLocation] = useState(false);
+  const [locationForm, setLocationForm] = useState({ pavilion: "", box: "" });
+  const [savingLocation, setSavingLocation] = useState(false);
+  const [locationMsg, setLocationMsg] = useState(null);
+
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
     setSavingFlag((s) => ({ ...s, [flagType]: true }));
@@ -1807,6 +1812,38 @@ const DogCardView = ({
       setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: "Błąd połączenia" } }));
     } finally {
       setSavingFlag((s) => ({ ...s, [flagType]: false }));
+    }
+  };
+
+  const handleUpdateLocation = async () => {
+    if (!currentUser || savingLocation) return;
+    setSavingLocation(true);
+    setLocationMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "updateDogLocation",
+          dogId: selectedDog.id,
+          pavilion: locationForm.pavilion,
+          box: locationForm.box,
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setLocationMsg({ type: "success", text: "Zapisano lokalizację" });
+        setEditingLocation(false);
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setLocationMsg(null), 4000);
+      } else {
+        setLocationMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setLocationMsg({ type: "error", text: "Błąd połączenia" });
+    } finally {
+      setSavingLocation(false);
     }
   };
 
@@ -2122,10 +2159,73 @@ const DogCardView = ({
               }}
             >
               <div style={styles.infoBox}>
-                <div style={styles.infoLabel}>📍 Lokalizacja</div>
-                <div style={styles.infoValue}>
-                  {selectedDog.pavilion} / Boks {selectedDog.box}
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={styles.infoLabel}>📍 Lokalizacja</div>
+                  {canMoveDog(role) && !editingLocation && (
+                    <button
+                      onClick={() => {
+                        setLocationForm({ pavilion: selectedDog.pavilion || "", box: selectedDog.box || "" });
+                        setLocationMsg(null);
+                        setEditingLocation(true);
+                      }}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "2px 6px" }}
+                    >
+                      ✏️ Zmień
+                    </button>
+                  )}
                 </div>
+                {editingLocation ? (
+                  <div style={{ marginTop: "0.5rem" }}>
+                    <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0.5rem" }}>
+                      <select
+                        value={locationForm.pavilion}
+                        onChange={(e) => setLocationForm((f) => ({ ...f, pavilion: e.target.value }))}
+                        style={{ flex: 1, padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem" }}
+                      >
+                        <option value="">— Pawilon —</option>
+                        {Object.keys(pavilionConfig).sort().map((k) => (
+                          <option key={k} value={k}>{k}</option>
+                        ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={locationForm.box}
+                        onChange={(e) => setLocationForm((f) => ({ ...f, box: e.target.value }))}
+                        placeholder="Boks"
+                        style={{ width: "5rem", padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem" }}
+                      />
+                    </div>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        onClick={handleUpdateLocation}
+                        disabled={savingLocation || !locationForm.pavilion || !locationForm.box}
+                        style={{ flex: 1, padding: "0.5rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem", opacity: (savingLocation || !locationForm.pavilion || !locationForm.box) ? 0.6 : 1 }}
+                      >
+                        {savingLocation ? "Zapisywanie..." : "Zapisz"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingLocation(false); setLocationMsg(null); }}
+                        style={{ flex: 1, padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", backgroundColor: "white", color: "#374151", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem" }}
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                    {locationMsg && (
+                      <p style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: locationMsg.type === "success" ? "#166534" : "#991b1b", fontWeight: 600 }}>
+                        {locationMsg.type === "success" ? "✅ " : "❌ "}{locationMsg.text}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div style={styles.infoValue}>
+                    {selectedDog.pavilion} / Boks {selectedDog.box}
+                  </div>
+                )}
+                {!editingLocation && locationMsg && (
+                  <p style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: locationMsg.type === "success" ? "#166534" : "#991b1b", fontWeight: 600 }}>
+                    {locationMsg.type === "success" ? "✅ " : "❌ "}{locationMsg.text}
+                  </p>
+                )}
               </div>
               <div style={styles.infoBox}>
                 <div style={styles.infoLabel}>🆔 ID</div>
