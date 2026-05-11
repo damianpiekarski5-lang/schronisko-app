@@ -1,14 +1,20 @@
 import { useState, useEffect, useCallback } from "react";
 
-const EMPTY_FLAG = { active: false, note: "", validUntil: null, validFrom: null, createdBy: "" };
+const EMPTY_FLAG = { active: false, pending: false, note: "", validUntil: null, validFrom: null, createdBy: "" };
 
 function parseFlag(f) {
   if (!f) return EMPTY_FLAG;
+  const now = new Date();
+  const validFrom = f.validFrom ? new Date(f.validFrom) : null;
+  const validUntil = f.validUntil ? new Date(f.validUntil) : null;
+  const started = !validFrom || validFrom <= now;
+  const notExpired = !validUntil || validUntil > now;
   return {
-    active: true,
+    active: started && notExpired,
+    pending: !started,
     note: f.note || "",
-    validUntil: f.validUntil ? new Date(f.validUntil) : null,
-    validFrom: f.validFrom ? new Date(f.validFrom) : null,
+    validUntil,
+    validFrom,
     createdBy: f.createdBy || "",
   };
 }

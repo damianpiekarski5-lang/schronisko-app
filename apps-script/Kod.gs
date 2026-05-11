@@ -840,31 +840,45 @@ function getMedicalFlags_(dogId) {
 
   const map = headerMap(values[0]);
   const now = new Date();
-  const active = {};
+  const best = {};
 
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
     if (safeStr(row[map["dog_id"]]) !== safeStr(dogId)) continue;
     if (!toBoolean_(row[map["is_active"]])) continue;
 
-    const validFromStr = safeStr(row[map["valid_from"]]);
     const validUntilStr = safeStr(row[map["valid_until"]]);
-    if (validFromStr && new Date(validFromStr) > now) continue;
     if (validUntilStr && new Date(validUntilStr) <= now) continue;
 
+    const validFromStr = safeStr(row[map["valid_from"]]);
     const flagType = safeStr(row[map["flag_type"]]);
-    active[flagType] = {
+    const candidate = {
       id: safeStr(row[map["id"]]),
       note: safeStr(row[map["note"]]),
       validFrom: validFromStr || null,
       validUntil: validUntilStr || null,
       createdBy: safeStr(row[map["created_by"]]),
     };
+
+    const candidateStarted = !validFromStr || new Date(validFromStr) <= now;
+
+    if (!best[flagType]) {
+      best[flagType] = candidate;
+    } else {
+      const currentStarted = !best[flagType].validFrom || new Date(best[flagType].validFrom) <= now;
+      if (!currentStarted && candidateStarted) {
+        best[flagType] = candidate;
+      } else if (!currentStarted && !candidateStarted) {
+        const currentFrom = new Date(best[flagType].validFrom);
+        const candidateFrom = new Date(validFromStr);
+        if (candidateFrom < currentFrom) best[flagType] = candidate;
+      }
+    }
   }
 
   return {
-    noFood: active["no_food"] || null,
-    walkBlocked: active["walk_blocked"] || null,
+    noFood: best["no_food"] || null,
+    walkBlocked: best["walk_blocked"] || null,
   };
 }
 
@@ -895,7 +909,7 @@ function setMedicalFlag_(payload) {
   }
 
   const id = "mf_" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
-  const validFrom = new Date().toISOString();
+  const validFrom = safeStr(payload?.validFrom) || new Date().toISOString();
   const validUntil = safeStr(payload?.validUntil) || "";
   const note = safeStr(payload?.note) || "";
   const createdBy = safeStr(payload?.createdBy) || userEmail;
