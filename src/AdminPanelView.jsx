@@ -97,6 +97,7 @@ const AdminPanelView = ({
   dogs,
   setCurrentView,
   setSelectedDog,
+  setDogCardFrom,
   hoveredCard,
   setHoveredCard,
   onStartWork,
@@ -416,6 +417,7 @@ const AdminPanelView = ({
                     key={dog.id}
                     onClick={() => {
                       setSelectedDog(dog);
+                      setDogCardFrom?.("panel");
                       setCurrentView("dogCard");
                     }}
                     style={{
