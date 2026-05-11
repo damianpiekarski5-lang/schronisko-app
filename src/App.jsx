@@ -21,7 +21,9 @@ import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
 import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
-import { RoleProvider } from "./hooks/useUserRole";
+import { RoleProvider, useUserRole } from "./hooks/useUserRole";
+import useMedicalFlags from "./hooks/useMedicalFlags";
+import { canSetMedicalFlags } from "./lib/roles";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -1581,6 +1583,122 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
   );
 };
 
+function formatFlagTime(date) {
+  if (!date) return "odwołania";
+  return date.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
+}
+
+const MedicalAlert = ({ icon, title, flag }) => (
+  <div style={{ backgroundColor: "#DC2626", color: "white", padding: "12px 14px", borderRadius: "8px", marginBottom: "8px" }}>
+    <p style={{ fontWeight: "bold", fontSize: "18px", margin: 0 }}>{icon} {title}</p>
+    {flag.note && <p style={{ margin: "4px 0 0", fontSize: "14px" }}>{flag.note}</p>}
+    <p style={{ margin: "4px 0 0", fontSize: "13px", opacity: 0.9 }}>
+      Ustawione przez: {flag.createdBy}
+    </p>
+    <p style={{ margin: "2px 0 0", fontSize: "13px", opacity: 0.9 }}>
+      od {flag.validFrom ? flag.validFrom.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" }) : "—"}
+      {" "}do {formatFlagTime(flag.validUntil)}
+    </p>
+  </div>
+);
+
+const flagInputStyle = {
+  width: "100%", padding: "8px 10px", border: "1px solid #d1d5db",
+  borderRadius: "6px", fontSize: "14px", boxSizing: "border-box",
+};
+
+const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, msg, onSave, onDeactivate }) => {
+  const updateForm = (patch) =>
+    setFlagForm((s) => ({ ...s, [flagType]: { ...s[flagType], ...patch } }));
+
+  return (
+    <div style={{ border: "1px solid #fca5a5", borderRadius: "8px", padding: "14px", marginBottom: "12px", backgroundColor: "#fff5f5" }}>
+      <p style={{ fontWeight: 700, fontSize: "15px", margin: "0 0 10px", color: "#991b1b" }}>{title}</p>
+      {currentFlag.active && (
+        <p style={{ fontSize: "13px", color: "#dc2626", marginBottom: "8px", fontWeight: 600 }}>
+          ⚠ Aktywny — {currentFlag.note || "brak opisu"} | do: {formatFlagTime(currentFlag.validUntil)}
+        </p>
+      )}
+      <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Powód (opcjonalnie)</label>
+      <input
+        type="text"
+        value={form.note}
+        onChange={(e) => updateForm({ note: e.target.value })}
+        placeholder="np. zabieg, dieta specjalna..."
+        style={{ ...flagInputStyle, marginBottom: "10px" }}
+      />
+      <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "6px" }}>Czas trwania</label>
+      {["today", "tomorrow", "indefinite"].map((opt) => (
+        <label key={opt} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px", fontSize: "14px", cursor: "pointer" }}>
+          <input type="radio" name={`dur_${flagType}`} value={opt} checked={form.durationType === opt} onChange={() => updateForm({ durationType: opt })} />
+          {opt === "today" && "Do godziny (dziś)"}
+          {opt === "tomorrow" && "Do jutra do godziny"}
+          {opt === "indefinite" && "Bezterminowo"}
+        </label>
+      ))}
+      {(form.durationType === "today" || form.durationType === "tomorrow") && (
+        <input
+          type="time"
+          value={form.time}
+          onChange={(e) => updateForm({ time: e.target.value })}
+          style={{ ...flagInputStyle, marginBottom: "10px" }}
+        />
+      )}
+      <div style={{ display: "flex", gap: "8px", marginTop: "6px" }}>
+        <button
+          onClick={() => onSave(flagType)}
+          disabled={saving}
+          style={{ flex: 1, padding: "8px", backgroundColor: saving ? "#9ca3af" : "#dc2626", color: "white", border: "none", borderRadius: "6px", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "14px" }}
+        >
+          {saving ? "Zapisywanie..." : "Zapisz"}
+        </button>
+        {currentFlag.active && (
+          <button
+            onClick={() => onDeactivate(flagType)}
+            disabled={saving}
+            style={{ flex: 1, padding: "8px", backgroundColor: saving ? "#9ca3af" : "#6b7280", color: "white", border: "none", borderRadius: "6px", fontWeight: 600, cursor: saving ? "not-allowed" : "pointer", fontSize: "14px" }}
+          >
+            Odwołaj zakaz
+          </button>
+        )}
+      </div>
+      {msg && (
+        <p style={{ marginTop: "6px", fontSize: "13px", color: msg.type === "success" ? "#166534" : "#991b1b", fontWeight: 600 }}>
+          {msg.type === "success" ? "✅ " : "❌ "}{msg.text}
+        </p>
+      )}
+    </div>
+  );
+};
+
+const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate }) => (
+  <div style={{ marginTop: "16px", border: "2px solid #fca5a5", borderRadius: "10px", padding: "16px", backgroundColor: "#fef2f2" }}>
+    <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#7f1d1d" }}>🏥 Ambulatorium</h3>
+    <FlagBlock
+      title="Nie karmić"
+      flagType="no_food"
+      currentFlag={noFood}
+      form={flagForm.no_food}
+      setFlagForm={setFlagForm}
+      saving={savingFlag.no_food}
+      msg={flagMsg.no_food}
+      onSave={onSave}
+      onDeactivate={onDeactivate}
+    />
+    <FlagBlock
+      title="Zakaz spaceru"
+      flagType="walk_blocked"
+      currentFlag={walkBlocked}
+      form={flagForm.walk_blocked}
+      setFlagForm={setFlagForm}
+      saving={savingFlag.walk_blocked}
+      msg={flagMsg.walk_blocked}
+      onSave={onSave}
+      onDeactivate={onDeactivate}
+    />
+  </div>
+);
+
 const DogCardView = ({
   selectedDog,
   setCurrentView,
@@ -1599,6 +1717,81 @@ const DogCardView = ({
   const [walkMessage, setWalkMessage] = useState(null);
   const [opiekunowie, setOpiekunowie] = useState([]);
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
+
+  const { role } = useUserRole();
+  const { noFood, walkBlocked, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
+
+  const initFlagForm = { note: "", durationType: "indefinite", time: "" };
+  const [flagForm, setFlagForm] = useState({ no_food: initFlagForm, walk_blocked: initFlagForm });
+  const [savingFlag, setSavingFlag] = useState({ no_food: false, walk_blocked: false });
+  const [flagMsg, setFlagMsg] = useState({ no_food: null, walk_blocked: null });
+
+  function computeValidUntil(durationType, time) {
+    if (durationType === "indefinite" || !time) return null;
+    const [h, m] = time.split(":").map(Number);
+    const d = new Date();
+    if (durationType === "tomorrow") d.setDate(d.getDate() + 1);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
+  }
+
+  const handleSetFlag = async (flagType) => {
+    if (!currentUser) return;
+    setSavingFlag((s) => ({ ...s, [flagType]: true }));
+    setFlagMsg((s) => ({ ...s, [flagType]: null }));
+    try {
+      const token = await currentUser.getIdToken();
+      const form = flagForm[flagType];
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "setMedicalFlag",
+          dogId: selectedDog.id,
+          flagType,
+          note: form.note,
+          validUntil: computeValidUntil(form.durationType, form.time),
+          createdBy: currentUser.displayName || currentUser.email,
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setFlagMsg((s) => ({ ...s, [flagType]: { type: "success", text: "Zapisano" } }));
+        refreshFlags();
+      } else {
+        setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: result?.error || "Błąd zapisu" } }));
+      }
+    } catch {
+      setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: "Błąd połączenia" } }));
+    } finally {
+      setSavingFlag((s) => ({ ...s, [flagType]: false }));
+    }
+  };
+
+  const handleDeactivateFlag = async (flagType) => {
+    if (!currentUser) return;
+    setSavingFlag((s) => ({ ...s, [flagType]: true }));
+    setFlagMsg((s) => ({ ...s, [flagType]: null }));
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "deactivateMedicalFlag", dogId: selectedDog.id, flagType }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setFlagMsg((s) => ({ ...s, [flagType]: { type: "success", text: "Odwołano" } }));
+        refreshFlags();
+      } else {
+        setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: result?.error || "Błąd" } }));
+      }
+    } catch {
+      setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: "Błąd połączenia" } }));
+    } finally {
+      setSavingFlag((s) => ({ ...s, [flagType]: false }));
+    }
+  };
 
   useEffect(() => {
     if (!selectedDog?.id) return;
@@ -1725,6 +1918,24 @@ const DogCardView = ({
               </p>
             )}
           </div>
+          {(noFood.active || walkBlocked.active) && (
+            <div style={{ padding: "1rem 1.5rem 0" }}>
+              {noFood.active && (
+                <MedicalAlert
+                  icon="🔴"
+                  title="NIE KARMIĆ"
+                  flag={noFood}
+                />
+              )}
+              {walkBlocked.active && (
+                <MedicalAlert
+                  icon="🚫"
+                  title="ZAKAZ SPACERU"
+                  flag={walkBlocked}
+                />
+              )}
+            </div>
+          )}
           <div style={{ padding: "1.5rem", paddingBottom: 0 }}>
             <DogPhoto
               photo={selectedDog.photo}
@@ -1784,15 +1995,23 @@ const DogCardView = ({
             )}
             <button
               onClick={handleSaveWalk}
-              disabled={!currentUser || savingWalk}
+              disabled={!currentUser || savingWalk || walkBlocked.active}
               style={{
                 ...styles.walkButton,
-                ...(!currentUser || savingWalk ? styles.walkButtonDisabled : {}),
+                ...(!currentUser || savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
               }}
             >
               <CheckCircle size={24} style={{ marginRight: "0.75rem" }} />
               {savingWalk ? "Zapisywanie..." : "Wychodzę z psem 🦮"}
             </button>
+            {walkBlocked.active && (
+              <p style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
+                Pies zablokowany przez ambulatorium
+                {walkBlocked.validUntil
+                  ? ` do ${walkBlocked.validUntil.toLocaleTimeString("pl-PL", { hour: "2-digit", minute: "2-digit" })}`
+                  : " do odwołania"}
+              </p>
+            )}
             {walkMessage && (
               <div
                 style={{
@@ -1986,6 +2205,18 @@ const DogCardView = ({
                   {selectedDog.notes}
                 </p>
               </div>
+            )}
+            {canSetMedicalFlags(role) && (
+              <AmbulatoriumPanel
+                noFood={noFood}
+                walkBlocked={walkBlocked}
+                flagForm={flagForm}
+                setFlagForm={setFlagForm}
+                savingFlag={savingFlag}
+                flagMsg={flagMsg}
+                onSave={handleSetFlag}
+                onDeactivate={handleDeactivateFlag}
+              />
             )}
           </div>
         </div>
