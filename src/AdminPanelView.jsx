@@ -354,13 +354,13 @@ const AdminPanelView = ({
               </>
             )}
 
-            {activeTab === “users” && (
+            {activeTab === "users" && (
               <div>
-                <button onClick={fetchUsers} style={{ ...styles.tabButton, width: “100%”, marginBottom: “1rem” }}>
-                  <RefreshCw size={16} style={{ marginRight: 6, verticalAlign: “text-bottom” }} /> Odśwież listę
+                <button onClick={fetchUsers} style={{ ...styles.tabButton, width: "100%", marginBottom: "1rem" }}>
+                  <RefreshCw size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Odśwież listę
                 </button>
                 {usersError && (
-                  <div style={{ ...styles.emptyCard, color: “#991b1b”, marginBottom: “1rem” }}>{usersError}</div>
+                  <div style={{ ...styles.emptyCard, color: "#991b1b", marginBottom: "1rem" }}>{usersError}</div>
                 )}
                 {loadingUsers ? (
                   <div style={styles.emptyCard}>Ładowanie użytkowników...</div>
@@ -371,13 +371,13 @@ const AdminPanelView = ({
                   </div>
                 ) : (
                   usersList.map((u) => (
-                    <div key={u.email} style={{ ...styles.dogCard, display: “flex”, alignItems: “center”, gap: “1rem” }}>
+                    <div key={u.email} style={{ ...styles.dogCard, display: "flex", alignItems: "center", gap: "1rem" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <p style={{ fontWeight: 700, margin: 0, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap” }}>
+                        <p style={{ fontWeight: 700, margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {u.email}
                         </p>
                         {u.updatedAt && (
-                          <p style={{ color: “#9ca3af”, fontSize: “0.75rem”, margin: “0.2rem 0 0” }}>
+                          <p style={{ color: "#9ca3af", fontSize: "0.75rem", margin: "0.2rem 0 0" }}>
                             Zmieniono: {u.updatedAt}
                           </p>
                         )}
@@ -387,12 +387,12 @@ const AdminPanelView = ({
                         disabled={savingRole === u.email}
                         onChange={(e) => handleRoleChange(u.email, e.target.value)}
                         style={{
-                          border: “1px solid #d1d5db”,
-                          borderRadius: “0.5rem”,
-                          padding: “0.4rem 0.6rem”,
+                          border: "1px solid #d1d5db",
+                          borderRadius: "0.5rem",
+                          padding: "0.4rem 0.6rem",
                           fontWeight: 600,
-                          cursor: “pointer”,
-                          background: “white”,
+                          cursor: "pointer",
+                          background: "white",
                           flexShrink: 0,
                           opacity: savingRole === u.email ? 0.5 : 1,
                         }}
@@ -407,9 +407,9 @@ const AdminPanelView = ({
               </div>
             )}
 
-            {activeTab === “work” && (
+            {activeTab === "work" && (
               sortedDogs.length === 0 ? (
-                <div style={styles.emptyCard}>Brak psów dodanych przez „Rozpocznij pracę”.</div>
+                <div style={styles.emptyCard}>Brak psów dodanych przez „Rozpocznij pracę".</div>
               ) : (
                 sortedDogs.map((dog) => (
                   <div
