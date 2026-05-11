@@ -2773,6 +2773,7 @@ const handleLogin = async () => {
           myDogs={myDogs}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
