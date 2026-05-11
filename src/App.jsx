@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   ArrowLeft,
   AlertCircle,
@@ -697,6 +697,7 @@ const MapView = ({
   setSelectedPavilion,
   setCurrentView,
   setSelectedDog,
+  setDogCardFrom,
   hoveredCard,
   setHoveredCard,
   isAdmin,
@@ -805,6 +806,7 @@ const MapView = ({
                     key={dog.id}
                     onClick={() => {
                       setSelectedDog(dog);
+                      setDogCardFrom("map");
                       setCurrentView("dogCard");
                     }}
                     style={{
@@ -1308,6 +1310,7 @@ const DogsListView = ({
   selectedBox,
   setCurrentView,
   setSelectedDog,
+  setDogCardFrom,
   hoveredCard,
   setHoveredCard,
   isAdmin,
@@ -1362,6 +1365,7 @@ const DogsListView = ({
                 key={dog.id}
                 onClick={() => {
                   setSelectedDog(dog);
+                  setDogCardFrom("map");
                   setCurrentView("dogCard");
                 }}
                 style={{
@@ -1493,7 +1497,7 @@ const DogsListView = ({
   );
 };
 
-const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHoveredCard, authEnabled, isAdmin }) => {
+const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, hoveredCard, setHoveredCard, authEnabled, isAdmin }) => {
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
   );
@@ -1521,6 +1525,7 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, hoveredCard, setHo
               key={dog.id}
               onClick={() => {
                 setSelectedDog(dog);
+                setDogCardFrom("myDogs");
                 setCurrentView("dogCard");
               }}
               style={{
@@ -1718,6 +1723,7 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingF
 const DogCardView = ({
   selectedDog,
   setCurrentView,
+  dogCardFrom,
   onSurveySaved,
   currentUser,
   favoriteDogIds,
@@ -1878,7 +1884,7 @@ const DogCardView = ({
       <div style={styles.header}>
         <div style={styles.headerContent}>
           <button
-            onClick={() => setCurrentView("dogs")}
+            onClick={() => setCurrentView(dogCardFrom || "home")}
             style={styles.backButton}
             onTouchStart={(e) =>
               (e.currentTarget.style.backgroundColor = "#f3f4f6")
@@ -2275,6 +2281,7 @@ const DogCardView = ({
 const ShelterMapSystem = () => {
   const [dogs, setDogs] = useState([]);
   const [currentView, setCurrentView] = useState("home");
+  const [dogCardFrom, setDogCardFrom] = useState("home");
   const [selectedPavilion, setSelectedPavilion] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
   const [selectedDog, setSelectedDog] = useState(null);
@@ -2299,6 +2306,30 @@ const [behaviorystActionState, setBehaviorystActionState] = useState({
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
+
+const navRef = useRef({ currentView: "home", dogCardFrom: "home" });
+useEffect(() => {
+  navRef.current = { currentView, dogCardFrom };
+}, [currentView, dogCardFrom]);
+
+useEffect(() => {
+  history.pushState(null, "", window.location.href);
+  const handlePopState = () => {
+    const { currentView: view, dogCardFrom: from } = navRef.current;
+    if (view === "dogCard") {
+      setCurrentView(from || "home");
+    } else if (view === "dogs") {
+      setCurrentView("boxes");
+    } else if (view === "boxes") {
+      setCurrentView("map");
+    } else if (["map", "myDogs", "panel", "mapEditor"].includes(view)) {
+      setCurrentView("home");
+    }
+    history.pushState(null, "", window.location.href);
+  };
+  window.addEventListener("popstate", handlePopState);
+  return () => window.removeEventListener("popstate", handlePopState);
+}, []);
 
 useEffect(() => {
   fetchData();
@@ -2576,6 +2607,7 @@ const handleLogin = async () => {
 
   const handleDogClickFromDashboard = (dog) => {
     setSelectedDog(dog);
+    setDogCardFrom("home");
     setCurrentView("dogCard");
   };
 
@@ -2690,6 +2722,7 @@ const handleLogin = async () => {
           setSelectedPavilion={setSelectedPavilion}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           isAdmin={isAdminUser}
@@ -2713,6 +2746,7 @@ const handleLogin = async () => {
           selectedBox={selectedBox}
           setCurrentView={setCurrentView}
           setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           isAdmin={isAdminUser}
@@ -2722,6 +2756,7 @@ const handleLogin = async () => {
         <DogCardView
           selectedDog={selectedDog}
           setCurrentView={setCurrentView}
+          dogCardFrom={dogCardFrom}
           onSurveySaved={handleSurveySaved}
           currentUser={currentUser}
           favoriteDogIds={favoriteDogIds}
