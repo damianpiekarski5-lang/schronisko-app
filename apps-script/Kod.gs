@@ -16,6 +16,7 @@ const OPIEKUNOWIE_SHEET_NAME = "Opiekunowie";
 const HISTORY_SHEET_NAME = "HistoriaPsa";
 const ROLES_SHEET_NAME = "Roles";
 const MEDICAL_FLAGS_SHEET_NAME = "MedicalFlags";
+const WEIGHT_HISTORY_SHEET_NAME = "HistoriaWagi";
 const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
@@ -71,6 +72,10 @@ function doGet(e) {
 
     if (action === "getMedicalFlags") {
       return json({ ok: true, data: getMedicalFlags_(safeStr(e?.parameter?.dogId)) });
+    }
+
+    if (action === "getWeightHistory") {
+      return json({ ok: true, data: getWeightHistory_(safeStr(e?.parameter?.dogId)) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -162,6 +167,10 @@ function doPost(e) {
 
     if (action === "updateDogLocation") {
       return json({ ok: true, data: updateDogLocation_(payload) });
+    }
+
+    if (action === "addWeightEntry") {
+      return json({ ok: true, data: addWeightEntry_(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -978,4 +987,59 @@ function updateDogLocation_(payload) {
 
   return { success: true, dogId, pavilion, box };
 }
+
+// ===============================
+// HISTORIA WAGI
+// ===============================
+function addWeightEntry_(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const weight = safeStr(payload?.weight);
+  const recordedByEmail = safeStr(payload?.user?.email);
+  const recordedByName = safeStr(payload?.user?.displayName || payload?.user?.email);
+  if (!dogId || !weight) throw new Error("Brakuje dogId lub wagi");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  // Aktualizuj wagę w głównym arkuszu psów
+  const dogsSh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (dogsSh) {
+    const vals = dogsSh.getDataRange().getValues();
+    const map = headerMap(vals[0]);
+    const rowIdx = findDogRow(vals, map, dogId);
+    if (rowIdx !== -1 && map[H.WEIGHT] !== undefined) {
+      dogsSh.getRange(rowIdx + 1, map[H.WEIGHT] + 1).setValue(weight);
+    }
+  }
+
+  // Dodaj wpis do historii
+  const histSh = getOrCreateSheet(ss, WEIGHT_HISTORY_SHEET_NAME);
+  if (histSh.getLastRow() === 0) {
+    histSh.appendRow(["dog_id", "weight", "date", "recorded_by_email", "recorded_by_name"]);
+  }
+  histSh.appendRow([dogId, weight, nowInPolandText(), recordedByEmail, recordedByName]);
+
+  return { success: true, dogId, weight };
+}
+
+function getWeightHistory_(dogId) {
+  if (!dogId) return [];
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(WEIGHT_HISTORY_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const entries = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["dog_id"]]) !== dogId) continue;
+    entries.push({
+      weight: safeStr(row[map["weight"]]),
+      date: safeStr(row[map["date"]]),
+      recordedByName: safeStr(row[map["recorded_by_name"]]),
+      recordedByEmail: safeStr(row[map["recorded_by_email"]]),
+    });
+  }
+  // Najnowsze pierwsze
+  return entries.reverse();
 }

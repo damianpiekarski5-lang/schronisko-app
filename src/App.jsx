@@ -1756,6 +1756,13 @@ const DogCardView = ({
   const [savingLocation, setSavingLocation] = useState(false);
   const [locationMsg, setLocationMsg] = useState(null);
 
+  const [weightInput, setWeightInput] = useState("");
+  const [savingWeight, setSavingWeight] = useState(false);
+  const [weightMsg, setWeightMsg] = useState(null);
+  const [weightHistory, setWeightHistory] = useState([]);
+  const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [loadingWeightHistory, setLoadingWeightHistory] = useState(false);
+
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
     setSavingFlag((s) => ({ ...s, [flagType]: true }));
@@ -1845,6 +1852,54 @@ const DogCardView = ({
     } finally {
       setSavingLocation(false);
     }
+  };
+
+  const handleSaveWeight = async () => {
+    if (!currentUser || savingWeight || !weightInput.trim()) return;
+    setSavingWeight(true);
+    setWeightMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "addWeightEntry",
+          dogId: selectedDog.id,
+          weight: weightInput.trim(),
+          user: { email: currentUser.email, displayName: currentUser.displayName || currentUser.email },
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setWeightMsg({ type: "success", text: "Waga zapisana" });
+        setWeightInput("");
+        onSurveySaved?.(selectedDog.id);
+        if (showWeightHistory) loadWeightHistory();
+        setTimeout(() => setWeightMsg(null), 4000);
+      } else {
+        setWeightMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setWeightMsg({ type: "error", text: "Błąd połączenia" });
+    } finally {
+      setSavingWeight(false);
+    }
+  };
+
+  const loadWeightHistory = async () => {
+    setLoadingWeightHistory(true);
+    try {
+      const res = await fetch(`/api/gs?action=getWeightHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const result = await res.json();
+      if (result?.ok && Array.isArray(result?.data)) setWeightHistory(result.data);
+    } catch {}
+    setLoadingWeightHistory(false);
+  };
+
+  const handleToggleWeightHistory = () => {
+    if (!showWeightHistory) loadWeightHistory();
+    setShowWeightHistory((v) => !v);
   };
 
   useEffect(() => {
@@ -2273,12 +2328,87 @@ const DogCardView = ({
                   </div>
                 </div>
               )}
-              {selectedDog.weight && (
-                <div style={styles.infoBox}>
+              <div style={styles.infoBox}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
                   <div style={styles.infoLabel}>⚖️ Waga</div>
-                  <div style={styles.infoValue}>{selectedDog.weight}</div>
+                  {weightHistory.length > 0 || showWeightHistory ? (
+                    <button
+                      onClick={handleToggleWeightHistory}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "2px 6px" }}
+                    >
+                      {showWeightHistory ? "Ukryj historię" : "Historia"}
+                    </button>
+                  ) : null}
                 </div>
-              )}
+                <div style={styles.infoValue}>{selectedDog.weight || "—"}</div>
+                {currentUser && (
+                  <div style={{ marginTop: "0.6rem" }}>
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <input
+                        type="text"
+                        value={weightInput}
+                        onChange={(e) => setWeightInput(e.target.value)}
+                        placeholder="Nowa waga (np. 12 kg)"
+                        style={{ flex: 1, padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.875rem" }}
+                      />
+                      <button
+                        onClick={handleSaveWeight}
+                        disabled={savingWeight || !weightInput.trim()}
+                        style={{ padding: "0.4rem 0.75rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, cursor: "pointer", fontSize: "0.875rem", opacity: (savingWeight || !weightInput.trim()) ? 0.6 : 1 }}
+                      >
+                        {savingWeight ? "..." : "Zapisz"}
+                      </button>
+                    </div>
+                    {weightMsg && (
+                      <p style={{ marginTop: "0.3rem", fontSize: "0.8rem", color: weightMsg.type === "success" ? "#166534" : "#991b1b", fontWeight: 600 }}>
+                        {weightMsg.type === "success" ? "✅ " : "❌ "}{weightMsg.text}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {showWeightHistory && (
+                  <div style={{ marginTop: "0.75rem" }}>
+                    <button
+                      onClick={handleToggleWeightHistory}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "0", marginBottom: "0.4rem", display: "block" }}
+                    >
+                      Historia wagi ▲
+                    </button>
+                    {loadingWeightHistory ? (
+                      <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Ładowanie...</p>
+                    ) : weightHistory.length === 0 ? (
+                      <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Brak historii</p>
+                    ) : (
+                      <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
+                        <thead>
+                          <tr>
+                            <th style={{ textAlign: "left", color: "#6b7280", fontWeight: 600, paddingBottom: "0.25rem" }}>Data</th>
+                            <th style={{ textAlign: "right", color: "#6b7280", fontWeight: 600, paddingBottom: "0.25rem" }}>Waga</th>
+                            <th style={{ textAlign: "right", color: "#6b7280", fontWeight: 600, paddingBottom: "0.25rem" }}>Kto</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {weightHistory.map((entry, i) => (
+                            <tr key={i} style={{ borderTop: "1px solid #f3f4f6" }}>
+                              <td style={{ paddingTop: "0.25rem", color: "#374151" }}>{entry.date}</td>
+                              <td style={{ paddingTop: "0.25rem", color: "#374151", textAlign: "right", fontWeight: 600 }}>{entry.weight}</td>
+                              <td style={{ paddingTop: "0.25rem", color: "#6b7280", textAlign: "right", fontSize: "0.75rem" }}>{entry.recordedByName}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                )}
+                {!showWeightHistory && (weightHistory.length > 0 || !currentUser) && (
+                  <button
+                    onClick={handleToggleWeightHistory}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "0.25rem 0 0", display: "block" }}
+                  >
+                    Historia wagi ▼
+                  </button>
+                )}
+              </div>
             </div>
             {selectedDog.appearance && (
               <div style={styles.sectionBlue}>
