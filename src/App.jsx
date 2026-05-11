@@ -552,6 +552,24 @@ const pavilionConfig = {
     type: "dog",
     special: "szczeniaki",
   },
+  KP0: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP1: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP2: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP3: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP4: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP5: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP6: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP7: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP8: { type: "dog", special: "kwarantanna", mapHidden: true },
+  KP9: { type: "dog", special: "kwarantanna", mapHidden: true },
+  IZ1: { type: "dog", special: "izolacja", mapHidden: true },
+  IZ2: { type: "dog", special: "izolacja", mapHidden: true },
+  IZ3: { type: "dog", special: "izolacja", mapHidden: true },
+  IZ4: { type: "dog", special: "izolacja", mapHidden: true },
+  IZ5: { type: "dog", special: "izolacja", mapHidden: true },
+  O1: { type: "dog", special: "inne", mapHidden: true },
+  O2: { type: "dog", special: "inne", mapHidden: true },
+  O3: { type: "dog", special: "inne", mapHidden: true },
 };
 
 const infrastructure = [
@@ -961,6 +979,7 @@ const MapView = ({
                     )
                   )}
                   {Object.entries(pavilionConfig).map(([code, config]) => {
+                    if (config.mapHidden) return null;
                     const dogCount = countDogsInPavilion(code);
                     let fillColor = "#e2e8f0";
                     if (config.special === "szczeniaki") fillColor = "#fde047";
