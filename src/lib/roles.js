@@ -18,3 +18,7 @@ export function canSetMedicalFlags(role) {
 export function canViewMedicalNotes(role) {
   return role === "ambulatorium" || role === "staff" || role === "admin";
 }
+
+export function canMoveDog(role) {
+  return role === "staff" || role === "ambulatorium" || role === "admin";
+}
