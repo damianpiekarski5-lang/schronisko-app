@@ -14,6 +14,8 @@ const FAVORITES_SHEET_NAME = "Favorites";
 const BEHAVIORYST_DOGS_SHEET_NAME = "PsyBehawiorysty";
 const OPIEKUNOWIE_SHEET_NAME = "Opiekunowie";
 const HISTORY_SHEET_NAME = "HistoriaPsa";
+const ROLES_SHEET_NAME = "Roles";
+const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
 const REPORT_RESOLVED_STATUSES = ["W_PRACY", "ODRZUCONE", "ROZPATRZONE", "ZAAKCEPTOWANE"];
@@ -127,6 +129,20 @@ function doPost(e) {
     if (action === "addDogHistory") {
       addDogHistory(payload);
       return json({ ok: true, data: { success: true } });
+    }
+
+    if (action === "getUserRole") {
+      const email = safeStr(payload?.user?.email);
+      return json({ ok: true, data: { role: getUserRole_(email) } });
+    }
+
+    if (action === "setUserRole") {
+      setUserRole_(safeStr(payload?.email), safeStr(payload?.role));
+      return json({ ok: true, data: { success: true } });
+    }
+
+    if (action === "listUsersForAdmin") {
+      return json({ ok: true, data: listUsersForAdmin_() });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -671,6 +687,60 @@ function getLastWalkInfo(dogId) {
     }
   }
   return lastWalk;
+}
+
+// ===============================
+// ROLES
+// ===============================
+function getUserRole_(email) {
+  if (!email) return "volunteer";
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, ROLES_SHEET_NAME);
+  ensureHeaders(sh, ["Email", "Role", "UpdatedAt"]);
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return "volunteer";
+  const map = headerMap(values[0]);
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][map["Email"]]).toLowerCase() === email.toLowerCase()) {
+      return safeStr(values[i][map["Role"]]) || "volunteer";
+    }
+  }
+  return "volunteer";
+}
+
+function setUserRole_(email, role) {
+  if (!email) throw new Error("Brak email");
+  if (!VALID_ROLES.includes(role)) throw new Error("Nieprawidłowa rola: " + role);
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, ROLES_SHEET_NAME);
+  ensureHeaders(sh, ["Email", "Role", "UpdatedAt"]);
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const now = nowInPolandText();
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][map["Email"]]).toLowerCase() === email.toLowerCase()) {
+      sh.getRange(i + 1, map["Role"] + 1).setValue(role);
+      sh.getRange(i + 1, map["UpdatedAt"] + 1).setValue(now);
+      return;
+    }
+  }
+  sh.appendRow([email, role, now]);
+}
+
+function listUsersForAdmin_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, ROLES_SHEET_NAME);
+  ensureHeaders(sh, ["Email", "Role", "UpdatedAt"]);
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return [];
+  const map = headerMap(values[0]);
+  return values.slice(1)
+    .map(row => ({
+      email: safeStr(row[map["Email"]]),
+      role: safeStr(row[map["Role"]]) || "volunteer",
+      updatedAt: safeStr(row[map["UpdatedAt"]]),
+    }))
+    .filter(u => u.email);
 }
 
 // ===============================

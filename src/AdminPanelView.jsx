@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft } from "lucide-react";
+import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft, Users } from "lucide-react";
+import { ROLES, ROLE_LABELS } from "./lib/roles";
 
 const styles = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "90px" },
@@ -106,6 +107,11 @@ const AdminPanelView = ({
   const [reportsError, setReportsError] = useState("");
   const [selectedReport, setSelectedReport] = useState(null);
   const [processingReportId, setProcessingReportId] = useState("");
+
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [usersError, setUsersError] = useState("");
+  const [savingRole, setSavingRole] = useState("");
 
   const dogsById = useMemo(() => {
     const map = new Map();
@@ -226,6 +232,53 @@ const AdminPanelView = ({
     }
   };
 
+  const fetchUsers = async () => {
+    if (!currentUser) return;
+    setLoadingUsers(true);
+    setUsersError("");
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "listUsersForAdmin" }),
+      });
+      const result = await res.json();
+      if (!res.ok || result?.ok !== true || !Array.isArray(result?.data)) {
+        throw new Error(result?.error || "Nie udało się pobrać użytkowników");
+      }
+      setUsersList(result.data);
+    } catch (err) {
+      setUsersError(String(err?.message || err));
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const handleRoleChange = async (email, newRole) => {
+    if (!currentUser) return;
+    setSavingRole(email);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "setUserRole", email, role: newRole }),
+      });
+      const result = await res.json();
+      if (!res.ok || result?.ok !== true) {
+        throw new Error(result?.error || "Nie udało się zapisać roli");
+      }
+      setUsersList((prev) =>
+        prev.map((u) => (u.email === email ? { ...u, role: newRole } : u))
+      );
+    } catch (err) {
+      setUsersError(String(err?.message || err));
+    } finally {
+      setSavingRole("");
+    }
+  };
+
   const selectedDog = selectedReport ? dogsById.get(String(selectedReport?.dogId || "")) : null;
 
   return (
@@ -238,7 +291,7 @@ const AdminPanelView = ({
       <div style={styles.content}>
         {!selectedReport && (
           <>
-            <div style={styles.tabs}>
+            <div style={{ ...styles.tabs, gridTemplateColumns: "1fr 1fr 1fr" }}>
               <button
                 onClick={() => setActiveTab("reports")}
                 style={{ ...styles.tabButton, ...(activeTab === "reports" ? styles.tabButtonActive : {}) }}
@@ -250,6 +303,12 @@ const AdminPanelView = ({
                 style={{ ...styles.tabButton, ...(activeTab === "work" ? styles.tabButtonActive : {}) }}
               >
                 <Briefcase size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Psy w pracy ({sortedDogs.length})
+              </button>
+              <button
+                onClick={() => { setActiveTab("users"); fetchUsers(); }}
+                style={{ ...styles.tabButton, ...(activeTab === "users" ? styles.tabButtonActive : {}) }}
+              >
+                <Users size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Użytkownicy
               </button>
             </div>
 
@@ -295,7 +354,60 @@ const AdminPanelView = ({
               </>
             )}
 
-            {activeTab === "work" && (
+            {activeTab === “users” && (
+              <div>
+                <button onClick={fetchUsers} style={{ ...styles.tabButton, width: “100%”, marginBottom: “1rem” }}>
+                  <RefreshCw size={16} style={{ marginRight: 6, verticalAlign: “text-bottom” }} /> Odśwież listę
+                </button>
+                {usersError && (
+                  <div style={{ ...styles.emptyCard, color: “#991b1b”, marginBottom: “1rem” }}>{usersError}</div>
+                )}
+                {loadingUsers ? (
+                  <div style={styles.emptyCard}>Ładowanie użytkowników...</div>
+                ) : usersList.length === 0 ? (
+                  <div style={styles.emptyCard}>
+                    Brak zapisanych użytkowników w arkuszu Roles.<br />
+                    Użytkownicy pojawiają się tutaj po pierwszym logowaniu (rola domyślna: Wolontariusz).
+                  </div>
+                ) : (
+                  usersList.map((u) => (
+                    <div key={u.email} style={{ ...styles.dogCard, display: “flex”, alignItems: “center”, gap: “1rem” }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontWeight: 700, margin: 0, overflow: “hidden”, textOverflow: “ellipsis”, whiteSpace: “nowrap” }}>
+                          {u.email}
+                        </p>
+                        {u.updatedAt && (
+                          <p style={{ color: “#9ca3af”, fontSize: “0.75rem”, margin: “0.2rem 0 0” }}>
+                            Zmieniono: {u.updatedAt}
+                          </p>
+                        )}
+                      </div>
+                      <select
+                        value={u.role}
+                        disabled={savingRole === u.email}
+                        onChange={(e) => handleRoleChange(u.email, e.target.value)}
+                        style={{
+                          border: “1px solid #d1d5db”,
+                          borderRadius: “0.5rem”,
+                          padding: “0.4rem 0.6rem”,
+                          fontWeight: 600,
+                          cursor: “pointer”,
+                          background: “white”,
+                          flexShrink: 0,
+                          opacity: savingRole === u.email ? 0.5 : 1,
+                        }}
+                      >
+                        {ROLES.map((r) => (
+                          <option key={r} value={r}>{ROLE_LABELS[r]}</option>
+                        ))}
+                      </select>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {activeTab === “work” && (
               sortedDogs.length === 0 ? (
                 <div style={styles.emptyCard}>Brak psów dodanych przez „Rozpocznij pracę”.</div>
               ) : (
