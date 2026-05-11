@@ -21,6 +21,7 @@ import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
 import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
+import { RoleProvider } from "./hooks/useUserRole";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -2415,7 +2416,7 @@ const handleLogin = async () => {
   const behaviorystDogs = dogs.filter((dog) => behaviorystDogIds.has(dog.id));
 
   return (
-    <>
+    <RoleProvider currentUser={currentUser}>
       <InstallPrompt />
       {isAuthEnabled && currentUser && (
         <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
@@ -2519,7 +2520,7 @@ const handleLogin = async () => {
           onStartWork={handleStartBehaviorystWork}
         />
       )}
-    </>
+    </RoleProvider>
   );
 };
 

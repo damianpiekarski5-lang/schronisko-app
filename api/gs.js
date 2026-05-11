@@ -10,6 +10,8 @@ const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: przenie≈
 const ADMIN_ACTIONS = new Set([
   "adminGetBehaviorReports",
   "adminUpdateBehaviorReport",
+  "setUserRole",
+  "listUsersForAdmin",
 ]);
 
 function getAdminEmails() {
