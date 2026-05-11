@@ -702,6 +702,7 @@ const MapView = ({
   setHoveredCard,
   isAdmin,
 }) => {
+  const { isAdmin: isAdminRole, loading: roleLoading } = useUserRole();
   const getFilteredDogs = () => {
     if (!searchTerm) return dogs;
     return dogs.filter(
@@ -888,12 +889,14 @@ const MapView = ({
                 <h2 style={{ fontSize: "1.125rem", fontWeight: "bold", color: "#111827", margin: 0 }}>
                   🗺️ Mapa pawilonów
                 </h2>
-                <button
-                  onClick={() => setCurrentView("mapEditor")}
-                  style={{ padding: "0.4rem 0.75rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "0.5rem", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
-                >
-                  ✏️ Edytuj mapę
-                </button>
+                {!roleLoading && isAdminRole && (
+                  <button
+                    onClick={() => setCurrentView("mapEditor")}
+                    style={{ padding: "0.4rem 0.75rem", backgroundColor: "#eff6ff", color: "#2563eb", border: "1px solid #bfdbfe", borderRadius: "0.5rem", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600" }}
+                  >
+                    ✏️ Edytuj mapę
+                  </button>
+                )}
               </div>
               <p
                 style={{
