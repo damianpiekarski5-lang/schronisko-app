@@ -1737,7 +1737,7 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
   );
 };
 
-const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate }) => (
+const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate, dietInput, setDietInput, savingDiet, dietMsg, onSaveDiet }) => (
   <div style={{ marginTop: "16px", border: "2px solid #fca5a5", borderRadius: "10px", padding: "16px", backgroundColor: "#fef2f2" }}>
     <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#7f1d1d" }}>🏥 Ambulatorium</h3>
     <FlagBlock
@@ -1762,6 +1762,28 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingF
       onSave={onSave}
       onDeactivate={onDeactivate}
     />
+    <div style={{ marginTop: "12px", borderTop: "1px solid #fca5a5", paddingTop: "12px" }}>
+      <div style={{ fontWeight: 700, color: "#7f1d1d", fontSize: "14px", marginBottom: "6px" }}>🥩 Dieta specjalistyczna</div>
+      <textarea
+        value={dietInput}
+        onChange={(e) => setDietInput(e.target.value)}
+        placeholder="Wpisz zalecenia dietetyczne dla psa (pozostaw puste aby usunąć)"
+        rows={3}
+        style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #fca5a5", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
+      />
+      <button
+        onClick={onSaveDiet}
+        disabled={savingDiet}
+        style={{ marginTop: "6px", padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#dc2626", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: savingDiet ? 0.6 : 1 }}
+      >
+        {savingDiet ? "Zapisywanie..." : "Zapisz dietę"}
+      </button>
+      {dietMsg && (
+        <p style={{ marginTop: "6px", fontSize: "0.8rem", fontWeight: 600, color: dietMsg.type === "success" ? "#166534" : "#991b1b" }}>
+          {dietMsg.type === "success" ? "✅ " : "❌ "}{dietMsg.text}
+        </p>
+      )}
+    </div>
   </div>
 );
 
@@ -1792,6 +1814,11 @@ const DogCardView = ({
   const [flagForm, setFlagForm] = useState({ no_food: initFlagForm, walk_blocked: initFlagForm });
   const [savingFlag, setSavingFlag] = useState({ no_food: false, walk_blocked: false });
   const [flagMsg, setFlagMsg] = useState({ no_food: null, walk_blocked: null });
+
+  const [dietInput, setDietInput] = useState(selectedDog?.diet || "");
+  const [savingDiet, setSavingDiet] = useState(false);
+  const [dietMsg, setDietMsg] = useState(null);
+  const [currentDiet, setCurrentDiet] = useState(selectedDog?.diet || "");
 
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationForm, setLocationForm] = useState({ pavilion: "", box: "" });
@@ -1861,6 +1888,38 @@ const DogCardView = ({
       setFlagMsg((s) => ({ ...s, [flagType]: { type: "error", text: "Błąd połączenia" } }));
     } finally {
       setSavingFlag((s) => ({ ...s, [flagType]: false }));
+    }
+  };
+
+  const handleSaveDiet = async () => {
+    if (!currentUser || savingDiet) return;
+    setSavingDiet(true);
+    setDietMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "updateDogDiet",
+          dogId: selectedDog.id,
+          diet: dietInput.trim(),
+          user: { email: currentUser.email },
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setCurrentDiet(dietInput.trim());
+        setDietMsg({ type: "success", text: "Dieta zapisana" });
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setDietMsg(null), 4000);
+      } else {
+        setDietMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setDietMsg({ type: "error", text: "Błąd połączenia" });
+    } finally {
+      setSavingDiet(false);
     }
   };
 
@@ -2126,6 +2185,16 @@ const DogCardView = ({
               name={selectedDog.name}
               size="large"
             />
+            {currentDiet && (
+              <div style={{ marginTop: "1rem", backgroundColor: "#fef3c7", border: "2px solid #f59e0b", borderRadius: "0.75rem", padding: "0.875rem 1rem" }}>
+                <p style={{ fontWeight: 700, color: "#92400e", fontSize: "0.95rem", marginBottom: "0.35rem" }}>
+                  ⚠️ Uwaga — pies na diecie specjalistycznej!
+                </p>
+                <p style={{ color: "#78350f", fontSize: "0.875rem", lineHeight: "1.5" }}>
+                  Na spacerach karmimy go tylko: <strong>{currentDiet}</strong>
+                </p>
+              </div>
+            )}
           </div>
           <div style={{ padding: "1.25rem" }}>
             <button
@@ -2538,6 +2607,11 @@ const DogCardView = ({
                 flagMsg={flagMsg}
                 onSave={handleSetFlag}
                 onDeactivate={handleDeactivateFlag}
+                dietInput={dietInput}
+                setDietInput={setDietInput}
+                savingDiet={savingDiet}
+                dietMsg={dietMsg}
+                onSaveDiet={handleSaveDiet}
               />
             )}
             {canReleaseDog(role) && (
