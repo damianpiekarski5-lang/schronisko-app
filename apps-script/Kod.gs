@@ -17,6 +17,7 @@ const HISTORY_SHEET_NAME = "HistoriaPsa";
 const ROLES_SHEET_NAME = "Roles";
 const MEDICAL_FLAGS_SHEET_NAME = "MedicalFlags";
 const WEIGHT_HISTORY_SHEET_NAME = "HistoriaWagi";
+const MEDICAL_REPORTS_SHEET_NAME = "ZgłoszeniaMedyczne";
 const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
@@ -179,6 +180,18 @@ function doPost(e) {
 
     if (action === "addWeightEntry") {
       return json({ ok: true, data: addWeightEntry_(payload) });
+    }
+
+    if (action === "submitMedicalReport") {
+      return json({ ok: true, data: submitMedicalReport_(payload) });
+    }
+
+    if (action === "getMedicalReports") {
+      return json({ ok: true, data: getMedicalReports_(payload) });
+    }
+
+    if (action === "updateMedicalReportStatus") {
+      return json({ ok: true, data: updateMedicalReportStatus_(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -1153,4 +1166,126 @@ function getSectorDogs_() {
   }
 
   return result;
+}
+
+// ===============================
+// ZGŁOSZENIA MEDYCZNE
+// ===============================
+
+function submitMedicalReport_(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const description = safeStr(payload?.description);
+  if (!dogId || !description) throw new Error("Brakuje dogId lub description");
+
+  const id = Date.now() + "_" + Math.random().toString(36).substr(2, 4);
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  let sh = ss.getSheetByName(MEDICAL_REPORTS_SHEET_NAME);
+  if (!sh) {
+    sh = ss.insertSheet(MEDICAL_REPORTS_SHEET_NAME);
+    sh.appendRow([
+      "id", "dog_id", "dog_name", "pawilon", "boks",
+      "description", "reported_by", "reported_at",
+      "status", "status_updated_by", "status_updated_at", "status_note"
+    ]);
+  }
+
+  sh.appendRow([
+    id,
+    dogId,
+    safeStr(payload?.dogName),
+    safeStr(payload?.pawilon),
+    safeStr(payload?.boks),
+    description,
+    safeStr(payload?.reportedBy),
+    new Date().toISOString(),
+    "nowe",
+    "", "", ""
+  ]);
+
+  return { success: true, id: id };
+}
+
+function getMedicalReports_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do pobierania zgłoszeń medycznych");
+  }
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(MEDICAL_REPORTS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const hm = {};
+  values[0].forEach(function(h, i) { hm[h] = i; });
+
+  const statusFilter = safeStr(payload?.status);
+  const statusOrder = { "nowe": 0, "w_trakcie": 1, "zamknięte": 2 };
+  const rows = [];
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var id = safeStr(row[hm["id"]]);
+    if (!id) continue;
+    var status = safeStr(row[hm["status"]]) || "nowe";
+    if (statusFilter && status !== statusFilter) continue;
+    rows.push({
+      id: id,
+      dogId: safeStr(row[hm["dog_id"]]),
+      dogName: safeStr(row[hm["dog_name"]]),
+      pawilon: safeStr(row[hm["pawilon"]]),
+      boks: safeStr(row[hm["boks"]]),
+      description: safeStr(row[hm["description"]]),
+      reportedBy: safeStr(row[hm["reported_by"]]),
+      reportedAt: safeStr(row[hm["reported_at"]]),
+      status: status,
+      statusUpdatedBy: safeStr(row[hm["status_updated_by"]]),
+      statusUpdatedAt: safeStr(row[hm["status_updated_at"]]),
+      statusNote: safeStr(row[hm["status_note"]])
+    });
+  }
+
+  rows.sort(function(a, b) {
+    var sa = statusOrder[a.status] !== undefined ? statusOrder[a.status] : 3;
+    var sb = statusOrder[b.status] !== undefined ? statusOrder[b.status] : 3;
+    if (sa !== sb) return sa - sb;
+    return new Date(b.reportedAt) - new Date(a.reportedAt);
+  });
+
+  return rows;
+}
+
+function updateMedicalReportStatus_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do zmiany statusu zgłoszenia");
+  }
+
+  const id = safeStr(payload?.id);
+  const status = safeStr(payload?.status);
+  if (!id || !status) throw new Error("Brakuje id lub status");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(MEDICAL_REPORTS_SHEET_NAME);
+  if (!sh) throw new Error("Brak arkusza: " + MEDICAL_REPORTS_SHEET_NAME);
+
+  const values = sh.getDataRange().getValues();
+  const hm = {};
+  values[0].forEach(function(h, i) { hm[h] = i; });
+
+  var rowIdx = -1;
+  for (var i = 1; i < values.length; i++) {
+    if (safeStr(values[i][hm["id"]]) === id) { rowIdx = i; break; }
+  }
+  if (rowIdx === -1) throw new Error("Nie znaleziono zgłoszenia: " + id);
+
+  sh.getRange(rowIdx + 1, hm["status"] + 1).setValue(status);
+  sh.getRange(rowIdx + 1, hm["status_updated_by"] + 1).setValue(safeStr(payload?.updatedBy));
+  sh.getRange(rowIdx + 1, hm["status_updated_at"] + 1).setValue(new Date().toISOString());
+  sh.getRange(rowIdx + 1, hm["status_note"] + 1).setValue(safeStr(payload?.note));
+
+  return { success: true };
 }

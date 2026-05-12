@@ -1818,6 +1818,12 @@ const DogCardView = ({
   const [dietInput, setDietInput] = useState(selectedDog?.diet || "");
   const [savingDiet, setSavingDiet] = useState(false);
   const [dietMsg, setDietMsg] = useState(null);
+
+  const [showMedReportModal, setShowMedReportModal] = useState(false);
+  const [medReportText, setMedReportText] = useState("");
+  const [sendingMedReport, setSendingMedReport] = useState(false);
+  const [medReportModalErr, setMedReportModalErr] = useState(null);
+  const [medReportSuccessMsg, setMedReportSuccessMsg] = useState(null);
   const [currentDiet, setCurrentDiet] = useState(selectedDog?.diet || "");
 
   const [editingLocation, setEditingLocation] = useState(false);
@@ -1920,6 +1926,45 @@ const DogCardView = ({
       setDietMsg({ type: "error", text: "Błąd połączenia" });
     } finally {
       setSavingDiet(false);
+    }
+  };
+
+  const handleSubmitMedReport = async () => {
+    if (!currentUser || sendingMedReport) return;
+    if (!medReportText.trim() || medReportText.trim().length < 10) {
+      setMedReportModalErr("Opis musi mieć co najmniej 10 znaków.");
+      return;
+    }
+    setSendingMedReport(true);
+    setMedReportModalErr(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "submitMedicalReport",
+          dogId: selectedDog.id,
+          dogName: selectedDog.name,
+          pawilon: selectedDog.pavilion || "",
+          boks: selectedDog.box || "",
+          description: medReportText.trim(),
+          reportedBy: currentUser.displayName || currentUser.email || "Nieznany",
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setShowMedReportModal(false);
+        setMedReportText("");
+        setMedReportSuccessMsg("✓ Zgłoszenie wysłane — ambulatorium zostało powiadomione");
+        setTimeout(() => setMedReportSuccessMsg(null), 3000);
+      } else {
+        setMedReportModalErr("Błąd wysyłania — spróbuj ponownie");
+      }
+    } catch {
+      setMedReportModalErr("Błąd połączenia — spróbuj ponownie");
+    } finally {
+      setSendingMedReport(false);
     }
   };
 
@@ -2278,6 +2323,57 @@ const DogCardView = ({
                 }}
               >
                 {walkMessage.text}
+              </div>
+            )}
+            {medReportSuccessMsg && (
+              <div style={{ marginBottom: "1rem", padding: "0.75rem", borderRadius: "0.75rem", backgroundColor: "#dcfce7", color: "#166534", fontSize: "0.875rem", fontWeight: 600 }}>
+                {medReportSuccessMsg}
+              </div>
+            )}
+            {currentUser && (
+              <button
+                onClick={() => { setShowMedReportModal(true); setMedReportModalErr(null); }}
+                style={{ ...styles.walkButton, backgroundColor: "#DC2626", boxShadow: "0 2px 4px rgba(220,38,38,0.3)", marginBottom: "0.5rem" }}
+              >
+                🚨 Zgłoś problem medyczny
+              </button>
+            )}
+            {showMedReportModal && (
+              <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+                <div style={{ backgroundColor: "white", borderRadius: "1rem", padding: "1.5rem", width: "100%", maxWidth: "480px", boxShadow: "0 20px 60px rgba(0,0,0,0.3)" }}>
+                  <h2 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#111827", marginBottom: "0.25rem" }}>🚨 Zgłoś problem medyczny</h2>
+                  <p style={{ color: "#6b7280", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                    Pies: <strong>{selectedDog.name}</strong>
+                    {(selectedDog.pavilion || selectedDog.box) && ` · ${[selectedDog.pavilion, selectedDog.box ? `boks ${selectedDog.box}` : ""].filter(Boolean).join(" / ")}`}
+                  </p>
+                  <label style={{ fontWeight: 600, color: "#374151", fontSize: "0.875rem", display: "block", marginBottom: "0.4rem" }}>Opisz problem:</label>
+                  <textarea
+                    value={medReportText}
+                    onChange={(e) => { setMedReportText(e.target.value); setMedReportModalErr(null); }}
+                    placeholder="Opisz zaobserwowany problem (min. 10 znaków)..."
+                    rows={4}
+                    style={{ width: "100%", padding: "0.6rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit", marginBottom: "0.5rem" }}
+                  />
+                  {medReportModalErr && (
+                    <p style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>❌ {medReportModalErr}</p>
+                  )}
+                  <div style={{ display: "flex", gap: "0.75rem" }}>
+                    <button
+                      onClick={() => { setShowMedReportModal(false); setMedReportText(""); setMedReportModalErr(null); }}
+                      disabled={sendingMedReport}
+                      style={{ flex: 1, padding: "0.75rem", borderRadius: "0.75rem", border: "1px solid #d1d5db", backgroundColor: "white", color: "#374151", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}
+                    >
+                      Anuluj
+                    </button>
+                    <button
+                      onClick={handleSubmitMedReport}
+                      disabled={sendingMedReport}
+                      style={{ flex: 2, padding: "0.75rem", borderRadius: "0.75rem", border: "none", backgroundColor: "#DC2626", color: "white", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer", opacity: sendingMedReport ? 0.6 : 1 }}
+                    >
+                      {sendingMedReport ? "Wysyłanie..." : "Wyślij zgłoszenie"}
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
             {formattedLastWalk && (
