@@ -24,7 +24,7 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -2002,6 +2002,39 @@ const DogCardView = ({
 
   const isOpiekun = opiekunowie.some((o) => o.uid === currentUser?.uid);
 
+  const [releasingDog, setReleasingDog] = useState(false);
+  const [releaseMsg, setReleaseMsg] = useState(null);
+  const [showReleaseConfirm, setShowReleaseConfirm] = useState(false);
+
+  const handleReleaseDog = async () => {
+    if (!currentUser || releasingDog) return;
+    setReleasingDog(true);
+    setReleaseMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "setArchive", dogId: selectedDog.id, archived: true }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setReleaseMsg({ type: "success", text: `✅ Pies ${selectedDog.name} został wydany i przeniesiony do archiwum.` });
+        setShowReleaseConfirm(false);
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setCurrentView(dogCardFrom || "home"), 2000);
+      } else {
+        setReleaseMsg({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu") });
+        setShowReleaseConfirm(false);
+      }
+    } catch {
+      setReleaseMsg({ type: "error", text: "❌ Błąd połączenia" });
+      setShowReleaseConfirm(false);
+    } finally {
+      setReleasingDog(false);
+    }
+  };
+
   if (!selectedDog) return null;
 
   const formattedLastWalk = formatLastWalkDate(selectedDog.lastWalk);
@@ -2506,6 +2539,88 @@ const DogCardView = ({
                 onSave={handleSetFlag}
                 onDeactivate={handleDeactivateFlag}
               />
+            )}
+            {canReleaseDog(role) && (
+              <div style={{ marginTop: "2rem", borderTop: "1px solid #e5e7eb", paddingTop: "1.5rem" }}>
+                {!showReleaseConfirm ? (
+                  <button
+                    onClick={() => setShowReleaseConfirm(true)}
+                    disabled={releasingDog}
+                    style={{
+                      ...styles.walkButton,
+                      backgroundColor: "#dc2626",
+                      boxShadow: "0 2px 4px rgba(220,38,38,0.3)",
+                    }}
+                  >
+                    🏠 Wydaj psa
+                  </button>
+                ) : (
+                  <div
+                    style={{
+                      backgroundColor: "#fef2f2",
+                      border: "1px solid #fca5a5",
+                      borderRadius: "0.75rem",
+                      padding: "1rem",
+                    }}
+                  >
+                    <p style={{ fontWeight: 700, color: "#991b1b", marginBottom: "0.5rem", fontSize: "1rem" }}>
+                      Czy na pewno chcesz wydać psa {selectedDog.name}?
+                    </p>
+                    <p style={{ color: "#7f1d1d", fontSize: "0.875rem", marginBottom: "1rem" }}>
+                      Pies zostanie przeniesiony do archiwum. Tej operacji nie można cofnąć z poziomu aplikacji.
+                    </p>
+                    <div style={{ display: "flex", gap: "0.75rem" }}>
+                      <button
+                        onClick={handleReleaseDog}
+                        disabled={releasingDog}
+                        style={{
+                          flex: 1,
+                          padding: "0.75rem",
+                          borderRadius: "0.75rem",
+                          border: "none",
+                          backgroundColor: "#dc2626",
+                          color: "white",
+                          fontWeight: 700,
+                          fontSize: "1rem",
+                          cursor: "pointer",
+                          opacity: releasingDog ? 0.6 : 1,
+                        }}
+                      >
+                        {releasingDog ? "Zapisywanie..." : "Tak, wydaj psa"}
+                      </button>
+                      <button
+                        onClick={() => setShowReleaseConfirm(false)}
+                        disabled={releasingDog}
+                        style={{
+                          flex: 1,
+                          padding: "0.75rem",
+                          borderRadius: "0.75rem",
+                          border: "1px solid #d1d5db",
+                          backgroundColor: "white",
+                          color: "#374151",
+                          fontWeight: 600,
+                          fontSize: "1rem",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {releaseMsg && (
+                  <p
+                    style={{
+                      marginTop: "0.75rem",
+                      fontSize: "0.875rem",
+                      fontWeight: 600,
+                      color: releaseMsg.type === "success" ? "#166534" : "#991b1b",
+                    }}
+                  >
+                    {releaseMsg.text}
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </div>
