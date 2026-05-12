@@ -22,3 +22,7 @@ export function canViewMedicalNotes(role) {
 export function canMoveDog(role) {
   return role === "staff" || role === "ambulatorium" || role === "admin";
 }
+
+export function canViewSector(role) {
+  return role === "staff" || role === "ambulatorium" || role === "admin";
+}
