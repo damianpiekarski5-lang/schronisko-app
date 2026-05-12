@@ -1931,8 +1931,8 @@ const DogCardView = ({
 
   const handleSubmitMedReport = async () => {
     if (!currentUser || sendingMedReport) return;
-    if (!medReportText.trim() || medReportText.trim().length < 10) {
-      setMedReportModalErr("Opis musi mieć co najmniej 10 znaków.");
+    if (!medReportText.trim() || medReportText.trim().length < 5) {
+      setMedReportModalErr("Opis musi mieć co najmniej 5 znaków.");
       return;
     }
     setSendingMedReport(true);
@@ -2350,7 +2350,7 @@ const DogCardView = ({
                   <textarea
                     value={medReportText}
                     onChange={(e) => { setMedReportText(e.target.value); setMedReportModalErr(null); }}
-                    placeholder="Opisz zaobserwowany problem (min. 10 znaków)..."
+                    placeholder="Opisz zaobserwowany problem (min. 5 znaków)..."
                     rows={4}
                     style={{ width: "100%", padding: "0.6rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit", marginBottom: "0.5rem" }}
                   />
@@ -2905,6 +2905,24 @@ useEffect(() => {
   navRef.current = { currentView, dogCardFrom };
 }, [currentView, dogCardFrom]);
 
+const scrollPositions = useRef({});
+const currentViewRef = useRef("home");
+useEffect(() => { currentViewRef.current = currentView; }, [currentView]);
+
+const navigateToView = useCallback((targetView) => {
+  if (targetView === "dogCard") {
+    scrollPositions.current[currentViewRef.current] = window.scrollY;
+  }
+  setCurrentView(targetView);
+}, []);
+
+useEffect(() => {
+  if (currentView !== "dogCard") {
+    const y = scrollPositions.current[currentView] ?? 0;
+    requestAnimationFrame(() => window.scrollTo(0, y));
+  }
+}, [currentView]);
+
 useEffect(() => {
   history.pushState(null, "", window.location.href);
   const handlePopState = () => {
@@ -3223,7 +3241,7 @@ const handleLogin = async () => {
   const handleDogClickFromDashboard = (dog) => {
     setSelectedDog(dog);
     setDogCardFrom("home");
-    setCurrentView("dogCard");
+    navigateToView("dogCard");
   };
 
   const handleSurveySaved = async (dogId) => {
@@ -3325,7 +3343,7 @@ const handleLogin = async () => {
           onDogClick={handleDogClickFromDashboard}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           isAdmin={isAdminUser}
         />
       )}
@@ -3335,7 +3353,7 @@ const handleLogin = async () => {
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           setSelectedPavilion={setSelectedPavilion}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedDog={setSelectedDog}
           setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
@@ -3347,7 +3365,7 @@ const handleLogin = async () => {
         <BoxesView
           dogs={dogs}
           selectedPavilion={selectedPavilion}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedBox={setSelectedBox}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
@@ -3359,7 +3377,7 @@ const handleLogin = async () => {
           dogs={dogs}
           selectedPavilion={selectedPavilion}
           selectedBox={selectedBox}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedDog={setSelectedDog}
           setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
@@ -3386,7 +3404,7 @@ const handleLogin = async () => {
       {currentView === "myDogs" && (
         <MyDogsView
           myDogs={myDogs}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedDog={setSelectedDog}
           setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
@@ -3403,7 +3421,7 @@ const handleLogin = async () => {
           currentUser={currentUser}
           behaviorystDogs={behaviorystDogs}
           dogs={dogs}
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedDog={setSelectedDog}
           setDogCardFrom={setDogCardFrom}
           hoveredCard={hoveredCard}
@@ -3413,7 +3431,7 @@ const handleLogin = async () => {
       )}
       {currentView === "sector" && (
         <SectorView
-          setCurrentView={setCurrentView}
+          setCurrentView={navigateToView}
           setSelectedDog={setSelectedDog}
           setDogCardFrom={setDogCardFrom}
           currentUser={currentUser}
