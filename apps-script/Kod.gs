@@ -999,7 +999,7 @@ function updateDogLocation_(payload) {
 function updateDogDiet_(payload) {
   const userEmail = safeStr(payload?.user?.email);
   const role = getUserRole_(userEmail);
-  if (!["ambulatorium", "admin"].includes(role)) {
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
     throw new Error("Brak uprawnień do zmiany diety psa");
   }
 
