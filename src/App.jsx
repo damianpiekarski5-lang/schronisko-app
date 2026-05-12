@@ -1762,28 +1762,6 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingF
       onSave={onSave}
       onDeactivate={onDeactivate}
     />
-    <div style={{ marginTop: "12px", borderTop: "1px solid #fca5a5", paddingTop: "12px" }}>
-      <div style={{ fontWeight: 700, color: "#7f1d1d", fontSize: "14px", marginBottom: "6px" }}>🥩 Dieta specjalistyczna</div>
-      <textarea
-        value={dietInput}
-        onChange={(e) => setDietInput(e.target.value)}
-        placeholder="Wpisz zalecenia dietetyczne dla psa (pozostaw puste aby usunąć)"
-        rows={3}
-        style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #fca5a5", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
-      />
-      <button
-        onClick={onSaveDiet}
-        disabled={savingDiet}
-        style={{ marginTop: "6px", padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#dc2626", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: savingDiet ? 0.6 : 1 }}
-      >
-        {savingDiet ? "Zapisywanie..." : "Zapisz dietę"}
-      </button>
-      {dietMsg && (
-        <p style={{ marginTop: "6px", fontSize: "0.8rem", fontWeight: 600, color: dietMsg.type === "success" ? "#166534" : "#991b1b" }}>
-          {dietMsg.type === "success" ? "✅ " : "❌ "}{dietMsg.text}
-        </p>
-      )}
-    </div>
   </div>
 );
 
