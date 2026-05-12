@@ -126,8 +126,8 @@ function formatUntil(isoString) {
 
 function sortDogs(dogs) {
   return [...dogs].sort((a, b) => {
-    const rankA = (a.noFood || a.walkBlocked) ? 0 : a.diet ? 1 : 2;
-    const rankB = (b.noFood || b.walkBlocked) ? 0 : b.diet ? 1 : 2;
+    const rankA = (a.noFood || a.walkBlocked) ? 0 : 1;
+    const rankB = (b.noFood || b.walkBlocked) ? 0 : 1;
     if (rankA !== rankB) return rankA - rankB;
     return (a.name || "").localeCompare(b.name || "", "pl");
   });
@@ -177,7 +177,6 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
       pavilion: dog.pavilion,
       box: dog.box,
       diet: dog.diet,
-      warnings: dog.caution,
     });
     setDogCardFrom("sector");
     setCurrentView("dogCard");
@@ -274,11 +273,7 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
               </div>
             )}
 
-            {dog.caution && (
-              <div style={{ ...styles.infoRow, color: "#92400e" }}>
-                ⚠️ {dog.caution}
-              </div>
-            )}
+
           </div>
         ))}
       </div>
