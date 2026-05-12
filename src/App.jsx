@@ -2917,7 +2917,9 @@ const navigateToView = useCallback((targetView) => {
 }, []);
 
 useEffect(() => {
-  if (currentView !== "dogCard") {
+  if (currentView === "dogCard") {
+    requestAnimationFrame(() => window.scrollTo(0, 0));
+  } else {
     const y = scrollPositions.current[currentView] ?? 0;
     requestAnimationFrame(() => window.scrollTo(0, y));
   }
