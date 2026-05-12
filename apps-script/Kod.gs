@@ -1100,13 +1100,11 @@ function getSectorDogs_() {
 
     const flags = activeFlags[dogId] || {};
     const diet = safeStr(row[dm[H.DIET]]);
-    const caution = safeStr(row[dm[H.CAUTION]]);
 
     const hasFlag = !!(flags.noFood || flags.walkBlocked);
     const hasDiet = diet.length > 0 && diet.toLowerCase() !== "standardowa";
-    const hasCaution = caution.length > 0;
 
-    if (!hasFlag && !hasDiet && !hasCaution) continue;
+    if (!hasFlag && !hasDiet) continue;
 
     result.push({
       id: dogId,
@@ -1120,7 +1118,6 @@ function getSectorDogs_() {
       walkBlockedNote: flags.walkBlockedNote || "",
       walkBlockedUntil: flags.walkBlockedUntil || null,
       diet: diet,
-      caution: caution,
     });
   }
 
