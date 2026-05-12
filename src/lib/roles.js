@@ -26,3 +26,7 @@ export function canMoveDog(role) {
 export function canViewSector(role) {
   return role === "staff" || role === "ambulatorium" || role === "admin";
 }
+
+export function canReleaseDog(role) {
+  return role === "staff" || role === "admin";
+}
