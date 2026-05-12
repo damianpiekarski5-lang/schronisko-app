@@ -9,8 +9,11 @@ import {
   Home,
   Star,
   Shield,
+  Building2,
 } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
+import { useUserRole } from "./hooks/useUserRole";
+import { canViewSector } from "./lib/roles";
 
 const styles = {
   pageContainer: {
@@ -198,6 +201,7 @@ const HomeView = ({
   isAdmin,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const { role: userRole } = useUserRole();
 
   const filterDogs = () => {
     if (!searchTerm) return dogs;
@@ -377,6 +381,15 @@ const HomeView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(userRole) && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("sector")}
+          >
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button
             style={styles.bottomNavButton}

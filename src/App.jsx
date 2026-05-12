@@ -15,6 +15,7 @@ import {
   LogOut,
   Shield,
   Users,
+  Building2,
 } from "lucide-react";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
@@ -23,7 +24,8 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector } from "./lib/roles";
+import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
   auth,
@@ -705,7 +707,7 @@ const MapView = ({
   setHoveredCard,
   isAdmin,
 }) => {
-  const { isAdmin: isAdminRole, loading: roleLoading } = useUserRole();
+  const { isAdmin: isAdminRole, loading: roleLoading, role: userRole } = useUserRole();
   const getFilteredDogs = () => {
     if (!searchTerm) return dogs;
     return dogs.filter(
@@ -1153,6 +1155,15 @@ const MapView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(userRole) && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("sector")}
+          >
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
@@ -1176,6 +1187,7 @@ const BoxesView = ({
   setHoveredCard,
   isAdmin,
 }) => {
+  const { role: userRole } = useUserRole();
   const countDogsInPavilion = (pavilion) =>
     dogs.filter((dog) => dog.pavilion === pavilion).length;
   const countDogsInBox = (pavilion, box) =>
@@ -1297,6 +1309,15 @@ const BoxesView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(userRole) && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("sector")}
+          >
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
@@ -1322,6 +1343,7 @@ const DogsListView = ({
   setHoveredCard,
   isAdmin,
 }) => {
+  const { role: userRole } = useUserRole();
   const getDogsInBox = (pavilion, box) =>
     dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box);
   const dogsInBox = getDogsInBox(selectedPavilion, selectedBox);
@@ -1490,6 +1512,15 @@ const DogsListView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(userRole) && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("sector")}
+          >
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
@@ -1505,6 +1536,7 @@ const DogsListView = ({
 };
 
 const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, hoveredCard, setHoveredCard, authEnabled, isAdmin }) => {
+  const { role: userRole } = useUserRole();
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
   );
@@ -1584,6 +1616,12 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, ho
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(userRole) && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("sector")}>
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button style={styles.bottomNavButton} onClick={() => setCurrentView("panel")}>
             <Shield size={24} />
@@ -2494,6 +2532,15 @@ const DogCardView = ({
           <Star size={24} />
           <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
         </button>
+        {canViewSector(role) && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("sector")}
+          >
+            <Building2 size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+          </button>
+        )}
         {isAdmin && (
           <button
             style={styles.bottomNavButton}
@@ -2559,7 +2606,7 @@ useEffect(() => {
       setCurrentView("boxes");
     } else if (view === "boxes") {
       setCurrentView("map");
-    } else if (["map", "myDogs", "mapEditor"].includes(view)) {
+    } else if (["map", "myDogs", "mapEditor", "sector"].includes(view)) {
       setCurrentView("home");
     } else if (view === "panel") {
       setCurrentView("home");
@@ -3053,6 +3100,15 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           onStartWork={handleStartBehaviorystWork}
+        />
+      )}
+      {currentView === "sector" && (
+        <SectorView
+          setCurrentView={setCurrentView}
+          setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
+          currentUser={currentUser}
+          isAdmin={isAdminUser}
         />
       )}
     </RoleProvider>

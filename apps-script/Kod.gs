@@ -78,6 +78,10 @@ function doGet(e) {
       return json({ ok: true, data: getWeightHistory_(safeStr(e?.parameter?.dogId)) });
     }
 
+    if (action === "getSectorDogs") {
+      return json({ ok: true, data: getSectorDogs_() });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -1042,4 +1046,83 @@ function getWeightHistory_(dogId) {
   }
   // Najnowsze pierwsze
   return entries.reverse();
+}
+
+// ===============================
+// SEKTOR – psy z obostrzeniami
+// ===============================
+function getSectorDogs_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  // 1. Aktywne flagi medyczne
+  const flagsSh = ss.getSheetByName(MEDICAL_FLAGS_SHEET_NAME);
+  const activeFlags = {}; // dogId -> { noFood, noFoodNote, noFoodUntil, walkBlocked, walkBlockedNote, walkBlockedUntil }
+  if (flagsSh && flagsSh.getLastRow() >= 2) {
+    const flagsValues = flagsSh.getDataRange().getValues();
+    const fm = headerMap(flagsValues[0]);
+    const now = new Date();
+    for (let i = 1; i < flagsValues.length; i++) {
+      const row = flagsValues[i];
+      if (!toBoolean_(row[fm["is_active"]])) continue;
+      const validFrom = row[fm["valid_from"]] ? new Date(row[fm["valid_from"]]) : null;
+      const validUntil = row[fm["valid_until"]] ? new Date(row[fm["valid_until"]]) : null;
+      if (validFrom && validFrom > now) continue;
+      if (validUntil && validUntil <= now) continue;
+      const dogId = safeStr(row[fm["dog_id"]]);
+      const flagType = safeStr(row[fm["flag_type"]]);
+      if (!dogId) continue;
+      if (!activeFlags[dogId]) activeFlags[dogId] = {};
+      if (flagType === "no_food") {
+        activeFlags[dogId].noFood = true;
+        activeFlags[dogId].noFoodNote = safeStr(row[fm["note"]]);
+        activeFlags[dogId].noFoodUntil = validUntil ? validUntil.toISOString() : null;
+      } else if (flagType === "walk_blocked") {
+        activeFlags[dogId].walkBlocked = true;
+        activeFlags[dogId].walkBlockedNote = safeStr(row[fm["note"]]);
+        activeFlags[dogId].walkBlockedUntil = validUntil ? validUntil.toISOString() : null;
+      }
+    }
+  }
+
+  // 2. Psy z bazy
+  const dogsSh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!dogsSh) return [];
+  const dogsValues = dogsSh.getDataRange().getValues();
+  if (dogsValues.length < 2) return [];
+  const dm = headerMap(dogsValues[0]);
+
+  const result = [];
+  for (let i = 1; i < dogsValues.length; i++) {
+    const row = dogsValues[i];
+    const dogId = safeStr(row[dm[H.ID]]);
+    if (!dogId) continue;
+    if (toBoolean_(row[dm[H.ARCHIVE]])) continue;
+
+    const flags = activeFlags[dogId] || {};
+    const diet = safeStr(row[dm[H.DIET]]);
+    const caution = safeStr(row[dm[H.CAUTION]]);
+
+    const hasFlag = !!(flags.noFood || flags.walkBlocked);
+    const hasDiet = diet.length > 0 && diet.toLowerCase() !== "standardowa";
+    const hasCaution = caution.length > 0;
+
+    if (!hasFlag && !hasDiet && !hasCaution) continue;
+
+    result.push({
+      id: dogId,
+      name: safeStr(row[dm[H.NAME]]),
+      pavilion: safeStr(row[dm[H.PAVILION]]),
+      box: safeStr(row[dm[H.KENNEL]]),
+      noFood: !!flags.noFood,
+      noFoodNote: flags.noFoodNote || "",
+      noFoodUntil: flags.noFoodUntil || null,
+      walkBlocked: !!flags.walkBlocked,
+      walkBlockedNote: flags.walkBlockedNote || "",
+      walkBlockedUntil: flags.walkBlockedUntil || null,
+      diet: diet,
+      caution: caution,
+    });
+  }
+
+  return result;
 }
