@@ -106,10 +106,10 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   }, [fetchDogs]);
 
   useEffect(() => {
-    if (activeTab === "reports") fetchReports();
-    const id = setInterval(() => { if (activeTab === "reports") fetchReports(); }, 60000);
+    fetchReports();
+    const id = setInterval(() => fetchReports(), 60000);
     return () => clearInterval(id);
-  }, [activeTab, fetchReports]);
+  }, [fetchReports]);
 
   const handleUpdateStatus = async (reportId, newStatus, note = "") => {
     if (!currentUser || updatingId) return;
@@ -142,7 +142,7 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   };
 
   // Licznik aktywnych zgłoszeń (nowe + w_trakcie) do badge na zakładce
-  const activeReportsCount = reports.filter(r => r.status === "nowe" || r.status === "w_trakcie").length;
+  const activeReportsCount = reports.filter(r => r.status === "nowe").length;
 
   const pavilions = [...new Set(dogs.map((d) => d.pavilion).filter(Boolean))].sort();
   const filtered = selectedPawilon ? dogs.filter((d) => d.pavilion === selectedPawilon) : dogs;
