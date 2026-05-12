@@ -173,6 +173,10 @@ function doPost(e) {
       return json({ ok: true, data: updateDogLocation_(payload) });
     }
 
+    if (action === "updateDogDiet") {
+      return json({ ok: true, data: updateDogDiet_(payload) });
+    }
+
     if (action === "addWeightEntry") {
       return json({ ok: true, data: addWeightEntry_(payload) });
     }
@@ -990,6 +994,33 @@ function updateDogLocation_(payload) {
   sh.getRange(rowIdx + 1, map[H.KENNEL] + 1).setValue(box);
 
   return { success: true, dogId, pavilion, box };
+}
+
+function updateDogDiet_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do zmiany diety psa");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  if (!dogId) throw new Error("Brakuje dogId");
+
+  const diet = safeStr(payload?.diet);
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Nie znaleziono arkusza psów");
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.DIET]);
+  const rowIdx = findDogRow(values, map, dogId);
+  if (rowIdx === -1) throw new Error("Nie znaleziono psa: " + dogId);
+
+  sh.getRange(rowIdx + 1, map[H.DIET] + 1).setValue(diet);
+
+  return { success: true, dogId, diet };
 }
 
 // ===============================
