@@ -24,7 +24,7 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -2613,6 +2613,30 @@ const DogCardView = ({
                 dietMsg={dietMsg}
                 onSaveDiet={handleSaveDiet}
               />
+            )}
+            {canEditDiet(role) && (
+              <div style={{ marginTop: "12px", border: "2px solid #d1fae5", borderRadius: "10px", padding: "16px", backgroundColor: "#f0fdf4" }}>
+                <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#065f46" }}>🥩 Dieta specjalistyczna</h3>
+                <textarea
+                  value={dietInput}
+                  onChange={(e) => setDietInput(e.target.value)}
+                  placeholder="Wpisz zalecenia dietetyczne dla psa (pozostaw puste aby usunąć)"
+                  rows={3}
+                  style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #6ee7b7", fontSize: "0.875rem", resize: "vertical", boxSizing: "border-box", fontFamily: "inherit" }}
+                />
+                <button
+                  onClick={handleSaveDiet}
+                  disabled={savingDiet}
+                  style={{ marginTop: "6px", padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#059669", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: savingDiet ? 0.6 : 1 }}
+                >
+                  {savingDiet ? "Zapisywanie..." : "Zapisz dietę"}
+                </button>
+                {dietMsg && (
+                  <p style={{ marginTop: "6px", fontSize: "0.8rem", fontWeight: 600, color: dietMsg.type === "success" ? "#166534" : "#991b1b" }}>
+                    {dietMsg.type === "success" ? "✅ " : "❌ "}{dietMsg.text}
+                  </p>
+                )}
+              </div>
             )}
             {canReleaseDog(role) && (
               <div style={{ marginTop: "2rem", borderTop: "1px solid #e5e7eb", paddingTop: "1.5rem" }}>
