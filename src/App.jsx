@@ -2287,52 +2287,6 @@ const DogCardView = ({
                 )}
               </div>
               <div style={styles.infoBox}>
-                <div style={styles.infoLabel}>🆔 ID</div>
-                <div
-                  style={{
-                    ...styles.infoValue,
-                    fontFamily: "monospace",
-                    fontSize: "0.875rem",
-                  }}
-                >
-                  {selectedDog.id}
-                </div>
-              </div>
-              <div style={styles.infoBox}>
-                <div style={styles.infoLabel}>📊 Status</div>
-                <span
-                  style={
-                    !selectedDog.status ||
-                    selectedDog.status.toLowerCase().includes("dostępny")
-                      ? styles.badgeGreen
-                      : styles.badgeYellow
-                  }
-                >
-                  {selectedDog.status || "dostępny"}
-                </span>
-              </div>
-              {selectedDog.age && (
-                <div style={styles.infoBox}>
-                  <div style={styles.infoLabel}>🎂 Wiek</div>
-                  <div style={styles.infoValue}>{selectedDog.age}</div>
-                </div>
-              )}
-              {selectedDog.chip && (
-                <div style={styles.infoBox}>
-                  <div style={styles.infoLabel}>💳 Chip</div>
-                  <div
-                    style={{
-                      ...styles.infoValue,
-                      fontFamily: "monospace",
-                      fontSize: "0.875rem",
-                      wordBreak: "break-all",
-                    }}
-                  >
-                    {selectedDog.chip}
-                  </div>
-                </div>
-              )}
-              <div style={styles.infoBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
                   <div style={styles.infoLabel}>⚖️ Waga</div>
                   {weightHistory.length > 0 || showWeightHistory ? (
@@ -2413,6 +2367,52 @@ const DogCardView = ({
                   </button>
                 )}
               </div>
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>🆔 ID</div>
+                <div
+                  style={{
+                    ...styles.infoValue,
+                    fontFamily: "monospace",
+                    fontSize: "0.875rem",
+                  }}
+                >
+                  {selectedDog.id}
+                </div>
+              </div>
+              <div style={styles.infoBox}>
+                <div style={styles.infoLabel}>📊 Status</div>
+                <span
+                  style={
+                    !selectedDog.status ||
+                    selectedDog.status.toLowerCase().includes("dostępny")
+                      ? styles.badgeGreen
+                      : styles.badgeYellow
+                  }
+                >
+                  {selectedDog.status || "dostępny"}
+                </span>
+              </div>
+              {selectedDog.age && (
+                <div style={styles.infoBox}>
+                  <div style={styles.infoLabel}>🎂 Wiek</div>
+                  <div style={styles.infoValue}>{selectedDog.age}</div>
+                </div>
+              )}
+              {selectedDog.chip && (
+                <div style={styles.infoBox}>
+                  <div style={styles.infoLabel}>💳 Chip</div>
+                  <div
+                    style={{
+                      ...styles.infoValue,
+                      fontFamily: "monospace",
+                      fontSize: "0.875rem",
+                      wordBreak: "break-all",
+                    }}
+                  >
+                    {selectedDog.chip}
+                  </div>
+                </div>
+              )}
             </div>
             {selectedDog.appearance && (
               <div style={styles.sectionBlue}>
