@@ -2,9 +2,29 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 
 const RoleContext = createContext(null);
 
+const CACHE_KEY = "schronisko_role_cache";
+
+function getCachedRole(uid) {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY);
+    if (!raw) return null;
+    const { userId, role } = JSON.parse(raw);
+    return userId === uid ? role : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCachedRole(uid, role) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ userId: uid, role }));
+  } catch {}
+}
+
 export function RoleProvider({ currentUser, children }) {
-  const [role, setRole] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cachedRole = currentUser ? getCachedRole(currentUser.uid) : null;
+  const [role, setRole] = useState(cachedRole);
+  const [loading, setLoading] = useState(!cachedRole);
 
   useEffect(() => {
     if (!currentUser) {
@@ -16,7 +36,7 @@ export function RoleProvider({ currentUser, children }) {
     let cancelled = false;
 
     const fetchRole = async () => {
-      setLoading(true);
+      if (!cachedRole) setLoading(true);
       try {
         const token = await currentUser.getIdToken();
         const res = await fetch("/api/gs", {
@@ -29,10 +49,12 @@ export function RoleProvider({ currentUser, children }) {
         });
         const result = await res.json();
         if (!cancelled) {
-          setRole(result?.ok && result?.data?.role ? result.data.role : "volunteer");
+          const fetched = result?.ok && result?.data?.role ? result.data.role : "volunteer";
+          setRole(fetched);
+          setCachedRole(currentUser.uid, fetched);
         }
       } catch {
-        if (!cancelled) setRole("volunteer");
+        if (!cancelled && !cachedRole) setRole("volunteer");
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -40,7 +62,7 @@ export function RoleProvider({ currentUser, children }) {
 
     fetchRole();
     return () => { cancelled = true; };
-  }, [currentUser]);
+  }, [currentUser]); // eslint-disable-line
 
   const value = {
     role: role ?? "volunteer",
