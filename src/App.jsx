@@ -556,6 +556,7 @@ const pavilionConfig = {
   },
   KP: { type: "dog", special: "kwarantanna", mapHidden: true },
   IZ: { type: "dog", special: "izolacja", mapHidden: true },
+  S: { type: "dog", special: "szpital", mapHidden: true },
   O: { type: "dog", special: "inne", mapHidden: true },
 };
 
