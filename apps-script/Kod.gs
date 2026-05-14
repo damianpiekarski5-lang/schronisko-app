@@ -18,6 +18,7 @@ const ROLES_SHEET_NAME = "Roles";
 const MEDICAL_FLAGS_SHEET_NAME = "MedicalFlags";
 const WEIGHT_HISTORY_SHEET_NAME = "HistoriaWagi";
 const MEDICAL_REPORTS_SHEET_NAME = "ZgłoszeniaMedyczne";
+const TASKS_SHEET_NAME = "ZadaniaAmbulatorium";
 const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
@@ -81,6 +82,10 @@ function doGet(e) {
 
     if (action === "getSectorDogs") {
       return json({ ok: true, data: getSectorDogs_() });
+    }
+
+    if (action === "getDogTasks") {
+      return json({ ok: true, data: getDogTasks_(safeStr(e?.parameter?.dogId)) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -192,6 +197,14 @@ function doPost(e) {
 
     if (action === "updateMedicalReportStatus") {
       return json({ ok: true, data: updateMedicalReportStatus_(payload) });
+    }
+
+    if (action === "addDogTask") {
+      return json({ ok: true, data: addDogTask_(payload) });
+    }
+
+    if (action === "completeDogTask") {
+      return json({ ok: true, data: completeDogTask_(payload) });
     }
 
     return json({ ok: false, error: "Unknown action" });
@@ -1288,4 +1301,88 @@ function updateMedicalReportStatus_(payload) {
   sh.getRange(rowIdx + 1, hm["status_note"] + 1).setValue(safeStr(payload?.note));
 
   return { success: true };
+}
+
+// ===============================
+// ZADANIA AMBULATORIUM
+// ===============================
+function getDogTasks_(dogId) {
+  if (!dogId) return [];
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(TASKS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const tasks = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["dog_id"]]) !== dogId) continue;
+    if (safeStr(row[map["status"]]) !== "aktywne") continue;
+    tasks.push({
+      id: safeStr(row[map["id"]]),
+      dogId: safeStr(row[map["dog_id"]]),
+      dogName: safeStr(row[map["dog_name"]]),
+      taskType: safeStr(row[map["task_type"]]),
+      taskNote: safeStr(row[map["task_note"]]),
+      createdAt: safeStr(row[map["created_at"]]),
+      createdBy: safeStr(row[map["created_by"]]),
+    });
+  }
+  return tasks;
+}
+
+function addDogTask_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień: wymagana rola ambulatorium lub admin");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  const dogName = safeStr(payload?.dogName);
+  const taskType = safeStr(payload?.taskType);
+  const taskNote = safeStr(payload?.taskNote || "");
+  const createdBy = safeStr(payload?.user?.displayName || payload?.user?.email);
+
+  if (!dogId || !taskType) throw new Error("Brakuje dogId lub taskType");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = getOrCreateSheet(ss, TASKS_SHEET_NAME);
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(["id", "dog_id", "dog_name", "task_type", "task_note", "status", "created_at", "created_by", "completed_at", "completed_by"]);
+  }
+
+  const id = Date.now() + "_" + Math.random().toString(36).substr(2, 4);
+  sh.appendRow([id, dogId, dogName, taskType, taskNote, "aktywne", nowInPolandText(), createdBy, "", ""]);
+
+  return { success: true, id };
+}
+
+function completeDogTask_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do wykonania zadania");
+  }
+
+  const taskId = safeStr(payload?.taskId);
+  const completedBy = safeStr(payload?.user?.displayName || payload?.user?.email);
+  if (!taskId) throw new Error("Brakuje taskId");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(TASKS_SHEET_NAME);
+  if (!sh) throw new Error("Brak arkusza zadań");
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  for (let i = 1; i < values.length; i++) {
+    if (safeStr(values[i][map["id"]]) !== taskId) continue;
+    sh.getRange(i + 1, map["status"] + 1).setValue("wykonane");
+    sh.getRange(i + 1, map["completed_at"] + 1).setValue(nowInPolandText());
+    sh.getRange(i + 1, map["completed_by"] + 1).setValue(completedBy);
+    return { success: true, taskId };
+  }
+
+  throw new Error("Nie znaleziono zadania: " + taskId);
 }
