@@ -637,8 +637,8 @@ const DogPhoto = ({ photo, name, size = "normal" }) => {
 
 const formatWalkDate = (dateString) => {
   if (!dateString) return "—";
-  const match = String(dateString).trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
-  if (match) return `${match[3]}.${match[2]}.${match[1]} ${match[4]}`;
+  const match = String(dateString).trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return `${match[3]}.${match[2]}.${match[1]}`;
   return String(dateString).trim() || "—";
 };
 
