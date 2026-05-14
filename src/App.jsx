@@ -1817,6 +1817,85 @@ const DogCardView = ({
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [loadingWeightHistory, setLoadingWeightHistory] = useState(false);
 
+  const [dogTasks, setDogTasks] = useState([]);
+  const [loadingTasks, setLoadingTasks] = useState(false);
+  const [taskForm, setTaskForm] = useState({ type: "", note: "" });
+  const [savingTask, setSavingTask] = useState(false);
+  const [taskMsg, setTaskMsg] = useState(null);
+  const [completingTask, setCompletingTask] = useState({});
+
+  const TASK_LABELS = {
+    próbka_kału: "Zbieranie próbki kału",
+    pobranie_krwi: "Przyprowadzenie na pobranie krwi",
+    zakropienie_oczu: "Zakropienie oczu",
+    inne: "Inne",
+  };
+
+  const fetchDogTasks = useCallback(async () => {
+    if (!selectedDog?.id) return;
+    setLoadingTasks(true);
+    try {
+      const res = await fetch(`/api/gs?action=getDogTasks&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const result = await res.json();
+      if (result?.ok) setDogTasks(result.data || []);
+    } catch {}
+    finally { setLoadingTasks(false); }
+  }, [selectedDog?.id]);
+
+  useEffect(() => { fetchDogTasks(); }, [fetchDogTasks]);
+
+  const handleAddTask = async () => {
+    if (!currentUser || !taskForm.type) return;
+    if (taskForm.type === "inne" && !taskForm.note.trim()) {
+      setTaskMsg({ type: "error", text: "Wpisz opis zadania" });
+      return;
+    }
+    setSavingTask(true);
+    setTaskMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "addDogTask",
+          dogId: selectedDog.id,
+          dogName: selectedDog.name,
+          taskType: taskForm.type,
+          taskNote: taskForm.note,
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setTaskForm({ type: "", note: "" });
+        setTaskMsg({ type: "success", text: "Zadanie dodane" });
+        fetchDogTasks();
+      } else {
+        setTaskMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setTaskMsg({ type: "error", text: "Błąd połączenia" });
+    } finally { setSavingTask(false); }
+  };
+
+  const handleCompleteTask = async (taskId) => {
+    if (!currentUser) return;
+    setCompletingTask((s) => ({ ...s, [taskId]: true }));
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "completeDogTask", taskId }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setDogTasks((prev) => prev.filter((t) => t.id !== taskId));
+      }
+    } catch {}
+    finally { setCompletingTask((s) => ({ ...s, [taskId]: false })); }
+  };
+
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
     setSavingFlag((s) => ({ ...s, [flagType]: true }));
@@ -2688,6 +2767,72 @@ const DogCardView = ({
                 dietMsg={dietMsg}
                 onSaveDiet={handleSaveDiet}
               />
+            )}
+            {canMoveDog(role) && (
+              <div style={{ marginTop: "12px", border: "2px solid #bfdbfe", borderRadius: "10px", padding: "16px", backgroundColor: "#eff6ff" }}>
+                <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#1e40af" }}>🩺 Zadania ambulatorium</h3>
+                {loadingTasks ? (
+                  <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Ładowanie...</p>
+                ) : dogTasks.length === 0 ? (
+                  <p style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 10px" }}>Brak aktywnych zadań</p>
+                ) : (
+                  <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
+                    {dogTasks.map((task) => (
+                      <li key={task.id} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", backgroundColor: "white", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "8px 10px" }}>
+                        <span style={{ flex: 1, fontSize: "0.875rem", color: "#1e3a8a" }}>
+                          <strong>{TASK_LABELS[task.taskType] || task.taskType}</strong>
+                          {task.taskNote && <span style={{ color: "#4b5563" }}> — {task.taskNote}</span>}
+                        </span>
+                        <button
+                          onClick={() => handleCompleteTask(task.id)}
+                          disabled={completingTask[task.id]}
+                          style={{ padding: "4px 10px", borderRadius: "6px", border: "none", backgroundColor: "#16a34a", color: "white", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", opacity: completingTask[task.id] ? 0.6 : 1, whiteSpace: "nowrap" }}
+                        >
+                          {completingTask[task.id] ? "..." : "✓ Wykonane"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {canSetMedicalFlags(role) && (
+                  <div style={{ borderTop: "1px solid #bfdbfe", paddingTop: "10px" }}>
+                    <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
+                      <select
+                        value={taskForm.type}
+                        onChange={(e) => setTaskForm((f) => ({ ...f, type: e.target.value, note: "" }))}
+                        style={{ flex: 1, padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #93c5fd", fontSize: "0.875rem", backgroundColor: "white" }}
+                      >
+                        <option value="">— Wybierz zadanie —</option>
+                        <option value="próbka_kału">Zbieranie próbki kału</option>
+                        <option value="pobranie_krwi">Przyprowadzenie na pobranie krwi</option>
+                        <option value="zakropienie_oczu">Zakropienie oczu</option>
+                        <option value="inne">Inne...</option>
+                      </select>
+                    </div>
+                    {taskForm.type === "inne" && (
+                      <input
+                        type="text"
+                        value={taskForm.note}
+                        onChange={(e) => setTaskForm((f) => ({ ...f, note: e.target.value }))}
+                        placeholder="Wpisz opis zadania"
+                        style={{ width: "100%", padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #93c5fd", fontSize: "0.875rem", boxSizing: "border-box", marginBottom: "6px" }}
+                      />
+                    )}
+                    <button
+                      onClick={handleAddTask}
+                      disabled={savingTask || !taskForm.type}
+                      style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: (savingTask || !taskForm.type) ? 0.6 : 1 }}
+                    >
+                      {savingTask ? "Dodawanie..." : "+ Dodaj zadanie"}
+                    </button>
+                    {taskMsg && (
+                      <p style={{ marginTop: "6px", fontSize: "0.8rem", fontWeight: 600, color: taskMsg.type === "success" ? "#166534" : "#991b1b" }}>
+                        {taskMsg.type === "success" ? "✅ " : "❌ "}{taskMsg.text}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
             {canEditDiet(role) && (
               <div style={{ marginTop: "12px", border: "2px solid #d1fae5", borderRadius: "10px", padding: "16px", backgroundColor: "#f0fdf4" }}>
