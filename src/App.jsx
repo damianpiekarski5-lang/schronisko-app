@@ -637,12 +637,9 @@ const DogPhoto = ({ photo, name, size = "normal" }) => {
 
 const formatWalkDate = (dateString) => {
   if (!dateString) return "—";
-  const d = new Date(dateString);
-  if (isNaN(d.getTime())) return String(dateString).trim() || "—";
-  return d.toLocaleString("pl-PL", {
-    day: "2-digit", month: "2-digit", year: "numeric",
-    hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
+  const match = String(dateString).trim().match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}:\d{2}:\d{2})$/);
+  if (match) return `${match[3]}.${match[2]}.${match[1]} ${match[4]}`;
+  return String(dateString).trim() || "—";
 };
 
 const formatLastWalkDate = (dateString) => {
