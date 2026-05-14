@@ -990,7 +990,6 @@ function deactivateMedicalFlag_(payload) {
   }
 
   const dogId = safeStr(payload?.dogId);
-  const flagType = safeStr(payload?.flagType);
   if (!dogId || !flagType) throw new Error("Brakuje dogId lub flagType");
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
