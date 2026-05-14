@@ -38,3 +38,7 @@ export function canEditDiet(role) {
 export function canCompleteTask(role) {
   return role === "staff" || role === "ambulatorium" || role === "admin";
 }
+
+export function canEditStatus(role) {
+  return role === "staff" || role === "ambulatorium" || role === "admin";
+}
