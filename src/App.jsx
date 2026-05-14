@@ -2503,7 +2503,7 @@ const DogCardView = ({
                   ...(!currentUser || !!savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
                 }}
               >
-                {savingWalk === "wybieg" ? "Zapisywanie..." : "🏃 Wybieg"}
+                {savingWalk === "wybieg" ? "Zapisywanie..." : "🐕 Wybieg"}
               </button>
             </div>
             {walkBlocked.active && (
@@ -2621,7 +2621,7 @@ const DogCardView = ({
                       <tbody>
                         {walkHistory.map((entry, i) => (
                           <tr key={i} style={{ borderTop: "1px solid #fef3c7" }}>
-                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{entry.typ === "wybieg" ? "🏃" : "🦮"}</td>
+                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{entry.typ === "wybieg" ? "🐕" : "🦮"}</td>
                             <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{formatWalkDate(entry.date)}</td>
                             <td style={{ paddingTop: "0.3rem", color: "#6b7280", textAlign: "right" }}>{entry.volunteer || "—"}</td>
                           </tr>
