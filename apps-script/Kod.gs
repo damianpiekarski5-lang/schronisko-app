@@ -266,6 +266,7 @@ function getDogs(includeArchived) {
   requireHeaders(map, [H.ID, H.NAME, H.ARCHIVE]);
 
   const lastVolunteerMap = buildLastVolunteerMap_(ss);
+  const lastWalkTypeMap = buildLastWalkTypeMap_(ss);
 
   const out = [];
   for (let r = 1; r < values.length; r++) {
@@ -292,6 +293,7 @@ function getDogs(includeArchived) {
       photo: safeStr(row[map[H.PHOTO]]),
       lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
       lastVolunteer: lastVolunteerMap[dogId] || "",
+      lastWalkType: lastWalkTypeMap[dogId] || "spacer",
       weight: safeStr(row[map[H.WEIGHT]]),
       status: safeStr(row[map[H.STATUS]]) || "dostępny",
       nieWydawacWlascicielowi: Boolean(row[map[H.NIE_WYDAWAC]]),
@@ -316,6 +318,21 @@ function buildLastVolunteerMap_(ss) {
     const dogId = safeStr(values[i][wMap["DogId"]]);
     const vol = safeStr(values[i][wMap["Wolontariusz"]]);
     if (dogId && vol) result[dogId] = vol;
+  }
+  return result;
+}
+
+function buildLastWalkTypeMap_(ss) {
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh) return {};
+  const values = sh.getDataRange().getValues();
+  if (values.length < 2) return {};
+  const wMap = headerMap(values[0]);
+  const result = {};
+  for (let i = 1; i < values.length; i++) {
+    const dogId = safeStr(values[i][wMap["DogId"]]);
+    const typ = safeStr(values[i][wMap["Typ"]]) || "spacer";
+    if (dogId) result[dogId] = typ;
   }
   return result;
 }
@@ -363,6 +380,8 @@ function recordWalk(payload) {
   const dogRow = dogsValues[rowIndex];
   const now = nowInPolandText();
 
+  const typ = safeStr(payload?.typ) === "wybieg" ? "wybieg" : "spacer";
+
   const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
   ensureHeaders(walksSheet, [
     "Data spaceru",
@@ -372,6 +391,7 @@ function recordWalk(payload) {
     "Boks",
     "Wolontariusz",
     "Uwagi",
+    "Typ",
   ]);
 
   walksSheet.appendRow([
@@ -382,6 +402,7 @@ function recordWalk(payload) {
     safeStr(dogRow[map[H.KENNEL]]),
     safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email) || "Wolontariusz",
     safeStr(payload?.notes),
+    typ,
   ]);
 
   dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
@@ -797,6 +818,7 @@ function getDogWalkHistory_(dogId) {
       date: dateStr,
       volunteer: safeStr(row[map["Wolontariusz"]]),
       notes: safeStr(row[map["Uwagi"]]),
+      typ: safeStr(row[map["Typ"]]) || "spacer",
     });
   }
   return entries.reverse();
