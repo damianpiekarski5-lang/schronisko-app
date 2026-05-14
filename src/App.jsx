@@ -24,7 +24,7 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -2770,6 +2770,39 @@ const DogCardView = ({
                 </p>
               </div>
             )}
+            {canCompleteTask(role) && !canSetMedicalFlags(role) && (() => {
+              const activeTasks = [
+                { key: "próbkaKału",      flag: próbkaKału,      type: "próbka_kału",      icon: "🧪", label: "Zbieranie próbki kału" },
+                { key: "pobranieKrwi",    flag: pobranieKrwi,    type: "pobranie_krwi",    icon: "💉", label: "Pobranie krwi" },
+                { key: "zakropienieOczu", flag: zakropienieOczu, type: "zakropienie_oczu", icon: "👁️", label: "Zakropienie oczu" },
+                { key: "inne",            flag: inne,            type: "inne",             icon: "🩺", label: "Inne zadanie" },
+              ].filter(({ flag }) => flag.active || flag.pending);
+              if (activeTasks.length === 0) return null;
+              return (
+                <div style={{ marginTop: "16px", border: "2px solid #bfdbfe", borderRadius: "10px", padding: "16px", backgroundColor: "#eff6ff" }}>
+                  <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#1e40af" }}>🩺 Zadania do wykonania</h3>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {activeTasks.map(({ key, flag, type, icon, label }) => (
+                      <li key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px", backgroundColor: "white", border: "1px solid #bfdbfe", borderRadius: "6px", padding: "10px 12px" }}>
+                        <div style={{ flex: 1, fontSize: "14px" }}>
+                          <span style={{ fontWeight: 700, color: "#1e40af" }}>{icon} {label}</span>
+                          {flag.note && <span style={{ color: "#4b5563" }}> — {flag.note}</span>}
+                          {flag.pending && <span style={{ color: "#b45309", display: "block", fontSize: "12px", marginTop: "2px" }}>🕐 Zaplanowane od {flag.validFrom ? flag.validFrom.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</span>}
+                          {flag.validUntil && <span style={{ color: "#6b7280", display: "block", fontSize: "12px" }}>Termin: {flag.validUntil.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
+                        </div>
+                        <button
+                          onClick={() => handleDeactivateFlag(type)}
+                          disabled={savingFlag[type]}
+                          style={{ flexShrink: 0, padding: "5px 12px", borderRadius: "6px", border: "none", backgroundColor: "#16a34a", color: "white", fontWeight: 700, fontSize: "13px", cursor: "pointer", opacity: savingFlag[type] ? 0.6 : 1 }}
+                        >
+                          {savingFlag[type] ? "..." : "✓ Wykonane"}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              );
+            })()}
             {canSetMedicalFlags(role) && (
               <AmbulatoriumPanel
                 noFood={noFood}

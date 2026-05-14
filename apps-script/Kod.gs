@@ -976,8 +976,17 @@ function setMedicalFlag_(payload) {
 function deactivateMedicalFlag_(payload) {
   const userEmail = safeStr(payload?.user?.email);
   const role = getUserRole_(userEmail);
-  if (role !== "ambulatorium" && role !== "admin") {
-    throw new Error("Brak uprawnien: wymagana rola ambulatorium lub admin");
+  const flagType = safeStr(payload?.flagType);
+
+  const TASK_TYPES = ["próbka_kału", "pobranie_krwi", "zakropienie_oczu", "inne"];
+  const isTask = TASK_TYPES.includes(flagType);
+
+  if (role === "ambulatorium" || role === "admin") {
+    // ambulatorium i admin mogą odwoływać wszystko
+  } else if (role === "staff" && isTask) {
+    // pracownicy mogą odwoływać tylko zadania medyczne (nie flagi nie_karmić/zakaz_spaceru)
+  } else {
+    throw new Error("Brak uprawnień do odwołania tej flagi");
   }
 
   const dogId = safeStr(payload?.dogId);

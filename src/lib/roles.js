@@ -34,3 +34,7 @@ export function canReleaseDog(role) {
 export function canEditDiet(role) {
   return role === "staff" || role === "ambulatorium" || role === "admin";
 }
+
+export function canCompleteTask(role) {
+  return role === "staff" || role === "ambulatorium" || role === "admin";
+}
