@@ -771,8 +771,12 @@ function getDogWalkHistory_(dogId) {
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
     if (safeStr(row[map["DogId"]]) !== safeStr(dogId)) continue;
+    const rawDate = row[map["Data spaceru"]];
+    const dateStr = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss")
+      : safeStr(rawDate);
     entries.push({
-      date: safeStr(row[map["Data spaceru"]]),
+      date: dateStr,
       volunteer: safeStr(row[map["Wolontariusz"]]),
       notes: safeStr(row[map["Uwagi"]]),
     });
