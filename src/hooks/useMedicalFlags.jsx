@@ -19,13 +19,15 @@ function parseFlag(f) {
   };
 }
 
+const EMPTY_RAW = { noFood: null, walkBlocked: null, próbkaKału: null, pobranieKrwi: null, zakropienieOczu: null, inne: null };
+
 export default function useMedicalFlags(dogId) {
-  const [raw, setRaw] = useState({ noFood: null, walkBlocked: null });
+  const [raw, setRaw] = useState(EMPTY_RAW);
   const [loading, setLoading] = useState(true);
 
   const fetchFlags = useCallback(async () => {
     if (!dogId) {
-      setRaw({ noFood: null, walkBlocked: null });
+      setRaw(EMPTY_RAW);
       setLoading(false);
       return;
     }
@@ -39,7 +41,7 @@ export default function useMedicalFlags(dogId) {
 
   useEffect(() => {
     setLoading(true);
-    setRaw({ noFood: null, walkBlocked: null });
+    setRaw(EMPTY_RAW);
     fetchFlags();
     const id = setInterval(fetchFlags, 60000);
     return () => clearInterval(id);
@@ -48,6 +50,10 @@ export default function useMedicalFlags(dogId) {
   return {
     noFood: parseFlag(raw.noFood),
     walkBlocked: parseFlag(raw.walkBlocked),
+    próbkaKału: parseFlag(raw.próbkaKału),
+    pobranieKrwi: parseFlag(raw.pobranieKrwi),
+    zakropienieOczu: parseFlag(raw.zakropienieOczu),
+    inne: parseFlag(raw.inne),
     loading,
     refresh: fetchFlags,
   };

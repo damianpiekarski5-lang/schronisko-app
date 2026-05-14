@@ -930,6 +930,10 @@ function getMedicalFlags_(dogId) {
   return {
     noFood: best["no_food"] || null,
     walkBlocked: best["walk_blocked"] || null,
+    próbkaKału: best["próbka_kału"] || null,
+    pobranieKrwi: best["pobranie_krwi"] || null,
+    zakropienieOczu: best["zakropienie_oczu"] || null,
+    inne: best["inne"] || null,
   };
 }
 
@@ -1133,14 +1137,32 @@ function getSectorDogs_() {
       const flagType = safeStr(row[fm["flag_type"]]);
       if (!dogId) continue;
       if (!activeFlags[dogId]) activeFlags[dogId] = {};
+      const note = safeStr(row[fm["note"]]);
+      const until = validUntil ? validUntil.toISOString() : null;
       if (flagType === "no_food") {
         activeFlags[dogId].noFood = true;
-        activeFlags[dogId].noFoodNote = safeStr(row[fm["note"]]);
-        activeFlags[dogId].noFoodUntil = validUntil ? validUntil.toISOString() : null;
+        activeFlags[dogId].noFoodNote = note;
+        activeFlags[dogId].noFoodUntil = until;
       } else if (flagType === "walk_blocked") {
         activeFlags[dogId].walkBlocked = true;
-        activeFlags[dogId].walkBlockedNote = safeStr(row[fm["note"]]);
-        activeFlags[dogId].walkBlockedUntil = validUntil ? validUntil.toISOString() : null;
+        activeFlags[dogId].walkBlockedNote = note;
+        activeFlags[dogId].walkBlockedUntil = until;
+      } else if (flagType === "próbka_kału") {
+        activeFlags[dogId].próbkaKału = true;
+        activeFlags[dogId].próbkaKałuNote = note;
+        activeFlags[dogId].próbkaKałuUntil = until;
+      } else if (flagType === "pobranie_krwi") {
+        activeFlags[dogId].pobranieKrwi = true;
+        activeFlags[dogId].pobranieKrwiNote = note;
+        activeFlags[dogId].pobranieKrwiUntil = until;
+      } else if (flagType === "zakropienie_oczu") {
+        activeFlags[dogId].zakropienieOczu = true;
+        activeFlags[dogId].zakropienieOczuNote = note;
+        activeFlags[dogId].zakropienieOczuUntil = until;
+      } else if (flagType === "inne") {
+        activeFlags[dogId].inne = true;
+        activeFlags[dogId].inneNote = note;
+        activeFlags[dogId].inneUntil = until;
       }
     }
   }
@@ -1162,7 +1184,7 @@ function getSectorDogs_() {
     const flags = activeFlags[dogId] || {};
     const diet = safeStr(row[dm[H.DIET]]);
 
-    const hasFlag = !!(flags.noFood || flags.walkBlocked);
+    const hasFlag = !!(flags.noFood || flags.walkBlocked || flags.próbkaKału || flags.pobranieKrwi || flags.zakropienieOczu || flags.inne);
     const hasDiet = diet.length > 0 && diet.toLowerCase() !== "standardowa";
 
     if (!hasFlag && !hasDiet) continue;
@@ -1178,6 +1200,18 @@ function getSectorDogs_() {
       walkBlocked: !!flags.walkBlocked,
       walkBlockedNote: flags.walkBlockedNote || "",
       walkBlockedUntil: flags.walkBlockedUntil || null,
+      próbkaKału: !!flags.próbkaKału,
+      próbkaKałuNote: flags.próbkaKałuNote || "",
+      próbkaKałuUntil: flags.próbkaKałuUntil || null,
+      pobranieKrwi: !!flags.pobranieKrwi,
+      pobranieKrwiNote: flags.pobranieKrwiNote || "",
+      pobranieKrwiUntil: flags.pobranieKrwiUntil || null,
+      zakropienieOczu: !!flags.zakropienieOczu,
+      zakropienieOczuNote: flags.zakropienieOczuNote || "",
+      zakropienieOczuUntil: flags.zakropienieOczuUntil || null,
+      inne: !!flags.inne,
+      inneNote: flags.inneNote || "",
+      inneUntil: flags.inneUntil || null,
       diet: diet,
     });
   }
