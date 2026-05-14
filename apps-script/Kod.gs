@@ -72,6 +72,10 @@ function doGet(e) {
       return json({ ok: true, data: getLastWalkInfo(safeStr(e?.parameter?.dogId)) });
     }
 
+    if (action === "getDogWalkHistory") {
+      return json({ ok: true, data: getDogWalkHistory_(safeStr(e?.parameter?.dogId)) });
+    }
+
     if (action === "getMedicalFlags") {
       return json({ ok: true, data: getMedicalFlags_(safeStr(e?.parameter?.dogId)) });
     }
@@ -753,6 +757,27 @@ function getLastWalkInfo(dogId) {
     }
   }
   return lastWalk;
+}
+
+function getDogWalkHistory_(dogId) {
+  if (!dogId) return [];
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const entries = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["DogId"]]) !== safeStr(dogId)) continue;
+    entries.push({
+      date: safeStr(row[map["Data spaceru"]]),
+      volunteer: safeStr(row[map["Wolontariusz"]]),
+      notes: safeStr(row[map["Uwagi"]]),
+    });
+  }
+  return entries.reverse();
 }
 
 // ===============================

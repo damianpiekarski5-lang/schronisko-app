@@ -1884,6 +1884,10 @@ const DogCardView = ({
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [loadingWeightHistory, setLoadingWeightHistory] = useState(false);
 
+  const [walkHistory, setWalkHistory] = useState([]);
+  const [showWalkHistory, setShowWalkHistory] = useState(false);
+  const [loadingWalkHistory, setLoadingWalkHistory] = useState(false);
+
   const handleSaveTask = async () => {
     if (!currentUser || !taskForm.type) return;
     setSavingTask(true);
@@ -2124,6 +2128,21 @@ const DogCardView = ({
   const handleToggleWeightHistory = () => {
     if (!showWeightHistory) loadWeightHistory();
     setShowWeightHistory((v) => !v);
+  };
+
+  const loadWalkHistory = async () => {
+    setLoadingWalkHistory(true);
+    try {
+      const res = await fetch(`/api/gs?action=getDogWalkHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const result = await res.json();
+      if (result?.ok && Array.isArray(result?.data)) setWalkHistory(result.data);
+    } catch {}
+    setLoadingWalkHistory(false);
+  };
+
+  const handleToggleWalkHistory = () => {
+    if (!showWalkHistory) loadWalkHistory();
+    setShowWalkHistory((v) => !v);
   };
 
   useEffect(() => {
@@ -2453,22 +2472,56 @@ const DogCardView = ({
                 </div>
               </div>
             )}
-            {formattedLastWalk && (
-              <div style={styles.sectionYellow}>
-                <h3 style={styles.sectionTitle}>
+            <div style={styles.sectionYellow}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
                   <Clock size={20} style={{ marginRight: "0.5rem" }} />
                   Ostatni spacer
                 </h3>
-                <p style={{ color: "#374151", fontSize: "1.125rem", fontWeight: "600" }}>
-                  {formattedLastWalk}
-                </p>
-                {selectedDog.lastVolunteer && (
-                  <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>
-                    👤 {selectedDog.lastVolunteer}
-                  </p>
-                )}
+                <button
+                  onClick={handleToggleWalkHistory}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "#92400e", fontSize: "0.85rem", fontWeight: 600, padding: "2px 6px", textDecoration: "underline" }}
+                >
+                  {showWalkHistory ? "Ukryj historię ▲" : "Historia spacerów ▼"}
+                </button>
               </div>
-            )}
+              {formattedLastWalk ? (
+                <>
+                  <p style={{ color: "#374151", fontSize: "1.125rem", fontWeight: "600" }}>{formattedLastWalk}</p>
+                  {selectedDog.lastVolunteer && (
+                    <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>👤 {selectedDog.lastVolunteer}</p>
+                  )}
+                </>
+              ) : (
+                <p style={{ color: "#6b7280", fontSize: "0.9rem" }}>Brak zapisanych spacerów</p>
+              )}
+              {showWalkHistory && (
+                <div style={{ marginTop: "0.75rem", borderTop: "1px solid #fde68a", paddingTop: "0.75rem" }}>
+                  {loadingWalkHistory ? (
+                    <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Ładowanie...</p>
+                  ) : walkHistory.length === 0 ? (
+                    <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Brak historii spacerów</p>
+                  ) : (
+                    <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
+                      <thead>
+                        <tr>
+                          <th style={{ textAlign: "left", color: "#92400e", fontWeight: 600, paddingBottom: "0.4rem" }}>Data</th>
+                          <th style={{ textAlign: "right", color: "#92400e", fontWeight: 600, paddingBottom: "0.4rem" }}>Wolontariusz</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {walkHistory.map((entry, i) => (
+                          <tr key={i} style={{ borderTop: "1px solid #fef3c7" }}>
+                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{entry.date}</td>
+                            <td style={{ paddingTop: "0.3rem", color: "#6b7280", textAlign: "right" }}>{entry.volunteer || "—"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              )}
+            </div>
             <button
               onClick={() => setShowBehaviorReport(true)}
               style={{
