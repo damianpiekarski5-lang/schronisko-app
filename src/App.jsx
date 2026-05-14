@@ -3324,6 +3324,8 @@ useEffect(() => {
           lastWalk: cleanText(dog?.lastWalk),
           lastVolunteer: cleanText(dog?.lastVolunteer),
           weight: cleanText(dog?.weight),
+          status: dog?.status || "dostępny",
+          nieWydawacWlascicielowi: Boolean(dog?.nieWydawacWlascicielowi),
         }))
         .filter((dog) => dog.name && dog.pavilion)
         .reduce((acc, dog) => {
