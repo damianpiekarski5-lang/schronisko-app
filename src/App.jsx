@@ -2242,25 +2242,26 @@ const DogCardView = ({
       .catch(() => {});
   }, [selectedDog?.id]);
 
-  const handleSaveWalk = async () => {
+  const handleSaveWalkType = async (typ) => {
     if (!currentUser || savingWalk) return;
-    setSavingWalk(true);
+    setSavingWalk(typ);
     setWalkMessage(null);
     try {
       const token = await currentUser.getIdToken();
       const response = await fetch("/api/gs", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name, notes: "" }),
+        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name, notes: "", typ }),
       });
       const result = await response.json();
       if (result?.ok) {
         const volunteerName = currentUser.displayName || currentUser.email || "Wolontariusz";
-        setWalkMessage({ type: "success", text: `✅ Spacer zapisany przez ${volunteerName}!` });
+        const label = typ === "wybieg" ? "Wybieg" : "Spacer";
+        setWalkMessage({ type: "success", text: `✅ ${label} zapisany przez ${volunteerName}!` });
         onSurveySaved?.(selectedDog.id);
         setTimeout(() => setWalkMessage(null), 5000);
       } else {
-        setWalkMessage({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu spaceru") });
+        setWalkMessage({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu") });
       }
     } catch {
       setWalkMessage({ type: "error", text: "❌ Błąd połączenia" });
@@ -2474,17 +2475,37 @@ const DogCardView = ({
                 {behaviorystState.error}
               </div>
             )}
-            <button
-              onClick={handleSaveWalk}
-              disabled={!currentUser || savingWalk || walkBlocked.active}
-              style={{
-                ...styles.walkButton,
-                ...(!currentUser || savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
-              }}
-            >
-              <CheckCircle size={24} style={{ marginRight: "0.75rem" }} />
-              {savingWalk ? "Zapisywanie..." : "Wychodzę z psem 🦮"}
-            </button>
+            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0" }}>
+              <button
+                onClick={() => handleSaveWalkType("spacer")}
+                disabled={!currentUser || !!savingWalk || walkBlocked.active}
+                style={{
+                  flex: 1,
+                  ...styles.walkButton,
+                  marginBottom: 0,
+                  fontSize: "1rem",
+                  padding: "1rem 0.5rem",
+                  ...(!currentUser || !!savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
+                }}
+              >
+                {savingWalk === "spacer" ? "Zapisywanie..." : "🦮 Spacer"}
+              </button>
+              <button
+                onClick={() => handleSaveWalkType("wybieg")}
+                disabled={!currentUser || !!savingWalk || walkBlocked.active}
+                style={{
+                  flex: 1,
+                  ...styles.walkButton,
+                  marginBottom: 0,
+                  fontSize: "1rem",
+                  padding: "1rem 0.5rem",
+                  backgroundColor: (!currentUser || !!savingWalk || walkBlocked.active) ? undefined : "#2563eb",
+                  ...(!currentUser || !!savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
+                }}
+              >
+                {savingWalk === "wybieg" ? "Zapisywanie..." : "🛖 Wybieg"}
+              </button>
+            </div>
             {walkBlocked.active && (
               <p style={{ color: "#dc2626", fontSize: "0.8rem", marginBottom: "0.5rem", fontWeight: 600 }}>
                 Pies zablokowany przez ambulatorium
@@ -2563,7 +2584,7 @@ const DogCardView = ({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                 <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
                   <Clock size={20} style={{ marginRight: "0.5rem" }} />
-                  Ostatni spacer
+                  {selectedDog.lastWalkType === "wybieg" ? "Ostatni wybieg" : "Ostatni spacer"}
                 </h3>
                 <button
                   onClick={handleToggleWalkHistory}
@@ -2592,6 +2613,7 @@ const DogCardView = ({
                     <table style={{ width: "100%", fontSize: "0.8rem", borderCollapse: "collapse" }}>
                       <thead>
                         <tr>
+                          <th style={{ textAlign: "left", color: "#92400e", fontWeight: 600, paddingBottom: "0.4rem" }}>Typ</th>
                           <th style={{ textAlign: "left", color: "#92400e", fontWeight: 600, paddingBottom: "0.4rem" }}>Data</th>
                           <th style={{ textAlign: "right", color: "#92400e", fontWeight: 600, paddingBottom: "0.4rem" }}>Wolontariusz</th>
                         </tr>
@@ -2599,6 +2621,7 @@ const DogCardView = ({
                       <tbody>
                         {walkHistory.map((entry, i) => (
                           <tr key={i} style={{ borderTop: "1px solid #fef3c7" }}>
+                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{entry.typ === "wybieg" ? "🛖" : "🦮"}</td>
                             <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{formatWalkDate(entry.date)}</td>
                             <td style={{ paddingTop: "0.3rem", color: "#6b7280", textAlign: "right" }}>{entry.volunteer || "—"}</td>
                           </tr>
@@ -3479,6 +3502,7 @@ useEffect(() => {
           photo: normalizePhotoUrl(dog?.photo),
           lastWalk: cleanText(dog?.lastWalk),
           lastVolunteer: cleanText(dog?.lastVolunteer),
+          lastWalkType: dog?.lastWalkType || "spacer",
           weight: cleanText(dog?.weight),
           status: dog?.status || "dostępny",
           nieWydawacWlascicielowi: Boolean(dog?.nieWydawacWlascicielowi),
