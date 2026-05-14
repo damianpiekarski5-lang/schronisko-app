@@ -50,14 +50,6 @@ const STATUS_LABEL = { nowe: "Nowe", w_trakcie: "W trakcie", zamknięte: "Zamkni
 const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUser, isAdmin, allDogs }) => {
   const { role } = useUserRole();
 
-  // --- ZAKŁADKI ---
-  const TASK_LABELS = {
-    próbka_kału: "Zbieranie próbki kału",
-    pobranie_krwi: "Pobranie krwi",
-    zakropienie_oczu: "Zakropienie oczu",
-    inne: "Inne",
-  };
-
   const [activeTab, setActiveTab] = useState("restrictions");
 
   // --- ZAKŁADKA: PSY Z OBOSTRZENIAMI ---
@@ -66,22 +58,6 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   const [lastRefresh, setLastRefresh] = useState(null);
   const [selectedPawilon, setSelectedPawilon] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [tasksByDog, setTasksByDog] = useState({}); // dogId -> tasks[]
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      const res = await fetch("/api/gs?action=getAllDogTasks");
-      const result = await res.json();
-      if (result?.ok && Array.isArray(result?.data)) {
-        const map = {};
-        result.data.forEach((t) => {
-          if (!map[t.dogId]) map[t.dogId] = [];
-          map[t.dogId].push(t);
-        });
-        setTasksByDog(map);
-      }
-    } catch {}
-  }, []);
 
   const fetchDogs = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
@@ -124,10 +100,9 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
 
   useEffect(() => {
     fetchDogs();
-    fetchTasks();
-    const id = setInterval(() => { fetchDogs(); fetchTasks(); }, 60000);
+    const id = setInterval(() => fetchDogs(), 60000);
     return () => clearInterval(id);
-  }, [fetchDogs, fetchTasks]);
+  }, [fetchDogs]);
 
   useEffect(() => {
     fetchReports();
@@ -170,10 +145,11 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
 
   const pavilions = [...new Set(dogs.map((d) => d.pavilion).filter(Boolean))].sort();
   const filtered = selectedPawilon ? dogs.filter((d) => d.pavilion === selectedPawilon) : dogs;
+  const hasMedTask = (d) => !!(d.próbkaKału || d.pobranieKrwi || d.zakropienieOczu || d.inne);
   const sorted = [...filtered].sort((a, b) => {
-    const hasUrgentA = (a.noFood || a.walkBlocked) ? 0 : (tasksByDog[a.id]?.length > 0 ? 1 : 2);
-    const hasUrgentB = (b.noFood || b.walkBlocked) ? 0 : (tasksByDog[b.id]?.length > 0 ? 1 : 2);
-    if (hasUrgentA !== hasUrgentB) return hasUrgentA - hasUrgentB;
+    const rankA = (a.noFood || a.walkBlocked) ? 0 : (hasMedTask(a) ? 1 : 2);
+    const rankB = (b.noFood || b.walkBlocked) ? 0 : (hasMedTask(b) ? 1 : 2);
+    if (rankA !== rankB) return rankA - rankB;
     return (a.name || "").localeCompare(b.name || "", "pl");
   });
 
@@ -276,11 +252,26 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
                     🚫 ZAKAZ SPACERU{dog.walkBlockedNote ? ` — ${dog.walkBlockedNote}` : ""}{dog.walkBlockedUntil ? ` do ${formatUntil(dog.walkBlockedUntil)}` : ""}
                   </div>
                 )}
-                {(tasksByDog[dog.id] || []).map((task) => (
-                  <div key={task.id} style={{ ...styles.flagRow, color: "#1d4ed8" }}>
-                    🩺 {TASK_LABELS[task.taskType] || task.taskType}{task.taskNote ? ` — ${task.taskNote}` : ""}
+                {dog.próbkaKału && (
+                  <div style={{ ...styles.flagRow, color: "#0369a1" }}>
+                    🧪 PRÓBKA KAŁU{dog.próbkaKałuNote ? ` — ${dog.próbkaKałuNote}` : ""}{dog.próbkaKałuUntil ? ` do ${formatUntil(dog.próbkaKałuUntil)}` : ""}
                   </div>
-                ))}
+                )}
+                {dog.pobranieKrwi && (
+                  <div style={{ ...styles.flagRow, color: "#0369a1" }}>
+                    💉 POBRANIE KRWI{dog.pobranieKrwiNote ? ` — ${dog.pobranieKrwiNote}` : ""}{dog.pobranieKrwiUntil ? ` do ${formatUntil(dog.pobranieKrwiUntil)}` : ""}
+                  </div>
+                )}
+                {dog.zakropienieOczu && (
+                  <div style={{ ...styles.flagRow, color: "#0369a1" }}>
+                    👁️ ZAKROPIENIE OCZU{dog.zakropienieOczuNote ? ` — ${dog.zakropienieOczuNote}` : ""}{dog.zakropienieOczuUntil ? ` do ${formatUntil(dog.zakropienieOczuUntil)}` : ""}
+                  </div>
+                )}
+                {dog.inne && (
+                  <div style={{ ...styles.flagRow, color: "#0369a1" }}>
+                    🩺 INNE{dog.inneNote ? ` — ${dog.inneNote}` : ""}{dog.inneUntil ? ` do ${formatUntil(dog.inneUntil)}` : ""}
+                  </div>
+                )}
                 {dog.diet && <div style={styles.infoRow}>🥩 Dieta: {dog.diet}</div>}
               </div>
             ))}

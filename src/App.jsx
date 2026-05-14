@@ -1738,31 +1738,15 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
   );
 };
 
-const AmbulatoriumPanel = ({ noFood, walkBlocked, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate, dietInput, setDietInput, savingDiet, dietMsg, onSaveDiet }) => (
+const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate }) => (
   <div style={{ marginTop: "16px", border: "2px solid #fca5a5", borderRadius: "10px", padding: "16px", backgroundColor: "#fef2f2" }}>
     <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#7f1d1d" }}>🏥 Ambulatorium</h3>
-    <FlagBlock
-      title="Nie karmić"
-      flagType="no_food"
-      currentFlag={noFood}
-      form={flagForm.no_food}
-      setFlagForm={setFlagForm}
-      saving={savingFlag.no_food}
-      msg={flagMsg.no_food}
-      onSave={onSave}
-      onDeactivate={onDeactivate}
-    />
-    <FlagBlock
-      title="Zakaz spaceru"
-      flagType="walk_blocked"
-      currentFlag={walkBlocked}
-      form={flagForm.walk_blocked}
-      setFlagForm={setFlagForm}
-      saving={savingFlag.walk_blocked}
-      msg={flagMsg.walk_blocked}
-      onSave={onSave}
-      onDeactivate={onDeactivate}
-    />
+    <FlagBlock title="Nie karmić" flagType="no_food" currentFlag={noFood} form={flagForm.no_food} setFlagForm={setFlagForm} saving={savingFlag.no_food} msg={flagMsg.no_food} onSave={onSave} onDeactivate={onDeactivate} />
+    <FlagBlock title="Zakaz spaceru" flagType="walk_blocked" currentFlag={walkBlocked} form={flagForm.walk_blocked} setFlagForm={setFlagForm} saving={savingFlag.walk_blocked} msg={flagMsg.walk_blocked} onSave={onSave} onDeactivate={onDeactivate} />
+    <FlagBlock title="Zbieranie próbki kału" flagType="próbka_kału" currentFlag={próbkaKału} form={flagForm["próbka_kału"]} setFlagForm={setFlagForm} saving={savingFlag["próbka_kału"]} msg={flagMsg["próbka_kału"]} onSave={onSave} onDeactivate={onDeactivate} />
+    <FlagBlock title="Pobranie krwi" flagType="pobranie_krwi" currentFlag={pobranieKrwi} form={flagForm["pobranie_krwi"]} setFlagForm={setFlagForm} saving={savingFlag["pobranie_krwi"]} msg={flagMsg["pobranie_krwi"]} onSave={onSave} onDeactivate={onDeactivate} />
+    <FlagBlock title="Zakropienie oczu" flagType="zakropienie_oczu" currentFlag={zakropienieOczu} form={flagForm["zakropienie_oczu"]} setFlagForm={setFlagForm} saving={savingFlag["zakropienie_oczu"]} msg={flagMsg["zakropienie_oczu"]} onSave={onSave} onDeactivate={onDeactivate} />
+    <FlagBlock title="Inne zadanie" flagType="inne" currentFlag={inne} form={flagForm.inne} setFlagForm={setFlagForm} saving={savingFlag.inne} msg={flagMsg.inne} onSave={onSave} onDeactivate={onDeactivate} />
   </div>
 );
 
@@ -1787,12 +1771,13 @@ const DogCardView = ({
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
 
   const { role } = useUserRole();
-  const { noFood, walkBlocked, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
+  const { noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
 
+  const ALL_FLAG_TYPES = ["no_food", "walk_blocked", "próbka_kału", "pobranie_krwi", "zakropienie_oczu", "inne"];
   const initFlagForm = { note: "", validFrom: "", validUntil: "" };
-  const [flagForm, setFlagForm] = useState({ no_food: initFlagForm, walk_blocked: initFlagForm });
-  const [savingFlag, setSavingFlag] = useState({ no_food: false, walk_blocked: false });
-  const [flagMsg, setFlagMsg] = useState({ no_food: null, walk_blocked: null });
+  const [flagForm, setFlagForm] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, initFlagForm])));
+  const [savingFlag, setSavingFlag] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, false])));
+  const [flagMsg, setFlagMsg] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, null])));
 
   const [dietInput, setDietInput] = useState(selectedDog?.diet || "");
   const [savingDiet, setSavingDiet] = useState(false);
@@ -1816,85 +1801,6 @@ const DogCardView = ({
   const [weightHistory, setWeightHistory] = useState([]);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [loadingWeightHistory, setLoadingWeightHistory] = useState(false);
-
-  const [dogTasks, setDogTasks] = useState([]);
-  const [loadingTasks, setLoadingTasks] = useState(false);
-  const [taskForm, setTaskForm] = useState({ type: "", note: "" });
-  const [savingTask, setSavingTask] = useState(false);
-  const [taskMsg, setTaskMsg] = useState(null);
-  const [completingTask, setCompletingTask] = useState({});
-
-  const TASK_LABELS = {
-    próbka_kału: "Zbieranie próbki kału",
-    pobranie_krwi: "Przyprowadzenie na pobranie krwi",
-    zakropienie_oczu: "Zakropienie oczu",
-    inne: "Inne",
-  };
-
-  const fetchDogTasks = useCallback(async () => {
-    if (!selectedDog?.id) return;
-    setLoadingTasks(true);
-    try {
-      const res = await fetch(`/api/gs?action=getDogTasks&dogId=${encodeURIComponent(selectedDog.id)}`);
-      const result = await res.json();
-      if (result?.ok) setDogTasks(result.data || []);
-    } catch {}
-    finally { setLoadingTasks(false); }
-  }, [selectedDog?.id]);
-
-  useEffect(() => { fetchDogTasks(); }, [fetchDogTasks]);
-
-  const handleAddTask = async () => {
-    if (!currentUser || !taskForm.type) return;
-    if (taskForm.type === "inne" && !taskForm.note.trim()) {
-      setTaskMsg({ type: "error", text: "Wpisz opis zadania" });
-      return;
-    }
-    setSavingTask(true);
-    setTaskMsg(null);
-    try {
-      const token = await currentUser.getIdToken();
-      const res = await fetch("/api/gs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          action: "addDogTask",
-          dogId: selectedDog.id,
-          dogName: selectedDog.name,
-          taskType: taskForm.type,
-          taskNote: taskForm.note,
-        }),
-      });
-      const result = await res.json();
-      if (result?.ok) {
-        setTaskForm({ type: "", note: "" });
-        setTaskMsg({ type: "success", text: "Zadanie dodane" });
-        fetchDogTasks();
-      } else {
-        setTaskMsg({ type: "error", text: result?.error || "Błąd zapisu" });
-      }
-    } catch {
-      setTaskMsg({ type: "error", text: "Błąd połączenia" });
-    } finally { setSavingTask(false); }
-  };
-
-  const handleCompleteTask = async (taskId) => {
-    if (!currentUser) return;
-    setCompletingTask((s) => ({ ...s, [taskId]: true }));
-    try {
-      const token = await currentUser.getIdToken();
-      const res = await fetch("/api/gs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "completeDogTask", taskId }),
-      });
-      const result = await res.json();
-      if (result?.ok) {
-        setDogTasks((prev) => prev.filter((t) => t.id !== taskId));
-      }
-    } catch {}
-    finally { setCompletingTask((s) => ({ ...s, [taskId]: false })); }
-  };
 
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
@@ -2264,41 +2170,21 @@ const DogCardView = ({
               </p>
             )}
           </div>
-          {(noFood.active || walkBlocked.active || dogTasks.length > 0) && (
+          {(noFood.active || walkBlocked.active || próbkaKału.active || pobranieKrwi.active || zakropienieOczu.active || inne.active ||
+            noFood.pending || walkBlocked.pending || próbkaKału.pending || pobranieKrwi.pending || zakropienieOczu.pending || inne.pending) && (
             <div style={{ padding: "1rem 1.5rem 0" }}>
-              {noFood.active && (
-                <MedicalAlert
-                  icon="🔴"
-                  title="NIE KARMIĆ"
-                  flag={noFood}
-                />
+              {noFood.active && <MedicalAlert icon="🔴" title="NIE KARMIĆ" flag={noFood} />}
+              {walkBlocked.active && <MedicalAlert icon="🚫" title="ZAKAZ SPACERU" flag={walkBlocked} />}
+              {[
+                { flag: próbkaKału, key: "próbkaKału", icon: "🧪", title: "PRÓBKA KAŁU" },
+                { flag: pobranieKrwi, key: "pobranieKrwi", icon: "💉", title: "POBRANIE KRWI" },
+                { flag: zakropienieOczu, key: "zakropienieOczu", icon: "👁️", title: "ZAKROPIENIE OCZU" },
+                { flag: inne, key: "inne", icon: "🩺", title: "INNE ZADANIE" },
+              ].map(({ flag, key, icon, title }) =>
+                (flag.active || flag.pending) ? (
+                  <MedicalAlert key={key} icon={icon} title={title} flag={flag} />
+                ) : null
               )}
-              {walkBlocked.active && (
-                <MedicalAlert
-                  icon="🚫"
-                  title="ZAKAZ SPACERU"
-                  flag={walkBlocked}
-                />
-              )}
-              {dogTasks.map((task) => (
-                <div key={task.id} style={{ backgroundColor: "#1d4ed8", color: "white", padding: "10px 14px", borderRadius: "8px", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                  <div>
-                    <p style={{ fontWeight: "bold", fontSize: "15px", margin: 0 }}>
-                      🩺 {TASK_LABELS[task.taskType] || task.taskType}
-                    </p>
-                    {task.taskNote && <p style={{ margin: "3px 0 0", fontSize: "13px", opacity: 0.9 }}>{task.taskNote}</p>}
-                  </div>
-                  {canMoveDog(role) && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
-                      disabled={completingTask[task.id]}
-                      style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "6px", border: "2px solid rgba(255,255,255,0.7)", backgroundColor: "transparent", color: "white", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", opacity: completingTask[task.id] ? 0.6 : 1 }}
-                    >
-                      {completingTask[task.id] ? "..." : "✓ Wykonane"}
-                    </button>
-                  )}
-                </div>
-              ))}
             </div>
           )}
           <div style={{ padding: "1.5rem", paddingBottom: 0 }}>
@@ -2774,84 +2660,17 @@ const DogCardView = ({
               <AmbulatoriumPanel
                 noFood={noFood}
                 walkBlocked={walkBlocked}
+                próbkaKału={próbkaKału}
+                pobranieKrwi={pobranieKrwi}
+                zakropienieOczu={zakropienieOczu}
+                inne={inne}
                 flagForm={flagForm}
                 setFlagForm={setFlagForm}
                 savingFlag={savingFlag}
                 flagMsg={flagMsg}
                 onSave={handleSetFlag}
                 onDeactivate={handleDeactivateFlag}
-                dietInput={dietInput}
-                setDietInput={setDietInput}
-                savingDiet={savingDiet}
-                dietMsg={dietMsg}
-                onSaveDiet={handleSaveDiet}
               />
-            )}
-            {canMoveDog(role) && (
-              <div style={{ marginTop: "12px", border: "2px solid #bfdbfe", borderRadius: "10px", padding: "16px", backgroundColor: "#eff6ff" }}>
-                <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#1e40af" }}>🩺 Zadania ambulatorium</h3>
-                {loadingTasks ? (
-                  <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Ładowanie...</p>
-                ) : dogTasks.length === 0 ? (
-                  <p style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0 0 10px" }}>Brak aktywnych zadań</p>
-                ) : (
-                  <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
-                    {dogTasks.map((task) => (
-                      <li key={task.id} style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "8px", backgroundColor: "white", border: "1px solid #bfdbfe", borderRadius: "8px", padding: "8px 10px" }}>
-                        <span style={{ flex: 1, fontSize: "0.875rem", color: "#1e3a8a" }}>
-                          <strong>{TASK_LABELS[task.taskType] || task.taskType}</strong>
-                          {task.taskNote && <span style={{ color: "#4b5563" }}> — {task.taskNote}</span>}
-                        </span>
-                        <button
-                          onClick={() => handleCompleteTask(task.id)}
-                          disabled={completingTask[task.id]}
-                          style={{ padding: "4px 10px", borderRadius: "6px", border: "none", backgroundColor: "#16a34a", color: "white", fontWeight: 600, fontSize: "0.8rem", cursor: "pointer", opacity: completingTask[task.id] ? 0.6 : 1, whiteSpace: "nowrap" }}
-                        >
-                          {completingTask[task.id] ? "..." : "✓ Wykonane"}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {canSetMedicalFlags(role) && (
-                  <div style={{ borderTop: "1px solid #bfdbfe", paddingTop: "10px" }}>
-                    <div style={{ display: "flex", gap: "8px", marginBottom: "6px" }}>
-                      <select
-                        value={taskForm.type}
-                        onChange={(e) => setTaskForm((f) => ({ ...f, type: e.target.value, note: "" }))}
-                        style={{ flex: 1, padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #93c5fd", fontSize: "0.875rem", backgroundColor: "white" }}
-                      >
-                        <option value="">— Wybierz zadanie —</option>
-                        <option value="próbka_kału">Zbieranie próbki kału</option>
-                        <option value="pobranie_krwi">Przyprowadzenie na pobranie krwi</option>
-                        <option value="zakropienie_oczu">Zakropienie oczu</option>
-                        <option value="inne">Inne...</option>
-                      </select>
-                    </div>
-                    {taskForm.type === "inne" && (
-                      <input
-                        type="text"
-                        value={taskForm.note}
-                        onChange={(e) => setTaskForm((f) => ({ ...f, note: e.target.value }))}
-                        placeholder="Wpisz opis zadania"
-                        style={{ width: "100%", padding: "0.4rem 0.5rem", borderRadius: "0.5rem", border: "1px solid #93c5fd", fontSize: "0.875rem", boxSizing: "border-box", marginBottom: "6px" }}
-                      />
-                    )}
-                    <button
-                      onClick={handleAddTask}
-                      disabled={savingTask || !taskForm.type}
-                      style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: (savingTask || !taskForm.type) ? 0.6 : 1 }}
-                    >
-                      {savingTask ? "Dodawanie..." : "+ Dodaj zadanie"}
-                    </button>
-                    {taskMsg && (
-                      <p style={{ marginTop: "6px", fontSize: "0.8rem", fontWeight: 600, color: taskMsg.type === "success" ? "#166534" : "#991b1b" }}>
-                        {taskMsg.type === "success" ? "✅ " : "❌ "}{taskMsg.text}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
             )}
             {canEditDiet(role) && (
               <div style={{ marginTop: "12px", border: "2px solid #d1fae5", borderRadius: "10px", padding: "16px", backgroundColor: "#f0fdf4" }}>
