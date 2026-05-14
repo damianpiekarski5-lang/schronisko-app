@@ -43,6 +43,9 @@ const H = {
   WEIGHT: "WAGA",
   STATUS: "STATUS",
   NIE_WYDAWAC: "NIE WYDAWAĆ WŁAŚCICIELOWI",
+  KASTRACJA: "KASTRACJA",
+  KASTRACJA_DATA: "KASTRACJA DATA",
+  KASTRACJA_POWOD: "KASTRACJA POWÓD",
 };
 
 // ===============================
@@ -221,6 +224,10 @@ function doPost(e) {
       return json({ ok: true, data: setDogStatus_(payload) });
     }
 
+    if (action === "setCastration") {
+      return json({ ok: true, data: setCastration_(payload) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -288,6 +295,9 @@ function getDogs(includeArchived) {
       weight: safeStr(row[map[H.WEIGHT]]),
       status: safeStr(row[map[H.STATUS]]) || "dostępny",
       nieWydawacWlascicielowi: Boolean(row[map[H.NIE_WYDAWAC]]),
+      kastracja: safeStr(row[map[H.KASTRACJA]]) || "nie_kastrowany",
+      kastracjaData: safeStr(row[map[H.KASTRACJA_DATA]]),
+      kastracyjaPowod: safeStr(row[map[H.KASTRACJA_POWOD]]),
       archived,
     });
   }
@@ -1135,6 +1145,43 @@ function setDogStatus_(payload) {
   sh.getRange(rowIdx + 1, map[H.NIE_WYDAWAC] + 1).setValue(nieWydawac);
 
   return { success: true, dogId, status, nieWydawacWlascicielowi: nieWydawac };
+}
+
+// ===============================
+// KASTRACJA
+// ===============================
+function setCastration_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do edycji informacji o kastracji");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  if (!dogId) throw new Error("Brakuje dogId");
+
+  const VALID = ["kastrowany", "nie_kastrowany", "odroczona"];
+  const kastracja = safeStr(payload?.kastracja);
+  if (!VALID.includes(kastracja)) throw new Error("Nieprawidłowa wartość kastracji: " + kastracja);
+
+  const kastracjaData = safeStr(payload?.kastracjaData);
+  const kastracyjaPowod = safeStr(payload?.kastracyjaPowod);
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Nie znaleziono arkusza psów");
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.KASTRACJA, H.KASTRACJA_DATA, H.KASTRACJA_POWOD]);
+  const rowIdx = findDogRow(values, map, dogId);
+  if (rowIdx === -1) throw new Error("Nie znaleziono psa: " + dogId);
+
+  sh.getRange(rowIdx + 1, map[H.KASTRACJA] + 1).setValue(kastracja);
+  sh.getRange(rowIdx + 1, map[H.KASTRACJA_DATA] + 1).setValue(kastracjaData);
+  sh.getRange(rowIdx + 1, map[H.KASTRACJA_POWOD] + 1).setValue(kastracyjaPowod);
+
+  return { success: true, dogId, kastracja, kastracjaData, kastracyjaPowod };
 }
 
 // ===============================

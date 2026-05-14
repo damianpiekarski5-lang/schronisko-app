@@ -1901,6 +1901,13 @@ const DogCardView = ({
   const [savingStatus, setSavingStatus] = useState(false);
   const [statusMsg, setStatusMsg] = useState(null);
 
+  const [editingCastration, setEditingCastration] = useState(false);
+  const [castrationInput, setCastrationInput] = useState(selectedDog?.kastracja || "nie_kastrowany");
+  const [castrationDateInput, setCastrationDateInput] = useState(selectedDog?.kastracjaData || "");
+  const [castrationReasonInput, setCastrationReasonInput] = useState(selectedDog?.kastracyjaPowod || "");
+  const [savingCastration, setSavingCastration] = useState(false);
+  const [castrationMsg, setCastrationMsg] = useState(null);
+
   const handleSaveTask = async () => {
     if (!currentUser || !taskForm.type) return;
     setSavingTask(true);
@@ -2054,6 +2061,40 @@ const DogCardView = ({
       setStatusMsg({ type: "error", text: "Błąd połączenia" });
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const handleSaveCastration = async () => {
+    if (!currentUser || savingCastration) return;
+    setSavingCastration(true);
+    setCastrationMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "setCastration",
+          dogId: selectedDog.id,
+          kastracja: castrationInput,
+          kastracjaData: castrationInput === "kastrowany" ? castrationDateInput.trim() : "",
+          kastracyjaPowod: castrationInput === "odroczona" ? castrationReasonInput.trim() : "",
+          user: { email: currentUser.email },
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setCastrationMsg({ type: "success", text: "Zapisano" });
+        setEditingCastration(false);
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setCastrationMsg(null), 4000);
+      } else {
+        setCastrationMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setCastrationMsg({ type: "error", text: "Błąd połączenia" });
+    } finally {
+      setSavingCastration(false);
     }
   };
 
@@ -2885,6 +2926,121 @@ const DogCardView = ({
                   </div>
                 )}
               </div>
+
+              {/* KASTRACJA */}
+              <div style={styles.infoBox}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                  <div style={styles.infoLabel}>✂️ Kastracja</div>
+                  {canEditStatus(role) && !editingCastration && (
+                    <button
+                      onClick={() => {
+                        setCastrationInput(selectedDog.kastracja || "nie_kastrowany");
+                        setCastrationDateInput(selectedDog.kastracjaData || "");
+                        setCastrationReasonInput(selectedDog.kastracyjaPowod || "");
+                        setEditingCastration(true);
+                        setCastrationMsg(null);
+                      }}
+                      style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", borderRadius: "0.4rem", border: "1px solid #d1d5db", backgroundColor: "white", cursor: "pointer", color: "#374151" }}
+                    >
+                      Edytuj
+                    </button>
+                  )}
+                </div>
+                {!editingCastration ? (
+                  <div>
+                    {(!selectedDog.kastracja || selectedDog.kastracja === "nie_kastrowany") && (
+                      <span style={{ backgroundColor: "#f3f4f6", color: "#374151", padding: "0.25rem 0.75rem", borderRadius: "9999px", fontSize: "0.875rem", fontWeight: 600 }}>
+                        ❌ Nie kastrowany/a
+                      </span>
+                    )}
+                    {selectedDog.kastracja === "kastrowany" && (
+                      <div>
+                        <span style={styles.badgeGreen}>✅ Tak</span>
+                        {selectedDog.kastracjaData && (
+                          <span style={{ marginLeft: "0.5rem", fontSize: "0.875rem", color: "#374151" }}>
+                            {selectedDog.kastracjaData}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {selectedDog.kastracja === "odroczona" && (
+                      <div>
+                        <span style={{ backgroundColor: "#fef3c7", color: "#92400e", padding: "0.25rem 0.75rem", borderRadius: "9999px", fontSize: "0.875rem", fontWeight: 600 }}>
+                          ⏳ Odroczono
+                        </span>
+                        {selectedDog.kastracyjaPowod && (
+                          <div style={{ marginTop: "0.4rem", fontSize: "0.875rem", color: "#374151" }}>
+                            {selectedDog.kastracyjaPowod}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {castrationMsg && (
+                      <div style={{ fontSize: "0.8rem", color: castrationMsg.type === "success" ? "#059669" : "#dc2626", marginTop: "0.25rem" }}>
+                        {castrationMsg.text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    {[
+                      { value: "kastrowany", label: "✅ Tak — kastrowany/a" },
+                      { value: "nie_kastrowany", label: "❌ Nie kastrowany/a" },
+                      { value: "odroczona", label: "⏳ Odroczono" },
+                    ].map((opt) => (
+                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", cursor: "pointer", fontSize: "0.95rem" }}>
+                        <input
+                          type="radio"
+                          name="castration"
+                          value={opt.value}
+                          checked={castrationInput === opt.value}
+                          onChange={() => setCastrationInput(opt.value)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                    {castrationInput === "kastrowany" && (
+                      <input
+                        type="text"
+                        placeholder="Data zabiegu (np. 12.03.2025)"
+                        value={castrationDateInput}
+                        onChange={(e) => setCastrationDateInput(e.target.value)}
+                        style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem", marginBottom: "0.5rem", boxSizing: "border-box" }}
+                      />
+                    )}
+                    {castrationInput === "odroczona" && (
+                      <textarea
+                        placeholder="Powód odroczenia"
+                        value={castrationReasonInput}
+                        onChange={(e) => setCastrationReasonInput(e.target.value)}
+                        rows={2}
+                        style={{ width: "100%", padding: "0.5rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", fontSize: "0.9rem", marginBottom: "0.5rem", resize: "vertical", boxSizing: "border-box" }}
+                      />
+                    )}
+                    {castrationMsg && (
+                      <div style={{ fontSize: "0.8rem", color: castrationMsg.type === "success" ? "#059669" : "#dc2626", marginBottom: "0.5rem" }}>
+                        {castrationMsg.text}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        onClick={handleSaveCastration}
+                        disabled={savingCastration}
+                        style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: savingCastration ? 0.6 : 1 }}
+                      >
+                        {savingCastration ? "Zapisywanie..." : "Zapisz"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingCastration(false); setCastrationMsg(null); }}
+                        style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", backgroundColor: "white", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {selectedDog.age && (
                 <div style={styles.infoBox}>
                   <div style={styles.infoLabel}>🎂 Wiek</div>
@@ -3326,6 +3482,9 @@ useEffect(() => {
           weight: cleanText(dog?.weight),
           status: dog?.status || "dostępny",
           nieWydawacWlascicielowi: Boolean(dog?.nieWydawacWlascicielowi),
+          kastracja: dog?.kastracja || "nie_kastrowany",
+          kastracjaData: dog?.kastracjaData || "",
+          kastracyjaPowod: dog?.kastracyjaPowod || "",
         }))
         .filter((dog) => dog.name && dog.pavilion)
         .reduce((acc, dog) => {
