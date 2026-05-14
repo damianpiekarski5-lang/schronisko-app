@@ -1738,17 +1738,95 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
   );
 };
 
-const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate }) => (
-  <div style={{ marginTop: "16px", border: "2px solid #fca5a5", borderRadius: "10px", padding: "16px", backgroundColor: "#fef2f2" }}>
-    <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#7f1d1d" }}>🏥 Ambulatorium</h3>
-    <FlagBlock title="Nie karmić" flagType="no_food" currentFlag={noFood} form={flagForm.no_food} setFlagForm={setFlagForm} saving={savingFlag.no_food} msg={flagMsg.no_food} onSave={onSave} onDeactivate={onDeactivate} />
-    <FlagBlock title="Zakaz spaceru" flagType="walk_blocked" currentFlag={walkBlocked} form={flagForm.walk_blocked} setFlagForm={setFlagForm} saving={savingFlag.walk_blocked} msg={flagMsg.walk_blocked} onSave={onSave} onDeactivate={onDeactivate} />
-    <FlagBlock title="Zbieranie próbki kału" flagType="próbka_kału" currentFlag={próbkaKału} form={flagForm["próbka_kału"]} setFlagForm={setFlagForm} saving={savingFlag["próbka_kału"]} msg={flagMsg["próbka_kału"]} onSave={onSave} onDeactivate={onDeactivate} />
-    <FlagBlock title="Pobranie krwi" flagType="pobranie_krwi" currentFlag={pobranieKrwi} form={flagForm["pobranie_krwi"]} setFlagForm={setFlagForm} saving={savingFlag["pobranie_krwi"]} msg={flagMsg["pobranie_krwi"]} onSave={onSave} onDeactivate={onDeactivate} />
-    <FlagBlock title="Zakropienie oczu" flagType="zakropienie_oczu" currentFlag={zakropienieOczu} form={flagForm["zakropienie_oczu"]} setFlagForm={setFlagForm} saving={savingFlag["zakropienie_oczu"]} msg={flagMsg["zakropienie_oczu"]} onSave={onSave} onDeactivate={onDeactivate} />
-    <FlagBlock title="Inne zadanie" flagType="inne" currentFlag={inne} form={flagForm.inne} setFlagForm={setFlagForm} saving={savingFlag.inne} msg={flagMsg.inne} onSave={onSave} onDeactivate={onDeactivate} />
-  </div>
-);
+const TASK_OPTIONS = [
+  { value: "próbka_kału",     label: "Zbieranie próbki kału",          icon: "🧪" },
+  { value: "pobranie_krwi",   label: "Przyprowadzenie na pobranie krwi", icon: "💉" },
+  { value: "zakropienie_oczu",label: "Zakropienie oczu",                icon: "👁️" },
+  { value: "inne",            label: "Inne zadanie",                    icon: "🩺" },
+];
+
+const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, flagForm, setFlagForm, savingFlag, flagMsg, onSave, onDeactivate, taskForm, setTaskForm, savingTask, taskMsg, onSaveTask }) => {
+  const activeTasks = [
+    { key: "próbkaKału",       flag: próbkaKału,      type: "próbka_kału",      icon: "🧪", label: "Zbieranie próbki kału" },
+    { key: "pobranieKrwi",     flag: pobranieKrwi,    type: "pobranie_krwi",    icon: "💉", label: "Pobranie krwi" },
+    { key: "zakropienieOczu",  flag: zakropienieOczu, type: "zakropienie_oczu", icon: "👁️", label: "Zakropienie oczu" },
+    { key: "inne",             flag: inne,            type: "inne",             icon: "🩺", label: "Inne zadanie" },
+  ].filter(({ flag }) => flag.active || flag.pending);
+
+  return (
+    <div style={{ marginTop: "16px", border: "2px solid #fca5a5", borderRadius: "10px", padding: "16px", backgroundColor: "#fef2f2" }}>
+      <h3 style={{ margin: "0 0 12px", fontSize: "16px", fontWeight: 700, color: "#7f1d1d" }}>🏥 Ambulatorium</h3>
+      <FlagBlock title="Nie karmić" flagType="no_food" currentFlag={noFood} form={flagForm.no_food} setFlagForm={setFlagForm} saving={savingFlag.no_food} msg={flagMsg.no_food} onSave={onSave} onDeactivate={onDeactivate} />
+      <FlagBlock title="Zakaz spaceru" flagType="walk_blocked" currentFlag={walkBlocked} form={flagForm.walk_blocked} setFlagForm={setFlagForm} saving={savingFlag.walk_blocked} msg={flagMsg.walk_blocked} onSave={onSave} onDeactivate={onDeactivate} />
+
+      <div style={{ border: "1px solid #fca5a5", borderRadius: "8px", padding: "14px", marginBottom: "12px", backgroundColor: "#fff5f5" }}>
+        <p style={{ fontWeight: 700, fontSize: "15px", margin: "0 0 10px", color: "#991b1b" }}>🩺 Zadania medyczne</p>
+
+        {activeTasks.length > 0 && (
+          <ul style={{ listStyle: "none", padding: 0, margin: "0 0 12px" }}>
+            {activeTasks.map(({ key, flag, type, icon, label }) => (
+              <li key={key} style={{ display: "flex", alignItems: "flex-start", gap: "8px", marginBottom: "8px", backgroundColor: "white", border: "1px solid #fca5a5", borderRadius: "6px", padding: "8px 10px" }}>
+                <div style={{ flex: 1, fontSize: "13px" }}>
+                  <span style={{ fontWeight: 700, color: "#991b1b" }}>{icon} {label}</span>
+                  {flag.note && <span style={{ color: "#4b5563" }}> — {flag.note}</span>}
+                  {flag.pending && <span style={{ color: "#b45309", marginLeft: "4px" }}>🕐 od {flag.validFrom ? flag.validFrom.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}</span>}
+                  {flag.validUntil && <span style={{ color: "#6b7280", marginLeft: "4px" }}>do {flag.validUntil.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}</span>}
+                </div>
+                <button
+                  onClick={() => onDeactivate(type)}
+                  disabled={savingFlag[type]}
+                  style={{ flexShrink: 0, padding: "3px 8px", borderRadius: "5px", border: "none", backgroundColor: "#6b7280", color: "white", fontWeight: 600, fontSize: "12px", cursor: "pointer", opacity: savingFlag[type] ? 0.6 : 1 }}
+                >
+                  Odwołaj
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <select
+          value={taskForm.type}
+          onChange={(e) => setTaskForm((f) => ({ ...f, type: e.target.value }))}
+          style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box", marginBottom: "8px", backgroundColor: "white" }}
+        >
+          <option value="">— Wybierz zadanie —</option>
+          {TASK_OPTIONS.map(({ value, label, icon }) => (
+            <option key={value} value={value}>{icon} {label}</option>
+          ))}
+        </select>
+        <input
+          type="text"
+          value={taskForm.note}
+          onChange={(e) => setTaskForm((f) => ({ ...f, note: e.target.value }))}
+          placeholder="Notatka / powód (opcjonalnie)"
+          style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box", marginBottom: "8px" }}
+        />
+        <div style={{ display: "flex", gap: "10px", marginBottom: "8px" }}>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Od (puste = teraz)</label>
+            <input type="datetime-local" value={taskForm.validFrom} onChange={(e) => setTaskForm((f) => ({ ...f, validFrom: e.target.value }))} style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Do (puste = bezterminowo)</label>
+            <input type="datetime-local" value={taskForm.validUntil} onChange={(e) => setTaskForm((f) => ({ ...f, validUntil: e.target.value }))} style={{ width: "100%", padding: "8px 10px", border: "1px solid #d1d5db", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box" }} />
+          </div>
+        </div>
+        <button
+          onClick={onSaveTask}
+          disabled={savingTask || !taskForm.type}
+          style={{ width: "100%", padding: "8px", backgroundColor: (savingTask || !taskForm.type) ? "#9ca3af" : "#dc2626", color: "white", border: "none", borderRadius: "6px", fontWeight: 600, cursor: (savingTask || !taskForm.type) ? "not-allowed" : "pointer", fontSize: "14px" }}
+        >
+          {savingTask ? "Zapisywanie..." : "Dodaj zadanie"}
+        </button>
+        {taskMsg && (
+          <p style={{ marginTop: "6px", fontSize: "13px", color: taskMsg.type === "success" ? "#166534" : "#991b1b", fontWeight: 600 }}>
+            {taskMsg.type === "success" ? "✅ " : "❌ "}{taskMsg.text}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+};
 
 const DogCardView = ({
   selectedDog,
@@ -1779,6 +1857,10 @@ const DogCardView = ({
   const [savingFlag, setSavingFlag] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, false])));
   const [flagMsg, setFlagMsg] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, null])));
 
+  const [taskForm, setTaskForm] = useState({ type: "", note: "", validFrom: "", validUntil: "" });
+  const [savingTask, setSavingTask] = useState(false);
+  const [taskMsg, setTaskMsg] = useState(null);
+
   const [dietInput, setDietInput] = useState(selectedDog?.diet || "");
   const [savingDiet, setSavingDiet] = useState(false);
   const [dietMsg, setDietMsg] = useState(null);
@@ -1801,6 +1883,38 @@ const DogCardView = ({
   const [weightHistory, setWeightHistory] = useState([]);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [loadingWeightHistory, setLoadingWeightHistory] = useState(false);
+
+  const handleSaveTask = async () => {
+    if (!currentUser || !taskForm.type) return;
+    setSavingTask(true);
+    setTaskMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "setMedicalFlag",
+          dogId: selectedDog.id,
+          flagType: taskForm.type,
+          note: taskForm.note,
+          validFrom: taskForm.validFrom ? new Date(taskForm.validFrom).toISOString() : null,
+          validUntil: taskForm.validUntil ? new Date(taskForm.validUntil).toISOString() : null,
+          createdBy: currentUser.displayName || currentUser.email,
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setTaskForm({ type: "", note: "", validFrom: "", validUntil: "" });
+        setTaskMsg({ type: "success", text: "Zadanie dodane" });
+        refreshFlags();
+      } else {
+        setTaskMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setTaskMsg({ type: "error", text: "Błąd połączenia" });
+    } finally { setSavingTask(false); }
+  };
 
   const handleSetFlag = async (flagType) => {
     if (!currentUser) return;
@@ -2670,6 +2784,11 @@ const DogCardView = ({
                 flagMsg={flagMsg}
                 onSave={handleSetFlag}
                 onDeactivate={handleDeactivateFlag}
+                taskForm={taskForm}
+                setTaskForm={setTaskForm}
+                savingTask={savingTask}
+                taskMsg={taskMsg}
+                onSaveTask={handleSaveTask}
               />
             )}
             {canEditDiet(role) && (
