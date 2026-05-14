@@ -47,7 +47,7 @@ function sortDogs(dogs) {
 const STATUS_ICON = { nowe: "🔴", w_trakcie: "🟡", zamknięte: "✅" };
 const STATUS_LABEL = { nowe: "Nowe", w_trakcie: "W trakcie", zamknięte: "Zamknięte" };
 
-const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUser, isAdmin }) => {
+const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUser, isAdmin, allDogs }) => {
   const { role } = useUserRole();
 
   // --- ZAKŁADKI ---
@@ -152,14 +152,16 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
     ? reports.filter(r => r.status === reportFilter)
     : reports;
 
+  const findFullDog = (id) => (allDogs || []).find((d) => d.id === id);
+
   const handleDogClick = (dog) => {
-    setSelectedDog({ id: dog.id, name: dog.name, pavilion: dog.pavilion, box: dog.box, diet: dog.diet });
+    setSelectedDog(findFullDog(dog.id) || { id: dog.id, name: dog.name, pavilion: dog.pavilion, box: dog.box, diet: dog.diet });
     setDogCardFrom("sector");
     setCurrentView("dogCard");
   };
 
   const handleReportDogClick = (report) => {
-    setSelectedDog({ id: report.dogId, name: report.dogName, pavilion: report.pawilon, box: report.boks });
+    setSelectedDog(findFullDog(report.dogId) || { id: report.dogId, name: report.dogName, pavilion: report.pawilon, box: report.boks });
     setDogCardFrom("sector");
     setCurrentView("dogCard");
   };

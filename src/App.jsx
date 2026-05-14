@@ -3439,6 +3439,7 @@ const handleLogin = async () => {
           setDogCardFrom={setDogCardFrom}
           currentUser={currentUser}
           isAdmin={isAdminUser}
+          allDogs={dogs}
         />
       )}
     </RoleProvider>
