@@ -2264,7 +2264,7 @@ const DogCardView = ({
               </p>
             )}
           </div>
-          {(noFood.active || walkBlocked.active) && (
+          {(noFood.active || walkBlocked.active || dogTasks.length > 0) && (
             <div style={{ padding: "1rem 1.5rem 0" }}>
               {noFood.active && (
                 <MedicalAlert
@@ -2280,6 +2280,25 @@ const DogCardView = ({
                   flag={walkBlocked}
                 />
               )}
+              {dogTasks.map((task) => (
+                <div key={task.id} style={{ backgroundColor: "#1d4ed8", color: "white", padding: "10px 14px", borderRadius: "8px", marginBottom: "8px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                  <div>
+                    <p style={{ fontWeight: "bold", fontSize: "15px", margin: 0 }}>
+                      🩺 {TASK_LABELS[task.taskType] || task.taskType}
+                    </p>
+                    {task.taskNote && <p style={{ margin: "3px 0 0", fontSize: "13px", opacity: 0.9 }}>{task.taskNote}</p>}
+                  </div>
+                  {canMoveDog(role) && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCompleteTask(task.id); }}
+                      disabled={completingTask[task.id]}
+                      style={{ flexShrink: 0, padding: "4px 10px", borderRadius: "6px", border: "2px solid rgba(255,255,255,0.7)", backgroundColor: "transparent", color: "white", fontWeight: 700, fontSize: "0.8rem", cursor: "pointer", opacity: completingTask[task.id] ? 0.6 : 1 }}
+                    >
+                      {completingTask[task.id] ? "..." : "✓ Wykonane"}
+                    </button>
+                  )}
+                </div>
+              ))}
             </div>
           )}
           <div style={{ padding: "1.5rem", paddingBottom: 0 }}>

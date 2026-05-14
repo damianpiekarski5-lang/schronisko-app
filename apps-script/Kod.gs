@@ -88,6 +88,10 @@ function doGet(e) {
       return json({ ok: true, data: getDogTasks_(safeStr(e?.parameter?.dogId)) });
     }
 
+    if (action === "getAllDogTasks") {
+      return json({ ok: true, data: getAllDogTasks_() });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -1306,6 +1310,30 @@ function updateMedicalReportStatus_(payload) {
 // ===============================
 // ZADANIA AMBULATORIUM
 // ===============================
+function getAllDogTasks_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(TASKS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const tasks = [];
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["status"]]) !== "aktywne") continue;
+    tasks.push({
+      id: safeStr(row[map["id"]]),
+      dogId: safeStr(row[map["dog_id"]]),
+      dogName: safeStr(row[map["dog_name"]]),
+      taskType: safeStr(row[map["task_type"]]),
+      taskNote: safeStr(row[map["task_note"]]),
+      createdAt: safeStr(row[map["created_at"]]),
+      createdBy: safeStr(row[map["created_by"]]),
+    });
+  }
+  return tasks;
+}
+
 function getDogTasks_(dogId) {
   if (!dogId) return [];
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
