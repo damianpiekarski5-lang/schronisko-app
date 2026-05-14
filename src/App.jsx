@@ -635,6 +635,16 @@ const DogPhoto = ({ photo, name, size = "normal" }) => {
   );
 };
 
+const formatWalkDate = (dateString) => {
+  if (!dateString) return "—";
+  const d = new Date(dateString);
+  if (isNaN(d.getTime())) return String(dateString).trim() || "—";
+  return d.toLocaleString("pl-PL", {
+    day: "2-digit", month: "2-digit", year: "numeric",
+    hour: "2-digit", minute: "2-digit", second: "2-digit",
+  });
+};
+
 const formatLastWalkDate = (dateString) => {
   if (!dateString || dateString === "Brak spacerów" || dateString === "#REF!") {
     return null;
@@ -2512,7 +2522,7 @@ const DogCardView = ({
                       <tbody>
                         {walkHistory.map((entry, i) => (
                           <tr key={i} style={{ borderTop: "1px solid #fef3c7" }}>
-                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{entry.date}</td>
+                            <td style={{ paddingTop: "0.3rem", color: "#374151" }}>{formatWalkDate(entry.date)}</td>
                             <td style={{ paddingTop: "0.3rem", color: "#6b7280", textAlign: "right" }}>{entry.volunteer || "—"}</td>
                           </tr>
                         ))}
