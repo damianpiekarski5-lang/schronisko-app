@@ -51,6 +51,13 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   const { role } = useUserRole();
 
   // --- ZAKŁADKI ---
+  const TASK_LABELS = {
+    próbka_kału: "Zbieranie próbki kału",
+    pobranie_krwi: "Pobranie krwi",
+    zakropienie_oczu: "Zakropienie oczu",
+    inne: "Inne",
+  };
+
   const [activeTab, setActiveTab] = useState("restrictions");
 
   // --- ZAKŁADKA: PSY Z OBOSTRZENIAMI ---
@@ -59,6 +66,22 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   const [lastRefresh, setLastRefresh] = useState(null);
   const [selectedPawilon, setSelectedPawilon] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [tasksByDog, setTasksByDog] = useState({}); // dogId -> tasks[]
+
+  const fetchTasks = useCallback(async () => {
+    try {
+      const res = await fetch("/api/gs?action=getAllDogTasks");
+      const result = await res.json();
+      if (result?.ok && Array.isArray(result?.data)) {
+        const map = {};
+        result.data.forEach((t) => {
+          if (!map[t.dogId]) map[t.dogId] = [];
+          map[t.dogId].push(t);
+        });
+        setTasksByDog(map);
+      }
+    } catch {}
+  }, []);
 
   const fetchDogs = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
@@ -101,9 +124,10 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
 
   useEffect(() => {
     fetchDogs();
-    const id = setInterval(() => fetchDogs(), 60000);
+    fetchTasks();
+    const id = setInterval(() => { fetchDogs(); fetchTasks(); }, 60000);
     return () => clearInterval(id);
-  }, [fetchDogs]);
+  }, [fetchDogs, fetchTasks]);
 
   useEffect(() => {
     fetchReports();
@@ -146,7 +170,12 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
 
   const pavilions = [...new Set(dogs.map((d) => d.pavilion).filter(Boolean))].sort();
   const filtered = selectedPawilon ? dogs.filter((d) => d.pavilion === selectedPawilon) : dogs;
-  const sorted = sortDogs(filtered);
+  const sorted = [...filtered].sort((a, b) => {
+    const hasUrgentA = (a.noFood || a.walkBlocked) ? 0 : (tasksByDog[a.id]?.length > 0 ? 1 : 2);
+    const hasUrgentB = (b.noFood || b.walkBlocked) ? 0 : (tasksByDog[b.id]?.length > 0 ? 1 : 2);
+    if (hasUrgentA !== hasUrgentB) return hasUrgentA - hasUrgentB;
+    return (a.name || "").localeCompare(b.name || "", "pl");
+  });
 
   const filteredReports = reportFilter
     ? reports.filter(r => r.status === reportFilter)
@@ -247,6 +276,11 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
                     🚫 ZAKAZ SPACERU{dog.walkBlockedNote ? ` — ${dog.walkBlockedNote}` : ""}{dog.walkBlockedUntil ? ` do ${formatUntil(dog.walkBlockedUntil)}` : ""}
                   </div>
                 )}
+                {(tasksByDog[dog.id] || []).map((task) => (
+                  <div key={task.id} style={{ ...styles.flagRow, color: "#1d4ed8" }}>
+                    🩺 {TASK_LABELS[task.taskType] || task.taskType}{task.taskNote ? ` — ${task.taskNote}` : ""}
+                  </div>
+                ))}
                 {dog.diet && <div style={styles.infoRow}>🥩 Dieta: {dog.diet}</div>}
               </div>
             ))}
