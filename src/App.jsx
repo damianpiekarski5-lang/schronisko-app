@@ -2849,13 +2849,29 @@ const DogCardView = ({
   );
 };
 
+const SESSION_KEY = "schronisko_session";
+
+function saveSession(view, dog, from) {
+  try {
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ view, dog: dog ?? null, from: from ?? "home" }));
+  } catch {}
+}
+
+function loadSession() {
+  try {
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch { return null; }
+}
+
 const ShelterMapSystem = () => {
   const [dogs, setDogs] = useState([]);
-  const [currentView, setCurrentView] = useState("home");
-  const [dogCardFrom, setDogCardFrom] = useState("home");
+  const _session = loadSession();
+  const [currentView, setCurrentView] = useState(_session?.view || "home");
+  const [dogCardFrom, setDogCardFrom] = useState(_session?.from || "home");
   const [selectedPavilion, setSelectedPavilion] = useState(null);
   const [selectedBox, setSelectedBox] = useState(null);
-  const [selectedDog, setSelectedDog] = useState(null);
+  const [selectedDog, setSelectedDog] = useState(_session?.dog || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
   const [hoveredCard, setHoveredCard] = useState(null);
@@ -2881,7 +2897,8 @@ const isAdminUser = isAdminEmail(currentUser?.email);
 const navRef = useRef({ currentView: "home", dogCardFrom: "home" });
 useEffect(() => {
   navRef.current = { currentView, dogCardFrom };
-}, [currentView, dogCardFrom]);
+  saveSession(currentView, selectedDog, dogCardFrom);
+}, [currentView, dogCardFrom, selectedDog]);
 
 const scrollPositions = useRef({});
 const currentViewRef = useRef("home");
@@ -3002,6 +3019,11 @@ useEffect(() => {
 
       const normalizedDogs = Array.from(dogsData.values());
       setDogs(normalizedDogs);
+      setSelectedDog((prev) => {
+        if (!prev) return prev;
+        const fresh = normalizedDogs.find((d) => d.id === prev.id);
+        return fresh || prev;
+      });
       return normalizedDogs;
     } catch (error) {
       console.error("Błąd:", error);
