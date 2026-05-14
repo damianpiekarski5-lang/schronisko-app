@@ -41,6 +41,8 @@ const H = {
   LAST_WALK: "Ostatni spacer",
   ARCHIVE: "Archiwum",
   WEIGHT: "WAGA",
+  STATUS: "STATUS",
+  NIE_WYDAWAC: "NIE WYDAWAĆ WŁAŚCICIELOWI",
 };
 
 // ===============================
@@ -215,6 +217,10 @@ function doPost(e) {
       return json({ ok: true, data: completeDogTask_(payload) });
     }
 
+    if (action === "setDogStatus") {
+      return json({ ok: true, data: setDogStatus_(payload) });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -280,6 +286,8 @@ function getDogs(includeArchived) {
       lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
       lastVolunteer: lastVolunteerMap[dogId] || "",
       weight: safeStr(row[map[H.WEIGHT]]),
+      status: safeStr(row[map[H.STATUS]]) || "dostępny",
+      nieWydawacWlascicielowi: Boolean(row[map[H.NIE_WYDAWAC]]),
       archived,
     });
   }
@@ -1092,6 +1100,41 @@ function updateDogDiet_(payload) {
   sh.getRange(rowIdx + 1, map[H.DIET] + 1).setValue(diet);
 
   return { success: true, dogId, diet };
+}
+
+// ===============================
+// STATUS PSA
+// ===============================
+function setDogStatus_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do zmiany statusu psa");
+  }
+
+  const dogId = safeStr(payload?.dogId);
+  if (!dogId) throw new Error("Brakuje dogId");
+
+  const VALID_STATUSES = ["dostępny", "ankieta_w_systemie", "nie_do_adopcji"];
+  const status = safeStr(payload?.status);
+  if (!VALID_STATUSES.includes(status)) throw new Error("Nieprawidłowy status: " + status);
+
+  const nieWydawac = Boolean(payload?.nieWydawacWlascicielowi);
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Nie znaleziono arkusza psów");
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.STATUS, H.NIE_WYDAWAC]);
+  const rowIdx = findDogRow(values, map, dogId);
+  if (rowIdx === -1) throw new Error("Nie znaleziono psa: " + dogId);
+
+  sh.getRange(rowIdx + 1, map[H.STATUS] + 1).setValue(status);
+  sh.getRange(rowIdx + 1, map[H.NIE_WYDAWAC] + 1).setValue(nieWydawac);
+
+  return { success: true, dogId, status, nieWydawacWlascicielowi: nieWydawac };
 }
 
 // ===============================

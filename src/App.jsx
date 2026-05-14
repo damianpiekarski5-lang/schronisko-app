@@ -24,7 +24,7 @@ import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -1895,6 +1895,12 @@ const DogCardView = ({
   const [showWalkHistory, setShowWalkHistory] = useState(false);
   const [loadingWalkHistory, setLoadingWalkHistory] = useState(false);
 
+  const [editingStatus, setEditingStatus] = useState(false);
+  const [statusInput, setStatusInput] = useState(selectedDog?.status || "dostępny");
+  const [nieWydawacInput, setNieWydawacInput] = useState(selectedDog?.nieWydawacWlascicielowi || false);
+  const [savingStatus, setSavingStatus] = useState(false);
+  const [statusMsg, setStatusMsg] = useState(null);
+
   const handleSaveTask = async () => {
     if (!currentUser || !taskForm.type) return;
     setSavingTask(true);
@@ -2015,6 +2021,39 @@ const DogCardView = ({
       setDietMsg({ type: "error", text: "Błąd połączenia" });
     } finally {
       setSavingDiet(false);
+    }
+  };
+
+  const handleSaveStatus = async () => {
+    if (!currentUser || savingStatus) return;
+    setSavingStatus(true);
+    setStatusMsg(null);
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          action: "setDogStatus",
+          dogId: selectedDog.id,
+          status: statusInput,
+          nieWydawacWlascicielowi: nieWydawacInput,
+          user: { email: currentUser.email },
+        }),
+      });
+      const result = await res.json();
+      if (result?.ok) {
+        setStatusMsg({ type: "success", text: "Status zapisany" });
+        setEditingStatus(false);
+        onSurveySaved?.(selectedDog.id);
+        setTimeout(() => setStatusMsg(null), 4000);
+      } else {
+        setStatusMsg({ type: "error", text: result?.error || "Błąd zapisu" });
+      }
+    } catch {
+      setStatusMsg({ type: "error", text: "Błąd połączenia" });
+    } finally {
+      setSavingStatus(false);
     }
   };
 
@@ -2753,17 +2792,98 @@ const DogCardView = ({
                 </div>
               </div>
               <div style={styles.infoBox}>
-                <div style={styles.infoLabel}>📊 Status</div>
-                <span
-                  style={
-                    !selectedDog.status ||
-                    selectedDog.status.toLowerCase().includes("dostępny")
-                      ? styles.badgeGreen
-                      : styles.badgeYellow
-                  }
-                >
-                  {selectedDog.status || "dostępny"}
-                </span>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
+                  <div style={styles.infoLabel}>📊 Status</div>
+                  {canEditStatus(role) && !editingStatus && (
+                    <button
+                      onClick={() => {
+                        setStatusInput(selectedDog.status || "dostępny");
+                        setNieWydawacInput(selectedDog.nieWydawacWlascicielowi || false);
+                        setEditingStatus(true);
+                        setStatusMsg(null);
+                      }}
+                      style={{ fontSize: "0.75rem", padding: "0.25rem 0.6rem", borderRadius: "0.4rem", border: "1px solid #d1d5db", backgroundColor: "white", cursor: "pointer", color: "#374151" }}
+                    >
+                      Edytuj
+                    </button>
+                  )}
+                </div>
+                {!editingStatus ? (
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem" }}>
+                    <span
+                      style={
+                        !selectedDog.status || selectedDog.status === "dostępny"
+                          ? styles.badgeGreen
+                          : selectedDog.status === "ankieta_w_systemie"
+                          ? { ...styles.badgeYellow }
+                          : { backgroundColor: "#fee2e2", color: "#991b1b", padding: "0.25rem 0.75rem", borderRadius: "9999px", fontSize: "0.875rem", fontWeight: 600 }
+                      }
+                    >
+                      {!selectedDog.status || selectedDog.status === "dostępny"
+                        ? "✅ Dostępny"
+                        : selectedDog.status === "ankieta_w_systemie"
+                        ? "📋 Ankieta w systemie"
+                        : "🚫 Nie do adopcji"}
+                    </span>
+                    {selectedDog.nieWydawacWlascicielowi && (
+                      <span style={{ backgroundColor: "#fef3c7", color: "#92400e", padding: "0.25rem 0.75rem", borderRadius: "9999px", fontSize: "0.875rem", fontWeight: 600 }}>
+                        ⚠️ Nie wydawać właścicielowi
+                      </span>
+                    )}
+                    {statusMsg && (
+                      <div style={{ fontSize: "0.8rem", color: statusMsg.type === "success" ? "#059669" : "#dc2626", marginTop: "0.25rem", width: "100%" }}>
+                        {statusMsg.text}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div>
+                    {[
+                      { value: "dostępny", label: "✅ Dostępny" },
+                      { value: "ankieta_w_systemie", label: "📋 Ankieta w systemie" },
+                      { value: "nie_do_adopcji", label: "🚫 Nie do adopcji" },
+                    ].map((opt) => (
+                      <label key={opt.value} style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem", cursor: "pointer", fontSize: "0.95rem" }}>
+                        <input
+                          type="radio"
+                          name="dogStatus"
+                          value={opt.value}
+                          checked={statusInput === opt.value}
+                          onChange={() => setStatusInput(opt.value)}
+                        />
+                        {opt.label}
+                      </label>
+                    ))}
+                    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginTop: "0.75rem", marginBottom: "0.75rem", cursor: "pointer", fontSize: "0.95rem", fontWeight: 600, color: "#92400e" }}>
+                      <input
+                        type="checkbox"
+                        checked={nieWydawacInput}
+                        onChange={(e) => setNieWydawacInput(e.target.checked)}
+                      />
+                      ⚠️ Nie wydawać właścicielowi
+                    </label>
+                    {statusMsg && (
+                      <div style={{ fontSize: "0.8rem", color: statusMsg.type === "success" ? "#059669" : "#dc2626", marginBottom: "0.5rem" }}>
+                        {statusMsg.text}
+                      </div>
+                    )}
+                    <div style={{ display: "flex", gap: "0.5rem" }}>
+                      <button
+                        onClick={handleSaveStatus}
+                        disabled={savingStatus}
+                        style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "none", backgroundColor: "#2563eb", color: "white", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer", opacity: savingStatus ? 0.6 : 1 }}
+                      >
+                        {savingStatus ? "Zapisywanie..." : "Zapisz"}
+                      </button>
+                      <button
+                        onClick={() => { setEditingStatus(false); setStatusMsg(null); }}
+                        style={{ padding: "0.5rem 1rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", backgroundColor: "white", color: "#374151", fontWeight: 600, fontSize: "0.875rem", cursor: "pointer" }}
+                      >
+                        Anuluj
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
               {selectedDog.age && (
                 <div style={styles.infoBox}>
