@@ -354,7 +354,25 @@ function setArchive(payload) {
   const rowIndex = findDogRow(values, map, dogId);
   if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
 
-  sh.getRange(rowIndex + 1, map[H.ARCHIVE] + 1).setValue(archived);
+  if (archived) {
+    const headerRow = values[0];
+    const dogRow = values[rowIndex];
+
+    const archiveSheet = getOrCreateSheet(ss, ARCHIVE_SHEET_NAME);
+    if (archiveSheet.getLastRow() === 0) {
+      archiveSheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+      archiveSheet.setFrozenRows(1);
+    }
+
+    const dataRow = dogRow.map((cell) => {
+      if (cell instanceof Date) return Utilities.formatDate(cell, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+      return cell;
+    });
+    archiveSheet.appendRow(dataRow);
+    sh.deleteRow(rowIndex + 1);
+  } else {
+    sh.getRange(rowIndex + 1, map[H.ARCHIVE] + 1).setValue(false);
+  }
 
   return { success: true, dogId, archived };
 }
