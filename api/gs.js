@@ -4,7 +4,14 @@ import { getAuth } from "firebase-admin/auth";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
 
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://schronisko-app.vercel.app";
+function getAllowedOrigin(reqOrigin) {
+  if (process.env.ALLOWED_ORIGIN) return process.env.ALLOWED_ORIGIN;
+  // Vercel automatically provides these system env vars
+  const productionUrl = process.env.VERCEL_PROJECT_PRODUCTION_URL;
+  if (productionUrl) return `https://${productionUrl}`;
+  // Dev fallback
+  return reqOrigin || "*";
+}
 
 const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: przenieś listę adminów do zmiennej środowiskowej ADMIN_EMAILS
 const ADMIN_ACTIONS = new Set([
@@ -47,8 +54,7 @@ function isFirebaseAdminConfigured() {
 }
 
 function setCorsHeaders(res, reqOrigin) {
-  const origin = reqOrigin && reqOrigin === ALLOWED_ORIGIN ? reqOrigin : ALLOWED_ORIGIN;
-  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Access-Control-Allow-Origin", getAllowedOrigin(reqOrigin));
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
   res.setHeader("Vary", "Origin");
