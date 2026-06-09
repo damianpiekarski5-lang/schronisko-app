@@ -123,7 +123,7 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
           id: reportId,
           status: newStatus,
           note,
-          updatedBy: currentUser.displayName || "Nieznany",
+          updatedBy: currentUser.displayName || currentUser.email || "Nieznany",
         }),
       });
       await fetchReports();

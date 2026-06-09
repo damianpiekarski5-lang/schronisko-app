@@ -418,7 +418,7 @@ function recordWalk(payload) {
     safeStr(dogRow[map[H.NAME]]),
     safeStr(dogRow[map[H.PAVILION]]),
     safeStr(dogRow[map[H.KENNEL]]),
-    safeStr(payload?.user?.displayName) || "Wolontariusz",
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email) || "Wolontariusz",
     safeStr(payload?.notes),
     typ,
   ]);
@@ -449,7 +449,7 @@ function reportBehavior(payload) {
     nowInPolandText(),
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
-    safeStr(payload?.user?.displayName) || "Wolontariusz",
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email),
     safeStr(payload?.opis),
     "NOWE",
     false,
@@ -546,7 +546,7 @@ function adminUpdateBehaviorReport(payload) {
 
   if (map.reviewedBy !== undefined) {
     reportsSheet.getRange(reportId, map.reviewedBy + 1).setValue(
-      safeStr(payload?.user?.displayName) || "Nieznany"
+      safeStr(payload?.user?.email) || safeStr(payload?.user?.displayName)
     );
   }
 
@@ -668,6 +668,7 @@ function getOpiekunowie(dogId) {
       uid: safeStr(row[0]),
       dogId: safeStr(row[1]),
       displayName: safeStr(row[2]),
+      email: safeStr(row[3]),
       addedAt: safeStr(row[4]),
     }));
 }
@@ -675,7 +676,7 @@ function getOpiekunowie(dogId) {
 function toggleOpiekun(payload) {
   const uid = safeStr(payload?.user?.uid);
   const dogId = safeStr(payload?.dogId);
-  const displayName = safeStr(payload?.user?.displayName) || "Nieznany";
+  const displayName = safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email);
   const email = safeStr(payload?.user?.email);
 
   if (!uid) throw new Error("Brak uid użytkownika");
@@ -771,7 +772,7 @@ function addDogHistory(payload) {
   sh.appendRow([
     nowInPolandText(), dogId, safeStr(payload?.dogName),
     kategoria, safeStr(payload?.wartosc), safeStr(payload?.uwagi),
-    safeStr(payload?.user?.displayName) || "Nieznany",
+    safeStr(payload?.user?.displayName) || safeStr(payload?.user?.email),
   ]);
 }
 
@@ -1053,7 +1054,7 @@ function setMedicalFlag_(payload) {
   const validFrom = safeStr(payload?.validFrom) || new Date().toISOString();
   const validUntil = safeStr(payload?.validUntil) || "";
   const note = safeStr(payload?.note) || "";
-  const createdBy = safeStr(payload?.createdBy) || safeStr(payload?.user?.displayName) || "Nieznany";
+  const createdBy = safeStr(payload?.createdBy) || userEmail;
   const createdAt = nowInPolandText();
 
   sh.appendRow([id, dogId, flagType, true, note, validFrom, validUntil, createdBy, createdAt]);
@@ -1229,7 +1230,8 @@ function setCastration_(payload) {
 function addWeightEntry_(payload) {
   const dogId = safeStr(payload?.dogId);
   const weight = safeStr(payload?.weight);
-  const recordedByName = safeStr(payload?.user?.displayName) || "Nieznany";
+  const recordedByEmail = safeStr(payload?.user?.email);
+  const recordedByName = safeStr(payload?.user?.displayName || payload?.user?.email);
   if (!dogId || !weight) throw new Error("Brakuje dogId lub wagi");
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
@@ -1248,9 +1250,9 @@ function addWeightEntry_(payload) {
   // Dodaj wpis do historii
   const histSh = getOrCreateSheet(ss, WEIGHT_HISTORY_SHEET_NAME);
   if (histSh.getLastRow() === 0) {
-    histSh.appendRow(["dog_id", "weight", "date", "recorded_by_name"]);
+    histSh.appendRow(["dog_id", "weight", "date", "recorded_by_email", "recorded_by_name"]);
   }
-  histSh.appendRow([dogId, weight, nowInPolandText(), recordedByName]);
+  histSh.appendRow([dogId, weight, nowInPolandText(), recordedByEmail, recordedByName]);
 
   return { success: true, dogId, weight };
 }
@@ -1271,6 +1273,7 @@ function getWeightHistory_(dogId) {
       weight: safeStr(row[map["weight"]]),
       date: safeStr(row[map["date"]]),
       recordedByName: safeStr(row[map["recorded_by_name"]]),
+      recordedByEmail: safeStr(row[map["recorded_by_email"]]),
     });
   }
   // Najnowsze pierwsze
@@ -1569,7 +1572,7 @@ function addDogTask_(payload) {
   const dogName = safeStr(payload?.dogName);
   const taskType = safeStr(payload?.taskType);
   const taskNote = safeStr(payload?.taskNote || "");
-  const createdBy = safeStr(payload?.user?.displayName) || "Nieznany";
+  const createdBy = safeStr(payload?.user?.displayName || payload?.user?.email);
 
   if (!dogId || !taskType) throw new Error("Brakuje dogId lub taskType");
 
@@ -1593,7 +1596,7 @@ function completeDogTask_(payload) {
   }
 
   const taskId = safeStr(payload?.taskId);
-  const completedBy = safeStr(payload?.user?.displayName) || "Nieznany";
+  const completedBy = safeStr(payload?.user?.displayName || payload?.user?.email);
   if (!taskId) throw new Error("Brakuje taskId");
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);

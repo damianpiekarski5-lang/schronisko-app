@@ -1924,7 +1924,7 @@ const DogCardView = ({
           note: taskForm.note,
           validFrom: taskForm.validFrom ? new Date(taskForm.validFrom).toISOString() : null,
           validUntil: taskForm.validUntil ? new Date(taskForm.validUntil).toISOString() : null,
-          createdBy: currentUser.displayName || "Nieznany",
+          createdBy: currentUser.displayName || currentUser.email,
         }),
       });
       const result = await res.json();
@@ -1957,7 +1957,7 @@ const DogCardView = ({
           note: form.note,
           validFrom: form.validFrom ? new Date(form.validFrom).toISOString() : null,
           validUntil: form.validUntil ? new Date(form.validUntil).toISOString() : null,
-          createdBy: currentUser.displayName || "Nieznany",
+          createdBy: currentUser.displayName || currentUser.email,
         }),
       });
       const result = await res.json();
@@ -2118,7 +2118,7 @@ const DogCardView = ({
           pawilon: selectedDog.pavilion || "",
           boks: selectedDog.box || "",
           description: medReportText.trim(),
-          reportedBy: currentUser.displayName || "Nieznany",
+          reportedBy: currentUser.displayName || currentUser.email || "Nieznany",
         }),
       });
       const result = await res.json();
@@ -2182,7 +2182,7 @@ const DogCardView = ({
           action: "addWeightEntry",
           dogId: selectedDog.id,
           weight: weightInput.trim(),
-          user: { email: currentUser.email, displayName: currentUser.displayName || "Nieznany" },
+          user: { email: currentUser.email, displayName: currentUser.displayName || currentUser.email },
         }),
       });
       const result = await res.json();
@@ -2255,7 +2255,7 @@ const DogCardView = ({
       });
       const result = await response.json();
       if (result?.ok) {
-        const volunteerName = currentUser.displayName || "Wolontariusz";
+        const volunteerName = currentUser.displayName || currentUser.email || "Wolontariusz";
         const label = typ === "wybieg" ? "Wybieg" : "Spacer";
         setWalkMessage({ type: "success", text: `✅ ${label} zapisany przez ${volunteerName}!` });
         onSurveySaved?.(selectedDog.id);
@@ -2387,7 +2387,7 @@ const DogCardView = ({
             </p>
             {opiekunowie.length > 0 && (
               <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.875rem", marginTop: "0.5rem" }}>
-                👤 {opiekunowie.map((o) => o.displayName || "Nieznany").join(" · ")}
+                👤 {opiekunowie.map((o) => o.displayName || o.email).join(" · ")}
               </p>
             )}
           </div>
