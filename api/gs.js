@@ -6,7 +6,7 @@ const APPS_SCRIPT_URL =
 
 const ALLOWED_ORIGIN = "*";
 
-const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: przenieś listę adminów do zmiennej środowiskowej ADMIN_EMAILS
+const FALLBACK_ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "").split(",").map(e => e.trim()).filter(Boolean);
 const ADMIN_ACTIONS = new Set([
   "adminGetBehaviorReports",
   "adminUpdateBehaviorReport",
@@ -14,13 +14,13 @@ const ADMIN_ACTIONS = new Set([
   "listUsersForAdmin",
 ]);
 
-function getAdminEmails() {
-  const source = process.env.ADMIN_EMAILS || FALLBACK_ADMIN_EMAILS.join(",");
+// Akcje dostępne tylko dla zalogowanych użytkowników (nie wymagają roli admin)
+const AUTH_REQUIRED_ACTIONS = new Set([
+  "getOpiekunowie",
+]);
 
-  return source
-    .split(",")
-    .map((item) => item.trim().toLowerCase())
-    .filter(Boolean);
+function getAdminEmails() {
+  return FALLBACK_ADMIN_EMAILS.map((e) => e.toLowerCase());
 }
 
 function isAdminUser(user) {
@@ -184,6 +184,8 @@ export default async function handler(req, res) {
         if (!isAdminUser(user)) {
           throw new HttpError(403, "Brak uprawnień administratora");
         }
+      } else if (AUTH_REQUIRED_ACTIONS.has(action)) {
+        await verifyUserFromRequest(req);
       }
     }
 
