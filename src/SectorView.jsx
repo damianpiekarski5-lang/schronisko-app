@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { Home, MapPin, Star, Shield, Building2, RefreshCw } from "lucide-react";
+import { authFetch } from "./lib/apiFetch";
 import { useUserRole } from "./hooks/useUserRole";
 import { canViewSector, canSetMedicalFlags } from "./lib/roles";
 
@@ -62,7 +63,7 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
   const fetchDogs = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     try {
-      const res = await fetch("/api/gs?action=getSectorDogs");
+      const res = await authFetch("/api/gs?action=getSectorDogs");
       const result = await res.json();
       if (result?.ok && Array.isArray(result?.data)) {
         setDogs(result.data);

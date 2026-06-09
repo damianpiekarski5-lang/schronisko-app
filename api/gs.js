@@ -4,7 +4,7 @@ import { getAuth } from "firebase-admin/auth";
 const APPS_SCRIPT_URL =
   "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
 
-const ALLOWED_ORIGIN = "*";
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "https://schronisko-app.vercel.app";
 
 const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: przenieś listę adminów do zmiennej środowiskowej ADMIN_EMAILS
 const ADMIN_ACTIONS = new Set([
@@ -38,10 +38,20 @@ class HttpError extends Error {
   }
 }
 
-function setCorsHeaders(res) {
-  res.setHeader("Access-Control-Allow-Origin", ALLOWED_ORIGIN);
+function isFirebaseAdminConfigured() {
+  return !!(
+    (process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.FIREBASE_PROJECT_ID) &&
+    (process.env.FIREBASE_ADMIN_CLIENT_EMAIL || process.env.FIREBASE_CLIENT_EMAIL) &&
+    (process.env.FIREBASE_ADMIN_PRIVATE_KEY || process.env.FIREBASE_PRIVATE_KEY)
+  );
+}
+
+function setCorsHeaders(res, reqOrigin) {
+  const origin = reqOrigin && reqOrigin === ALLOWED_ORIGIN ? reqOrigin : ALLOWED_ORIGIN;
+  res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  res.setHeader("Vary", "Origin");
 }
 
 function normalizeResult(raw, status = 200) {
@@ -158,7 +168,7 @@ async function verifyUserFromRequest(req) {
 }
 
 export default async function handler(req, res) {
-  setCorsHeaders(res);
+  setCorsHeaders(res, req.headers?.origin);
 
   if (req.method === "OPTIONS") {
     return res.status(204).end();
@@ -173,16 +183,16 @@ export default async function handler(req, res) {
     const action = String(req.method === "GET" ? req.query?.action || "" : req.body?.action || "");
 
     if (req.method === "GET") {
-      for (const [key, value] of Object.entries(req.query || {})) {
-        if (value !== undefined && value !== null) {
-          url.searchParams.set(key, String(value));
+      if (isFirebaseAdminConfigured()) {
+        const user = await verifyUserFromRequest(req);
+        if (ADMIN_ACTIONS.has(action) && !isAdminUser(user)) {
+          throw new HttpError(403, "Brak uprawnień administratora");
         }
       }
 
-      if (ADMIN_ACTIONS.has(action)) {
-        const user = await verifyUserFromRequest(req);
-        if (!isAdminUser(user)) {
-          throw new HttpError(403, "Brak uprawnień administratora");
+      for (const [key, value] of Object.entries(req.query || {})) {
+        if (value !== undefined && value !== null) {
+          url.searchParams.set(key, String(value));
         }
       }
     }

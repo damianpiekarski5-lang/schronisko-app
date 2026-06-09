@@ -25,6 +25,7 @@ import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
 import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
+import { authFetch } from "./lib/apiFetch";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -2205,7 +2206,7 @@ const DogCardView = ({
   const loadWeightHistory = async () => {
     setLoadingWeightHistory(true);
     try {
-      const res = await fetch(`/api/gs?action=getWeightHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const res = await authFetch(`/api/gs?action=getWeightHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
       const result = await res.json();
       if (result?.ok && Array.isArray(result?.data)) setWeightHistory(result.data);
     } catch {}
@@ -2234,7 +2235,7 @@ const DogCardView = ({
 
   useEffect(() => {
     if (!selectedDog?.id) return;
-    fetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`)
+    authFetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`)
       .then((r) => r.json())
       .then((result) => {
         if (result?.ok && Array.isArray(result?.data)) setOpiekunowie(result.data);
@@ -2280,7 +2281,7 @@ const DogCardView = ({
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action: "toggleOpiekun", dogId: selectedDog.id }),
       });
-      const r2 = await fetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`);
+      const r2 = await authFetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`);
       const r2json = await r2.json();
       if (r2json?.ok && Array.isArray(r2json?.data)) setOpiekunowie(r2json.data);
     } catch {
@@ -3466,7 +3467,7 @@ useEffect(() => {
     setAuthReady(true);
     setLoginError("");
     if (user) {
-      await Promise.all([fetchMyDogs(user), fetchBehaviorystDogs(user)]);
+      await Promise.all([fetchData(), fetchMyDogs(user), fetchBehaviorystDogs(user)]);
     } else {
       setFavoriteDogIds(new Set());
       setBehaviorystDogIds(new Set());
@@ -3478,7 +3479,7 @@ useEffect(() => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const response = await fetch("/api/gs?action=getDogs");
+      const response = await authFetch("/api/gs?action=getDogs");
       const result = await response.json();
 
       if (!response.ok || result?.ok !== true || !Array.isArray(result?.data)) {

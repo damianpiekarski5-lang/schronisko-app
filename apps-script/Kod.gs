@@ -700,11 +700,8 @@ function toggleOpiekun(payload) {
 
 function validateSharedSecret(payload) {
   const expected = PropertiesService.getScriptProperties().getProperty(SHARED_SECRET_PROPERTY_NAME);
-  if (!expected) return;
-
-  if (safeStr(payload?.__secret) !== safeStr(expected)) {
-    throw new Error("Unauthorized");
-  }
+  if (!expected) throw new Error("SHARED_SECRET nie jest skonfigurowany w Apps Script — ustaw właściwość skryptu");
+  if (safeStr(payload?.__secret) !== safeStr(expected)) throw new Error("Unauthorized");
 }
 
 // ===============================

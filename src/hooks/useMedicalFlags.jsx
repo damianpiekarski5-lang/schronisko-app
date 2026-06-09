@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { authFetch } from "../lib/apiFetch";
 
 const EMPTY_FLAG = { active: false, pending: false, note: "", validUntil: null, validFrom: null, createdBy: "" };
 
@@ -32,7 +33,7 @@ export default function useMedicalFlags(dogId) {
       return;
     }
     try {
-      const res = await fetch(`/api/gs?action=getMedicalFlags&dogId=${encodeURIComponent(dogId)}`);
+      const res = await authFetch(`/api/gs?action=getMedicalFlags&dogId=${encodeURIComponent(dogId)}`);
       const result = await res.json();
       if (result?.ok && result?.data) setRaw(result.data);
     } catch {}
