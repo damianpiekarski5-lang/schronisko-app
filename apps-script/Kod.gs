@@ -22,6 +22,7 @@ const TASKS_SHEET_NAME = "ZadaniaAmbulatorium";
 const VALID_ROLES = ["volunteer", "staff", "ambulatorium", "admin"];
 const POLAND_TIMEZONE = "Europe/Warsaw";
 const SHARED_SECRET_PROPERTY_NAME = "SHARED_SECRET";
+const ADMIN_EMAILS_PROPERTY_NAME = "ADMIN_EMAILS";
 const REPORT_RESOLVED_STATUSES = ["W_PRACY", "ODRZUCONE", "ROZPATRZONE", "ZAAKCEPTOWANE"];
 
 const H = {
@@ -148,10 +149,12 @@ function doPost(e) {
     }
 
     if (action === "adminGetBehaviorReports") {
+      requireAdmin(payload);
       return json({ ok: true, data: adminGetBehaviorReports() });
     }
 
     if (action === "adminUpdateBehaviorReport") {
+      requireAdmin(payload);
       return json({ ok: true, data: adminUpdateBehaviorReport(payload) });
     }
 
@@ -170,11 +173,13 @@ function doPost(e) {
     }
 
     if (action === "setUserRole") {
+      requireAdmin(payload);
       setUserRole_(safeStr(payload?.email), safeStr(payload?.role));
       return json({ ok: true, data: { success: true } });
     }
 
     if (action === "listUsersForAdmin") {
+      requireAdmin(payload);
       return json({ ok: true, data: listUsersForAdmin_() });
     }
 
@@ -699,11 +704,21 @@ function toggleOpiekun(payload) {
 
 function validateSharedSecret(payload) {
   const expected = PropertiesService.getScriptProperties().getProperty(SHARED_SECRET_PROPERTY_NAME);
-  if (!expected) return;
+  if (!expected) throw new Error("SHARED_SECRET nie jest skonfigurowany w Script Properties");
 
   if (safeStr(payload?.__secret) !== safeStr(expected)) {
     throw new Error("Unauthorized");
   }
+}
+
+function requireAdmin(payload) {
+  const userEmail = safeStr(payload?.user?.email).toLowerCase();
+  if (!userEmail) throw new Error("Brak emaila użytkownika");
+
+  const raw = PropertiesService.getScriptProperties().getProperty(ADMIN_EMAILS_PROPERTY_NAME) || "";
+  const adminEmails = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+
+  if (!adminEmails.includes(userEmail)) throw new Error("Brak uprawnień administratora");
 }
 
 // ===============================
