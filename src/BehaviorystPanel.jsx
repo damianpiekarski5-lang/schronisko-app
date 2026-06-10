@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw, Search, UserPlus, LogOut } from "lucide-react";
 import {
   collection, doc, getDocs, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
@@ -278,7 +278,7 @@ function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
 
 // ─── Dog Training View ────────────────────────────────────────────────────────
 
-function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate }) {
+function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate, onLogout }) {
   const [training, setTraining] = useState(null);
   const [progress, setProgress] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -380,6 +380,12 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           style={{ ...S.btn, ...S.btnPrimary, ...S.btnSmall, display: "flex", alignItems: "center", gap: "0.3rem" }}>
           <Plus size={16} /> Sesja
         </button>
+        {onLogout && (
+          <button onClick={onLogout}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>
+            <LogOut size={20} color="#6b7280" />
+          </button>
+        )}
       </div>
 
       <div style={S.content}>
@@ -855,7 +861,7 @@ function TodayTab({ dogs, trainings, onSelectDog }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, onToggleBehaviorystDog, setCurrentView }) {
+export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, onToggleBehaviorystDog, setCurrentView, onLogout }) {
   const [tab, setTab] = useState("dogs");
   const [exercises, setExercises] = useState([]);
   const [programs, setPrograms] = useState([]);
@@ -944,6 +950,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
         currentUser={currentUser}
         onBack={() => { setSelectedDog(null); loadTrainings().catch(() => {}); }}
         onNavigate={handleNavigate}
+        onLogout={onLogout}
       />
     );
   }
@@ -967,6 +974,12 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
           style={{ background: "none", border: "none", cursor: "pointer", opacity: refreshing ? 0.5 : 1 }}>
           <RefreshCw size={20} color="#6b7280" />
         </button>
+        {onLogout && (
+          <button onClick={onLogout}
+            style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>
+            <LogOut size={20} color="#6b7280" />
+          </button>
+        )}
       </div>
 
       {loading ? (
