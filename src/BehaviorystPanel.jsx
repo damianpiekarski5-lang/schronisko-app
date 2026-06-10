@@ -282,21 +282,29 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [progress, setProgress] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState("progress");
   const [showSession, setShowSession] = useState(false);
   const [savingProgram, setSavingProgram] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [t, pr, ss] = await Promise.all([
-      fsGetDogTraining(dog.id),
-      fsGetDogProgress(dog.id),
-      fsGetDogSessions(dog.id),
-    ]);
-    setTraining(t);
-    setProgress(pr);
-    setSessions(ss);
-    setLoading(false);
+    setLoadError(null);
+    try {
+      const [t, pr, ss] = await Promise.all([
+        fsGetDogTraining(dog.id),
+        fsGetDogProgress(dog.id),
+        fsGetDogSessions(dog.id),
+      ]);
+      setTraining(t);
+      setProgress(pr);
+      setSessions(ss);
+    } catch (e) {
+      console.error("Błąd ładowania danych psa:", e);
+      setLoadError(e?.code || e?.message || "Nieznany błąd");
+    } finally {
+      setLoading(false);
+    }
   }, [dog.id]);
 
   useEffect(() => { load(); }, [load]);
@@ -397,6 +405,13 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
 
         {loading ? (
           <div style={S.emptyState}>Ładowanie...</div>
+        ) : loadError ? (
+          <div style={{ textAlign: "center", padding: "1.5rem" }}>
+            <div style={{ fontSize: "1.5rem", marginBottom: "0.5rem" }}>⚠️</div>
+            <div style={{ color: "#dc2626", fontWeight: "600", marginBottom: "0.25rem" }}>Błąd ładowania danych</div>
+            <div style={{ fontSize: "0.82rem", color: "#6b7280", marginBottom: "1rem" }}>{loadError}</div>
+            <button onClick={load} style={{ ...S.btn, ...S.btnPrimary }}>Spróbuj ponownie</button>
+          </div>
         ) : tab === "progress" ? (
           <>
             {programExercises.length === 0 ? (
@@ -848,27 +863,43 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showManage, setShowManage] = useState(false);
+  const [loadError, setLoadError] = useState(null);
 
   const loadLibrary = useCallback(async () => {
-    const [exs, progs] = await Promise.all([fsGetExercises(), fsGetPrograms()]);
-    setExercises(exs);
-    setPrograms(progs);
+    try {
+      const [exs, progs] = await Promise.all([fsGetExercises(), fsGetPrograms()]);
+      setExercises(exs);
+      setPrograms(progs);
+    } catch (e) {
+      throw e;
+    }
   }, []);
 
   const loadTrainings = useCallback(async () => {
     if (!behaviorystDogs?.length) { setTrainings({}); return; }
-    const results = await Promise.all(behaviorystDogs.map(d => fsGetDogTraining(d.id)));
-    const map = {};
-    behaviorystDogs.forEach((d, i) => { if (results[i]) map[d.id] = results[i]; });
-    setTrainings(map);
+    try {
+      const results = await Promise.all(behaviorystDogs.map(d => fsGetDogTraining(d.id)));
+      const map = {};
+      behaviorystDogs.forEach((d, i) => { if (results[i]) map[d.id] = results[i]; });
+      setTrainings(map);
+    } catch (e) {
+      throw e;
+    }
   }, [behaviorystDogs]);
 
   const load = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     setLoading(true);
-    await Promise.all([loadLibrary(), loadTrainings()]);
-    setLoading(false);
-    if (showSpinner) setRefreshing(false);
+    setLoadError(null);
+    try {
+      await Promise.all([loadLibrary(), loadTrainings()]);
+    } catch (e) {
+      console.error("Błąd ładowania Firestore:", e);
+      setLoadError(e?.code || e?.message || "Nieznany błąd");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
   }, [loadLibrary, loadTrainings]);
 
   useEffect(() => { load(); }, [load]);
@@ -926,6 +957,24 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
 
       {loading ? (
         <div style={S.emptyState}>Ładowanie...</div>
+      ) : loadError ? (
+        <div style={{ ...S.content, textAlign: "center", paddingTop: "2rem" }}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.75rem" }}>⚠️</div>
+          <div style={{ fontWeight: "700", color: "#dc2626", marginBottom: "0.5rem" }}>
+            Błąd połączenia z Firestore
+          </div>
+          <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+            Kod błędu: <code>{loadError}</code>
+          </div>
+          {loadError.includes("permission") && (
+            <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+              Wdróż reguły Firestore: <code>firebase deploy --only firestore:rules</code>
+            </div>
+          )}
+          <button onClick={() => load(true)} style={{ ...S.btn, ...S.btnPrimary }}>
+            Spróbuj ponownie
+          </button>
+        </div>
       ) : (
         <>
           {tab === "dogs" && (
