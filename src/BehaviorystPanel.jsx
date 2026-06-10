@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw, Search, UserPlus } from "lucide-react";
 import {
   collection, doc, getDocs, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
@@ -49,6 +49,12 @@ const RESULTS = [
   { key: "sukces", label: "✅ Sukces", color: "#dcfce7", border: "#16a34a" },
   { key: "częściowo", label: "🔶 Częściowo", color: "#fef9c3", border: "#ca8a04" },
   { key: "nieudane", label: "❌ Nieudane", color: "#fee2e2", border: "#dc2626" },
+];
+
+const PANEL_TABS = [
+  { key: "dogs", label: "Psy", icon: "🐕" },
+  { key: "today", label: "Dziś", icon: "📅" },
+  { key: "library", label: "Biblioteka", icon: "📚" },
 ];
 
 function formatDate(ts) {
@@ -271,7 +277,7 @@ function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
 
 // ─── Dog Training View ────────────────────────────────────────────────────────
 
-function DogTrainingView({ dog, programs, exercises, currentUser, onBack }) {
+function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate }) {
   const [training, setTraining] = useState(null);
   const [progress, setProgress] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -443,6 +449,16 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack }) {
           onSave={handleSaveSession}
         />
       )}
+
+      <div style={S.bottomNav}>
+        {PANEL_TABS.map(t => (
+          <button key={t.key} onClick={() => onNavigate(t.key)}
+            style={S.navBtn}>
+            <span style={{ fontSize: "1.3rem" }}>{t.icon}</span>
+            {t.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -638,63 +654,133 @@ function LibraryView({ exercises, programs, onExerciseAdded, onProgramAdded, cur
   );
 }
 
-// ─── Dogs Tab ─────────────────────────────────────────────────────────────────
+// ─── Manage Dogs Modal ────────────────────────────────────────────────────────
 
-function DogsTab({ dogs, trainings, onSelectDog }) {
-  if (dogs.length === 0) {
-    return (
-      <div style={S.emptyState}>
-        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🐕</div>
-        <div>Brak psów w pracy</div>
-        <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>Dodaj psy z karty psa → Odłącz/Dołącz do panelu behawiorysty</div>
-      </div>
-    );
-  }
+function ManageDogsModal({ allDogs, behaviorystDogs, onToggle, onClose }) {
+  const [search, setSearch] = useState("");
+  const [toggling, setToggling] = useState(null);
+  const ids = new Set((behaviorystDogs || []).map(d => d.id));
 
-  const sorted = [...dogs].sort((a, b) => {
-    const ta = trainings[a.id];
-    const tb = trainings[b.id];
-    const da = ta?.lastSessionDate ? (ta.lastSessionDate instanceof Timestamp ? ta.lastSessionDate.toDate() : new Date(ta.lastSessionDate)) : new Date(0);
-    const db2 = tb?.lastSessionDate ? (tb.lastSessionDate instanceof Timestamp ? tb.lastSessionDate.toDate() : new Date(tb.lastSessionDate)) : new Date(0);
-    return da - db2; // najdawniej trenowane pierwsze
-  });
+  const filtered = allDogs.filter(d =>
+    !search.trim() || (d.name || "").toLowerCase().includes(search.toLowerCase().trim())
+  );
+
+  const handleToggle = async (dogId) => {
+    setToggling(dogId);
+    await onToggle(dogId);
+    setToggling(null);
+  };
 
   return (
-    <div style={S.content}>
-      {sorted.map(dog => {
-        const t = trainings[dog.id];
-        const days = t?.lastSessionDate ? daysSince(t.lastSessionDate) : null;
-        const urgent = days === null || days >= 7;
-        return (
-          <div key={dog.id} style={{ ...S.card, ...S.cardClickable, borderLeft: `4px solid ${urgent ? "#f97316" : "#7c3aed"}` }}
-            onClick={() => onSelectDog(dog)}>
-            <div style={{ ...S.row, justifyContent: "space-between" }}>
-              <div style={{ flex: 1 }}>
-                <div style={S.dogName}>{dog.name}</div>
-                <div style={S.dogSub}>
-                  {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.kennel || "?"}
-                </div>
-                {t?.assignedProgramId && (
-                  <div style={{ fontSize: "0.78rem", color: "#7c3aed", marginTop: "0.2rem", fontWeight: "600" }}>
-                    📋 Program przypisany
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 300, display: "flex", flexDirection: "column" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "1rem 1rem 0 0", marginTop: "auto", maxHeight: "85vh", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "1rem 1rem 0.75rem", borderBottom: "1px solid #e5e7eb", display: "flex", alignItems: "center", gap: "0.75rem" }}>
+          <div style={{ fontWeight: "700", fontSize: "1.05rem", flex: 1 }}>Zarządzaj psami w pracy</div>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#6b7280" }}>✕</button>
+        </div>
+        <div style={{ padding: "0.75rem 1rem" }}>
+          <div style={{ position: "relative" }}>
+            <Search size={16} style={{ position: "absolute", left: "0.75rem", top: "50%", transform: "translateY(-50%)", color: "#9ca3af" }} />
+            <input
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Szukaj psa..."
+              style={{ ...S.input, paddingLeft: "2.25rem" }}
+              autoFocus
+            />
+          </div>
+        </div>
+        <div style={{ overflowY: "auto", padding: "0 1rem 1rem" }}>
+          {filtered.length === 0 ? (
+            <div style={S.emptyState}>Brak wyników</div>
+          ) : (
+            filtered.map(dog => {
+              const inPanel = ids.has(dog.id);
+              const isToggling = toggling === dog.id;
+              return (
+                <div key={dog.id} style={{ ...S.card, ...S.row, justifyContent: "space-between", marginBottom: "0.5rem", border: `1px solid ${inPanel ? "#7c3aed" : "#e5e7eb"}`, backgroundColor: inPanel ? "#faf5ff" : "white" }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>{dog.name}</div>
+                    <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>
+                      {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.kennel || "?"}
+                    </div>
                   </div>
-                )}
-              </div>
-              <div style={{ textAlign: "right" }}>
-                {days === null ? (
-                  <span style={{ ...S.badge, backgroundColor: "#fee2e2", color: "#dc2626" }}>Brak sesji</span>
-                ) : days === 0 ? (
-                  <span style={{ ...S.badge, backgroundColor: "#dcfce7", color: "#16a34a" }}>Dziś</span>
-                ) : (
-                  <span style={{ ...S.badge, backgroundColor: urgent ? "#fff7ed" : "#f3e8ff", color: urgent ? "#ea580c" : "#7c3aed" }}>
-                    {days} dni temu
-                  </span>
-                )}
+                  <button
+                    onClick={() => handleToggle(dog.id)}
+                    disabled={isToggling}
+                    style={{ ...S.btn, ...S.btnSmall, backgroundColor: inPanel ? "#ede9fe" : "#7c3aed", color: inPanel ? "#7c3aed" : "white", opacity: isToggling ? 0.5 : 1, whiteSpace: "nowrap" }}
+                  >
+                    {isToggling ? "..." : inPanel ? "Odłącz" : "Dołącz"}
+                  </button>
+                </div>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Dogs Tab ─────────────────────────────────────────────────────────────────
+
+function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
+  return (
+    <div style={S.content}>
+      <button
+        onClick={onManage}
+        style={{ ...S.btn, ...S.btnSecondary, width: "100%", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
+      >
+        <UserPlus size={16} /> Zarządzaj psami w pracy ({dogs.length})
+      </button>
+      {dogs.length === 0 ? (
+        <div style={S.emptyState}>
+          <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🐕</div>
+          <div>Brak psów w pracy</div>
+          <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>Naciśnij przycisk powyżej żeby dodać psy</div>
+        </div>
+      ) : (
+        [...dogs].sort((a, b) => {
+          const ta = trainings[a.id];
+          const tb = trainings[b.id];
+          const da = ta?.lastSessionDate ? (ta.lastSessionDate instanceof Timestamp ? ta.lastSessionDate.toDate() : new Date(ta.lastSessionDate)) : new Date(0);
+          const db2 = tb?.lastSessionDate ? (tb.lastSessionDate instanceof Timestamp ? tb.lastSessionDate.toDate() : new Date(tb.lastSessionDate)) : new Date(0);
+          return da - db2;
+        }).map(dog => {
+          const t = trainings[dog.id];
+          const days = t?.lastSessionDate ? daysSince(t.lastSessionDate) : null;
+          const urgent = days === null || days >= 7;
+          return (
+            <div key={dog.id} style={{ ...S.card, ...S.cardClickable, borderLeft: `4px solid ${urgent ? "#f97316" : "#7c3aed"}` }}
+              onClick={() => onSelectDog(dog)}>
+              <div style={{ ...S.row, justifyContent: "space-between" }}>
+                <div style={{ flex: 1 }}>
+                  <div style={S.dogName}>{dog.name}</div>
+                  <div style={S.dogSub}>
+                    {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.kennel || "?"}
+                  </div>
+                  {t?.assignedProgramId && (
+                    <div style={{ fontSize: "0.78rem", color: "#7c3aed", marginTop: "0.2rem", fontWeight: "600" }}>
+                      📋 Program przypisany
+                    </div>
+                  )}
+                </div>
+                <div style={{ textAlign: "right" }}>
+                  {days === null ? (
+                    <span style={{ ...S.badge, backgroundColor: "#fee2e2", color: "#dc2626" }}>Brak sesji</span>
+                  ) : days === 0 ? (
+                    <span style={{ ...S.badge, backgroundColor: "#dcfce7", color: "#16a34a" }}>Dziś</span>
+                  ) : (
+                    <span style={{ ...S.badge, backgroundColor: urgent ? "#fff7ed" : "#f3e8ff", color: urgent ? "#ea580c" : "#7c3aed" }}>
+                      {days} dni temu
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })
+      )}
     </div>
   );
 }
@@ -753,14 +839,15 @@ function TodayTab({ dogs, trainings, onSelectDog }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
-export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurrentView }) {
+export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, onToggleBehaviorystDog, setCurrentView }) {
   const [tab, setTab] = useState("dogs");
   const [exercises, setExercises] = useState([]);
   const [programs, setPrograms] = useState([]);
-  const [trainings, setTrainings] = useState({}); // dogId → training doc
+  const [trainings, setTrainings] = useState({});
   const [selectedDog, setSelectedDog] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [showManage, setShowManage] = useState(false);
 
   const loadLibrary = useCallback(async () => {
     const [exs, progs] = await Promise.all([fsGetExercises(), fsGetPrograms()]);
@@ -797,6 +884,12 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurr
     );
   }
 
+  const handleNavigate = (tabKey) => {
+    setSelectedDog(null);
+    setTab(tabKey);
+    load(false);
+  };
+
   if (selectedDog) {
     return (
       <DogTrainingView
@@ -805,28 +898,23 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurr
         exercises={exercises}
         currentUser={currentUser}
         onBack={() => { setSelectedDog(null); load(false); }}
+        onNavigate={handleNavigate}
       />
     );
   }
 
-  const TABS = [
-    { key: "dogs", label: "Psy", icon: "🐕" },
-    { key: "today", label: "Dziś", icon: "📅" },
-    { key: "library", label: "Biblioteka", icon: "📚" },
-  ];
-
-  const todayCount = behaviorystDogs?.filter(dog => {
+  const todayCount = (behaviorystDogs || []).filter(dog => {
     const t = trainings[dog.id];
     if (!t?.lastSessionDate) return true;
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const last = t.lastSessionDate instanceof Timestamp ? t.lastSessionDate.toDate() : new Date(t.lastSessionDate);
     return last < today;
-  }).length || 0;
+  }).length;
 
   return (
     <div style={S.page}>
       <div style={S.header}>
-        <button onClick={() => setCurrentView("map")} style={{ background: "none", border: "none", cursor: "pointer" }}>
+        <button onClick={() => setCurrentView("home")} style={{ background: "none", border: "none", cursor: "pointer" }}>
           <ArrowLeft size={22} color="#374151" />
         </button>
         <div style={S.headerTitle}>Panel Behawiorysty</div>
@@ -840,7 +928,14 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurr
         <div style={S.emptyState}>Ładowanie...</div>
       ) : (
         <>
-          {tab === "dogs" && <DogsTab dogs={behaviorystDogs || []} trainings={trainings} onSelectDog={setSelectedDog} />}
+          {tab === "dogs" && (
+            <DogsTab
+              dogs={behaviorystDogs || []}
+              trainings={trainings}
+              onSelectDog={setSelectedDog}
+              onManage={() => setShowManage(true)}
+            />
+          )}
           {tab === "today" && <TodayTab dogs={behaviorystDogs || []} trainings={trainings} onSelectDog={setSelectedDog} />}
           {tab === "library" && (
             <LibraryView
@@ -855,7 +950,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurr
       )}
 
       <div style={S.bottomNav}>
-        {TABS.map(t => (
+        {PANEL_TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ ...S.navBtn, ...(tab === t.key ? S.navBtnActive : {}) }}>
             <span style={{ fontSize: "1.3rem", position: "relative" }}>
@@ -870,6 +965,15 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, setCurr
           </button>
         ))}
       </div>
+
+      {showManage && (
+        <ManageDogsModal
+          allDogs={dogs || []}
+          behaviorystDogs={behaviorystDogs || []}
+          onToggle={onToggleBehaviorystDog}
+          onClose={() => setShowManage(false)}
+        />
+      )}
     </div>
   );
 }
