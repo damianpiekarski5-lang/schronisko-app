@@ -16,10 +16,12 @@ import {
   Shield,
   Users,
   Building2,
+  Dumbbell,
 } from "lucide-react";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import AdminPanelView from "./AdminPanelView";
+import BehaviorystPanel from "./BehaviorystPanel";
 import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
@@ -714,6 +716,7 @@ const MapView = ({
   hoveredCard,
   setHoveredCard,
   isAdmin,
+  isBehavioryst,
 }) => {
   const { isAdmin: isAdminRole, loading: roleLoading, role: userRole } = useUserRole();
   const getFilteredDogs = () => {
@@ -1181,6 +1184,15 @@ const MapView = ({
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
+        {isBehavioryst && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorystPanel")}
+          >
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1194,6 +1206,7 @@ const BoxesView = ({
   hoveredCard,
   setHoveredCard,
   isAdmin,
+  isBehavioryst,
 }) => {
   const { role: userRole } = useUserRole();
   const countDogsInPavilion = (pavilion) =>
@@ -1335,6 +1348,15 @@ const BoxesView = ({
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
+        {isBehavioryst && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorystPanel")}
+          >
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -1350,6 +1372,7 @@ const DogsListView = ({
   hoveredCard,
   setHoveredCard,
   isAdmin,
+  isBehavioryst,
 }) => {
   const { role: userRole } = useUserRole();
   const getDogsInBox = (pavilion, box) =>
@@ -1538,12 +1561,21 @@ const DogsListView = ({
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
+        {isBehavioryst && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorystPanel")}
+          >
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
+          </button>
+        )}
       </div>
     </div>
   );
 };
 
-const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, hoveredCard, setHoveredCard, authEnabled, isAdmin }) => {
+const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, hoveredCard, setHoveredCard, authEnabled, isAdmin, isBehavioryst }) => {
   const { role: userRole } = useUserRole();
   const sortedDogs = [...myDogs].sort(
     (a, b) => getLastWalkSortValue(a.lastWalk) - getLastWalkSortValue(b.lastWalk)
@@ -1634,6 +1666,12 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, ho
           <button style={styles.bottomNavButton} onClick={() => setCurrentView("panel")}>
             <Shield size={24} />
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
+        {isBehavioryst && (
+          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behaviorystPanel")}>
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
           </button>
         )}
       </div>
@@ -3332,6 +3370,15 @@ const DogCardView = ({
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
           </button>
         )}
+        {isBehaviorystOwner && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorystPanel")}
+          >
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
+          </button>
+        )}
       </div>
       {showBehaviorReport && (
         <BehaviorReport
@@ -3388,6 +3435,7 @@ const [behaviorystActionState, setBehaviorystActionState] = useState({
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
+const isBehaviorystUser = String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
 
 const navRef = useRef({ currentView: "home", dogCardFrom: "home" });
 useEffect(() => {
@@ -3428,6 +3476,8 @@ useEffect(() => {
     } else if (["map", "myDogs", "mapEditor", "sector"].includes(view)) {
       setCurrentView("home");
     } else if (view === "panel") {
+      setCurrentView("home");
+    } else if (view === "behaviorystPanel") {
       setCurrentView("home");
     }
     history.pushState(null, "", window.location.href);
@@ -3848,6 +3898,7 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           setCurrentView={navigateToView}
           isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
       {currentView === "map" && (
@@ -3862,6 +3913,7 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
       {currentView === "boxes" && (
@@ -3873,6 +3925,7 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
       {currentView === "dogs" && (
@@ -3886,6 +3939,7 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
       {currentView === "dogCard" && (
@@ -3914,6 +3968,7 @@ const handleLogin = async () => {
           setHoveredCard={setHoveredCard}
           authEnabled={isAuthEnabled}
           isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
       {currentView === "mapEditor" && (
@@ -3930,6 +3985,13 @@ const handleLogin = async () => {
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
           onStartWork={handleStartBehaviorystWork}
+        />
+      )}
+      {currentView === "behaviorystPanel" && isBehaviorystUser && (
+        <BehaviorystPanel
+          currentUser={currentUser}
+          dogs={dogs}
+          setCurrentView={navigateToView}
         />
       )}
       {currentView === "sector" && (

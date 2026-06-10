@@ -10,6 +10,7 @@ import {
   Star,
   Shield,
   Building2,
+  Dumbbell,
 } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
 import { useUserRole } from "./hooks/useUserRole";
@@ -199,6 +200,7 @@ const HomeView = ({
   setHoveredCard,
   setCurrentView,
   isAdmin,
+  isBehavioryst,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { role: userRole } = useUserRole();
@@ -397,6 +399,15 @@ const HomeView = ({
           >
             <Shield size={24} />
             <span style={{ marginTop: "0.25rem" }}>Panel</span>
+          </button>
+        )}
+        {isBehavioryst && (
+          <button
+            style={styles.bottomNavButton}
+            onClick={() => setCurrentView("behaviorystPanel")}
+          >
+            <Dumbbell size={24} />
+            <span style={{ marginTop: "0.25rem" }}>Trening</span>
           </button>
         )}
       </div>
