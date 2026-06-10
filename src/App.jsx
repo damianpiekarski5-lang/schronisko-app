@@ -3875,7 +3875,7 @@ const handleLogin = async () => {
   return (
     <RoleProvider currentUser={currentUser}>
       <InstallPrompt />
-      {isAuthEnabled && currentUser && (
+      {isAuthEnabled && currentUser && currentView !== "behaviorystPanel" && (
         <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
           <button
             onClick={handleLogout}
@@ -3994,6 +3994,7 @@ const handleLogin = async () => {
           dogs={dogs}
           onToggleBehaviorystDog={handleToggleBehaviorystDog}
           setCurrentView={navigateToView}
+          onLogout={handleLogout}
         />
       )}
       {currentView === "sector" && (

@@ -4,27 +4,18 @@ service cloud.firestore {
 
     // Biblioteka ćwiczeń — dostępna dla wszystkich zalogowanych
     match /exercises/{exerciseId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
     // Programy treningowe — dostępne dla wszystkich zalogowanych
     match /programs/{programId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
 
-    // Dane treningowe per pies
-    match /dogTraining/{dogId} {
+    // Dane treningowe per pies — rekurencyjny wildcard obejmuje
+    // dogTraining/{dogId}, dogTraining/{dogId}/progress/*, dogTraining/{dogId}/sessions/*
+    match /dogTraining/{path=**} {
       allow read, write: if request.auth != null;
-
-      match /progress/{exerciseId} {
-        allow read, write: if request.auth != null;
-      }
-
-      match /sessions/{sessionId} {
-        allow read, write: if request.auth != null;
-      }
     }
   }
 }
