@@ -4,7 +4,7 @@ import {
   collection, doc, getDocs, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
-import { db } from "./firebase";
+import { db, auth } from "./firebase";
 
 const S = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "80px" },
@@ -70,6 +70,12 @@ function daysSince(ts) {
 }
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
+
+async function ensureFreshToken() {
+  if (auth?.currentUser) {
+    await auth.currentUser.getIdToken(true);
+  }
+}
 
 async function fsGetExercises() {
   const snap = await getDocs(query(collection(db, "exercises"), orderBy("name")));
@@ -291,6 +297,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
     setLoading(true);
     setLoadError(null);
     try {
+      await ensureFreshToken();
       const [t, pr, ss] = await Promise.all([
         fsGetDogTraining(dog.id),
         fsGetDogProgress(dog.id),
@@ -892,6 +899,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
     setLoading(true);
     setLoadError(null);
     try {
+      await ensureFreshToken();
       await Promise.all([loadLibrary(), loadTrainings()]);
     } catch (e) {
       console.error("Błąd ładowania Firestore:", e);
@@ -963,12 +971,16 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
           <div style={{ fontWeight: "700", color: "#dc2626", marginBottom: "0.5rem" }}>
             Błąd połączenia z Firestore
           </div>
-          <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+          <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.75rem" }}>
             Kod błędu: <code>{loadError}</code>
           </div>
-          {loadError.includes("permission") && (
+          {loadError.includes("permission") ? (
             <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1.25rem" }}>
-              Wdróż reguły Firestore: <code>firebase deploy --only firestore:rules</code>
+              Spróbuj wylogować się i zalogować ponownie, aby odświeżyć sesję.
+            </div>
+          ) : (
+            <div style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+              Sprawdź połączenie z internetem i spróbuj ponownie.
             </div>
           )}
           <button onClick={() => load(true)} style={{ ...S.btn, ...S.btnPrimary }}>
