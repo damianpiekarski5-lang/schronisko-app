@@ -72,12 +72,6 @@ function daysSince(ts) {
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
 
-async function ensureFreshToken() {
-  if (auth?.currentUser) {
-    await auth.currentUser.getIdToken(true);
-  }
-}
-
 async function fsGetExercises() {
   const snap = await getDocs(query(collection(db, "exercises"), orderBy("name")));
   return snap.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -298,7 +292,6 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
     setLoading(true);
     setLoadError(null);
     try {
-      await ensureFreshToken();
       const [t, pr, ss] = await Promise.all([
         fsGetDogTraining(dog.id),
         fsGetDogProgress(dog.id),
@@ -874,34 +867,31 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
   const [loadError, setLoadError] = useState(null);
   const [authConfirmed, setAuthConfirmed] = useState(false);
 
+  // Use a ref so loadTrainings stays stable even when behaviorystDogs prop changes
+  // (prevents excessive Firestore calls + auth token refreshes on every App re-render)
+  const behaviorystDogsRef = useRef(behaviorystDogs);
+  useEffect(() => { behaviorystDogsRef.current = behaviorystDogs; }, [behaviorystDogs]);
+
   const loadLibrary = useCallback(async () => {
-    try {
-      const [exs, progs] = await Promise.all([fsGetExercises(), fsGetPrograms()]);
-      setExercises(exs);
-      setPrograms(progs);
-    } catch (e) {
-      throw e;
-    }
+    const [exs, progs] = await Promise.all([fsGetExercises(), fsGetPrograms()]);
+    setExercises(exs);
+    setPrograms(progs);
   }, []);
 
   const loadTrainings = useCallback(async () => {
-    if (!behaviorystDogs?.length) { setTrainings({}); return; }
-    try {
-      const results = await Promise.all(behaviorystDogs.map(d => fsGetDogTraining(d.id)));
-      const map = {};
-      behaviorystDogs.forEach((d, i) => { if (results[i]) map[d.id] = results[i]; });
-      setTrainings(map);
-    } catch (e) {
-      throw e;
-    }
-  }, [behaviorystDogs]);
+    const bDogs = behaviorystDogsRef.current;
+    if (!bDogs?.length) { setTrainings({}); return; }
+    const results = await Promise.all(bDogs.map(d => fsGetDogTraining(d.id)));
+    const map = {};
+    bDogs.forEach((d, i) => { if (results[i]) map[d.id] = results[i]; });
+    setTrainings(map);
+  }, []); // stable — reads behaviorystDogs from ref
 
   const load = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     setLoading(true);
     setLoadError(null);
     try {
-      await ensureFreshToken();
       await Promise.all([loadLibrary(), loadTrainings()]);
     } catch (e) {
       console.error("Błąd ładowania Firestore:", e);
