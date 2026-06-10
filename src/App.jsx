@@ -3991,6 +3991,8 @@ const handleLogin = async () => {
         <BehaviorystPanel
           currentUser={currentUser}
           behaviorystDogs={behaviorystDogs}
+          dogs={dogs}
+          onToggleBehaviorystDog={handleToggleBehaviorystDog}
           setCurrentView={navigateToView}
         />
       )}
