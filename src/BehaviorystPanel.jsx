@@ -5,6 +5,7 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { db, auth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
 
 const S = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "80px" },
@@ -871,6 +872,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
   const [refreshing, setRefreshing] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [loadError, setLoadError] = useState(null);
+  const [authConfirmed, setAuthConfirmed] = useState(false);
 
   const loadLibrary = useCallback(async () => {
     try {
@@ -910,7 +912,21 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
     }
   }, [loadLibrary, loadTrainings]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (!auth) { setAuthConfirmed(true); return; }
+    const unsub = onAuthStateChanged(auth, (user) => {
+      if (user) setAuthConfirmed(true);
+      else {
+        setLoading(false);
+        setLoadError("Zaloguj się aby korzystać z panelu.");
+      }
+    });
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (authConfirmed) load();
+  }, [authConfirmed, load]);
 
   if (!db) {
     return (
