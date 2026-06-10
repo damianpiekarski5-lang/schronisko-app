@@ -4,8 +4,7 @@ import {
   collection, doc, getDocs, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
-import { db, auth } from "./firebase";
-import { onAuthStateChanged } from "firebase/auth";
+import { db } from "./firebase";
 
 const S = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "80px" },
@@ -291,12 +290,21 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(null);
+    const doFetch = () => Promise.all([
+      fsGetDogTraining(dog.id),
+      fsGetDogProgress(dog.id),
+      fsGetDogSessions(dog.id),
+    ]);
     try {
-      const [t, pr, ss] = await Promise.all([
-        fsGetDogTraining(dog.id),
-        fsGetDogProgress(dog.id),
-        fsGetDogSessions(dog.id),
-      ]);
+      let result;
+      try {
+        result = await doFetch();
+      } catch (e) {
+        if (e?.code !== 'permission-denied') throw e;
+        await new Promise(r => setTimeout(r, 1500));
+        result = await doFetch();
+      }
+      const [t, pr, ss] = result;
       setTraining(t);
       setProgress(pr);
       setSessions(ss);
@@ -381,8 +389,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           <Plus size={16} /> Sesja
         </button>
         {onLogout && (
-          <button onClick={onLogout}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>
+          <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>
             <LogOut size={20} color="#6b7280" />
           </button>
         )}
@@ -871,10 +878,8 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
   const [refreshing, setRefreshing] = useState(false);
   const [showManage, setShowManage] = useState(false);
   const [loadError, setLoadError] = useState(null);
-  const [authConfirmed, setAuthConfirmed] = useState(false);
 
-  // Use a ref so loadTrainings stays stable even when behaviorystDogs prop changes
-  // (prevents excessive Firestore calls + auth token refreshes on every App re-render)
+  // useRef keeps loadTrainings stable regardless of behaviorystDogs prop reference changes
   const behaviorystDogsRef = useRef(behaviorystDogs);
   useEffect(() => { behaviorystDogsRef.current = behaviorystDogs; }, [behaviorystDogs]);
 
@@ -891,14 +896,22 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
     const map = {};
     bDogs.forEach((d, i) => { if (results[i]) map[d.id] = results[i]; });
     setTrainings(map);
-  }, []); // stable — reads behaviorystDogs from ref
+  }, []);
 
   const load = useCallback(async (showSpinner = false) => {
     if (showSpinner) setRefreshing(true);
     setLoading(true);
     setLoadError(null);
+    const doFetch = () => Promise.all([loadLibrary(), loadTrainings()]);
     try {
-      await Promise.all([loadLibrary(), loadTrainings()]);
+      try {
+        await doFetch();
+      } catch (e) {
+        if (e?.code !== 'permission-denied') throw e;
+        // Token may still be initializing — retry once after 1.5s
+        await new Promise(r => setTimeout(r, 1500));
+        await doFetch();
+      }
     } catch (e) {
       console.error("Błąd ładowania Firestore:", e);
       setLoadError(e?.code || e?.message || "Nieznany błąd");
@@ -908,21 +921,10 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
     }
   }, [loadLibrary, loadTrainings]);
 
+  // App.jsx confirms auth before rendering this component — call load() directly on mount
   useEffect(() => {
-    if (!auth) { setAuthConfirmed(true); return; }
-    const unsub = onAuthStateChanged(auth, (user) => {
-      if (user) setAuthConfirmed(true);
-      else {
-        setLoading(false);
-        setLoadError("Zaloguj się aby korzystać z panelu.");
-      }
-    });
-    return unsub;
-  }, []);
-
-  useEffect(() => {
-    if (authConfirmed) load();
-  }, [authConfirmed, load]);
+    load();
+  }, [load]);
 
   if (!db) {
     return (
@@ -975,8 +977,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
           <RefreshCw size={20} color="#6b7280" />
         </button>
         {onLogout && (
-          <button onClick={onLogout}
-            style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>
+          <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>
             <LogOut size={20} color="#6b7280" />
           </button>
         )}
