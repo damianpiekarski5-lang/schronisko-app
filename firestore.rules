@@ -2,18 +2,18 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Biblioteka ćwiczeń — dostępna dla wszystkich zalogowanych
+    // Biblioteka ćwiczeń
     match /exercises/{exerciseId} {
       allow read, write: if request.auth != null;
     }
 
-    // Programy treningowe — dostępne dla wszystkich zalogowanych
+    // Programy treningowe
     match /programs/{programId} {
       allow read, write: if request.auth != null;
     }
 
-    // Dane treningowe per pies — rekurencyjny wildcard obejmuje
-    // dogTraining/{dogId}, dogTraining/{dogId}/progress/*, dogTraining/{dogId}/sessions/*
+    // Dane treningowe per pies — {path=**} obejmuje dokument główny
+    // oraz podkolekcje: progress/* i sessions/*
     match /dogTraining/{path=**} {
       allow read, write: if request.auth != null;
     }
