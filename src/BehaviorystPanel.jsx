@@ -932,7 +932,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
   const handleNavigate = (tabKey) => {
     setSelectedDog(null);
     setTab(tabKey);
-    load(false);
+    loadTrainings().catch(() => {});
   };
 
   if (selectedDog) {
@@ -942,7 +942,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
         programs={programs}
         exercises={exercises}
         currentUser={currentUser}
-        onBack={() => { setSelectedDog(null); load(false); }}
+        onBack={() => { setSelectedDog(null); loadTrainings().catch(() => {}); }}
         onNavigate={handleNavigate}
       />
     );
