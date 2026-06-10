@@ -646,7 +646,7 @@ function DogsTab({ dogs, trainings, onSelectDog }) {
       <div style={S.emptyState}>
         <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🐕</div>
         <div>Brak psów w pracy</div>
-        <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>Dodaj psy z karty psa → Odłącz/Dołącz do panelu behawiorysty</div>
+        <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>Otwórz kartę psa → przycisk „Rozpocznij pracę"</div>
       </div>
     );
   }
