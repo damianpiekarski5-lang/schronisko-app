@@ -5,6 +5,7 @@ import {
   getAuth,
   setPersistence,
 } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -29,6 +30,7 @@ export const hasFirebaseConfig = requiredFirebaseKeys.every((key) => {
 });
 
 export let auth = null;
+export let db = null;
 export let googleProvider = null;
 export let firebaseInitError = null;
 
@@ -36,6 +38,7 @@ if (hasFirebaseConfig) {
   try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
+    db = getFirestore(app);
     googleProvider = new GoogleAuthProvider();
 
     setPersistence(auth, browserLocalPersistence).catch((error) => {
