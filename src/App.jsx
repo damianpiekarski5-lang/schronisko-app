@@ -3990,7 +3990,7 @@ const handleLogin = async () => {
       {currentView === "behaviorystPanel" && isBehaviorystUser && (
         <BehaviorystPanel
           currentUser={currentUser}
-          dogs={dogs}
+          behaviorystDogs={behaviorystDogs}
           setCurrentView={navigateToView}
         />
       )}
