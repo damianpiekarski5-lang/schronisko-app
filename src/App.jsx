@@ -3817,6 +3817,9 @@ const handleLogin = async () => {
     });
   };
 
+  const myDogs = useMemo(() => dogs.filter((dog) => favoriteDogIds.has(dog.id)), [dogs, favoriteDogIds]);
+  const behaviorystDogs = useMemo(() => dogs.filter((dog) => behaviorystDogIds.has(dog.id)), [dogs, behaviorystDogIds]);
+
   if (isAuthEnabled && !authReady) {
     return (
       <div style={styles.loadingContainer}>
@@ -3880,9 +3883,6 @@ const handleLogin = async () => {
       </div>
     );
   }
-
-  const myDogs = useMemo(() => dogs.filter((dog) => favoriteDogIds.has(dog.id)), [dogs, favoriteDogIds]);
-  const behaviorystDogs = useMemo(() => dogs.filter((dog) => behaviorystDogIds.has(dog.id)), [dogs, behaviorystDogIds]);
 
   return (
     <RoleProvider currentUser={currentUser}>
