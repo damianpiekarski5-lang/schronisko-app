@@ -43,7 +43,9 @@ export default function useMedicalFlags(dogId) {
     setLoading(true);
     setRaw(EMPTY_RAW);
     fetchFlags();
-    const id = setInterval(fetchFlags, 60000);
+    const id = setInterval(() => {
+      if (document.visibilityState === "visible") fetchFlags();
+    }, 60000);
     return () => clearInterval(id);
   }, [fetchFlags]);
 

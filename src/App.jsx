@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from "react";
 import {
   ArrowLeft,
   AlertCircle,
@@ -20,10 +20,10 @@ import {
 } from "lucide-react";
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
-import AdminPanelView from "./AdminPanelView";
-import BehaviorystPanel from "./BehaviorystPanel";
-import MapEditor from "./MapEditor";
 import InstallPrompt from "./InstallPrompt";
+const AdminPanelView = lazy(() => import("./AdminPanelView"));
+const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
+const MapEditor = lazy(() => import("./MapEditor"));
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
 import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
@@ -719,20 +719,25 @@ const MapView = ({
   isBehavioryst,
 }) => {
   const { isAdmin: isAdminRole, loading: roleLoading, role: userRole } = useUserRole();
-  const getFilteredDogs = () => {
+  const filteredDogs = useMemo(() => {
     if (!searchTerm) return dogs;
+    const term = searchTerm.toLowerCase();
     return dogs.filter(
       (dog) =>
-        dog.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dog.breed?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dog.pavilion?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        dog.id?.toLowerCase().includes(searchTerm.toLowerCase())
+        dog.name?.toLowerCase().includes(term) ||
+        dog.breed?.toLowerCase().includes(term) ||
+        dog.pavilion?.toLowerCase().includes(term) ||
+        dog.id?.toLowerCase().includes(term)
     );
-  };
+  }, [dogs, searchTerm]);
 
-  const countDogsInPavilion = (pavilion) => {
-    return dogs.filter((dog) => dog.pavilion === pavilion).length;
-  };
+  const pavilionDogCount = useMemo(() => {
+    const map = {};
+    dogs.forEach((dog) => {
+      if (dog.pavilion) map[dog.pavilion] = (map[dog.pavilion] || 0) + 1;
+    });
+    return map;
+  }, [dogs]);
 
   return (
     <div style={styles.pageContainer}>
@@ -796,9 +801,9 @@ const MapView = ({
                 marginBottom: "1rem",
               }}
             >
-              🔍 Znaleziono: {getFilteredDogs().length}
+              🔍 Znaleziono: {filteredDogs.length}
             </h2>
-            {getFilteredDogs().length === 0 ? (
+            {filteredDogs.length === 0 ? (
               <div style={styles.card}>
                 <p
                   style={{
@@ -818,7 +823,7 @@ const MapView = ({
                   gap: "1rem",
                 }}
               >
-                {getFilteredDogs().map((dog) => (
+                {filteredDogs.map((dog) => (
                   <div
                     key={dog.id}
                     onClick={() => {
@@ -978,7 +983,7 @@ const MapView = ({
                   )}
                   {Object.entries(pavilionConfig).map(([code, config]) => {
                     if (config.mapHidden) return null;
-                    const dogCount = countDogsInPavilion(code);
+                    const dogCount = pavilionDogCount[code] || 0;
                     let fillColor = "#e2e8f0";
                     if (config.special === "szczeniaki") fillColor = "#fde047";
                     else if (config.special === "wewnętrzne")
@@ -1209,16 +1214,23 @@ const BoxesView = ({
   isBehavioryst,
 }) => {
   const { role: userRole } = useUserRole();
-  const countDogsInPavilion = (pavilion) =>
-    dogs.filter((dog) => dog.pavilion === pavilion).length;
+
+  const pavilionStats = useMemo(() => {
+    const byPavilion = {};
+    dogs.forEach((dog) => {
+      if (!dog.pavilion) return;
+      if (!byPavilion[dog.pavilion]) byPavilion[dog.pavilion] = { count: 0, boxes: new Set() };
+      byPavilion[dog.pavilion].count += 1;
+      if (dog.box != null) byPavilion[dog.pavilion].boxes.add(dog.box);
+    });
+    return byPavilion;
+  }, [dogs]);
+
+  const countDogsInPavilion = (pavilion) => pavilionStats[pavilion]?.count || 0;
   const countDogsInBox = (pavilion, box) =>
     dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box).length;
   const getBoxesForPavilion = (pavilion) => {
-    const boxes = [
-      ...new Set(
-        dogs.filter((dog) => dog.pavilion === pavilion).map((dog) => dog.box)
-      ),
-    ].sort((a, b) => a - b);
+    const boxes = [...(pavilionStats[pavilion]?.boxes || [])].sort((a, b) => a - b);
     if (boxes.length === 0) return Array.from({ length: 10 }, (_, i) => i + 1);
     const maxBox = Math.max(...boxes, 10);
     return Array.from({ length: maxBox }, (_, i) => i + 1);
@@ -3869,8 +3881,8 @@ const handleLogin = async () => {
     );
   }
 
-  const myDogs = dogs.filter((dog) => favoriteDogIds.has(dog.id));
-  const behaviorystDogs = dogs.filter((dog) => behaviorystDogIds.has(dog.id));
+  const myDogs = useMemo(() => dogs.filter((dog) => favoriteDogIds.has(dog.id)), [dogs, favoriteDogIds]);
+  const behaviorystDogs = useMemo(() => dogs.filter((dog) => behaviorystDogIds.has(dog.id)), [dogs, behaviorystDogIds]);
 
   return (
     <RoleProvider currentUser={currentUser}>
@@ -3971,32 +3983,34 @@ const handleLogin = async () => {
           isBehavioryst={isBehaviorystUser}
         />
       )}
-      {currentView === "mapEditor" && (
-        <MapEditor onBack={() => setCurrentView("map")} />
-      )}
-      {currentView === "panel" && isAdminUser && (
-        <AdminPanelView
-          currentUser={currentUser}
-          behaviorystDogs={behaviorystDogs}
-          dogs={dogs}
-          setCurrentView={navigateToView}
-          setSelectedDog={setSelectedDog}
-          setDogCardFrom={setDogCardFrom}
-          hoveredCard={hoveredCard}
-          setHoveredCard={setHoveredCard}
-          onStartWork={handleStartBehaviorystWork}
-        />
-      )}
-      {currentView === "behaviorystPanel" && isBehaviorystUser && (
-        <BehaviorystPanel
-          currentUser={currentUser}
-          behaviorystDogs={behaviorystDogs}
-          dogs={dogs}
-          onToggleBehaviorystDog={handleToggleBehaviorystDog}
-          setCurrentView={navigateToView}
-          onLogout={handleLogout}
-        />
-      )}
+      <Suspense fallback={<div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>Ładowanie...</div>}>
+        {currentView === "mapEditor" && (
+          <MapEditor onBack={() => setCurrentView("map")} />
+        )}
+        {currentView === "panel" && isAdminUser && (
+          <AdminPanelView
+            currentUser={currentUser}
+            behaviorystDogs={behaviorystDogs}
+            dogs={dogs}
+            setCurrentView={navigateToView}
+            setSelectedDog={setSelectedDog}
+            setDogCardFrom={setDogCardFrom}
+            hoveredCard={hoveredCard}
+            setHoveredCard={setHoveredCard}
+            onStartWork={handleStartBehaviorystWork}
+          />
+        )}
+        {currentView === "behaviorystPanel" && isBehaviorystUser && (
+          <BehaviorystPanel
+            currentUser={currentUser}
+            behaviorystDogs={behaviorystDogs}
+            dogs={dogs}
+            onToggleBehaviorystDog={handleToggleBehaviorystDog}
+            setCurrentView={navigateToView}
+            onLogout={handleLogout}
+          />
+        )}
+      </Suspense>
       {currentView === "sector" && (
         <SectorView
           setCurrentView={navigateToView}
