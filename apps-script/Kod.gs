@@ -102,6 +102,16 @@ function doGet(e) {
       return json({ ok: true, data: getAllDogTasks_() });
     }
 
+    if (action === "getWalksByDateRange") {
+      const startDate = safeStr(e?.parameter?.startDate);
+      const endDate = safeStr(e?.parameter?.endDate);
+      return json({ ok: true, data: getWalksByDateRange_(startDate, endDate) });
+    }
+
+    if (action === "getAllOpiekunowie") {
+      return json({ ok: true, data: getAllOpiekunowie_() });
+    }
+
     return json({ ok: false, error: "Unknown action" });
   } catch (error) {
     return json({ ok: false, error: String(error) });
@@ -1626,4 +1636,54 @@ function completeDogTask_(payload) {
   }
 
   throw new Error("Nie znaleziono zadania: " + taskId);
+}
+
+// ===============================
+// WIDOK TABELARYCZNY — SPACERY
+// ===============================
+function getWalksByDateRange_(startDate, endDate) {
+  if (!startDate || !endDate) return {};
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return {};
+
+  const start = new Date(startDate + "T00:00:00");
+  const end = new Date(endDate + "T23:59:59");
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const result = {};
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const rawDate = row[map["Data spaceru"]];
+    const walkDate = rawDate instanceof Date ? rawDate : new Date(rawDate);
+    if (isNaN(walkDate) || walkDate < start || walkDate > end) continue;
+
+    const dogId = safeStr(row[map["DogId"]]);
+    if (!dogId) continue;
+    const dateKey = Utilities.formatDate(walkDate, POLAND_TIMEZONE, "yyyy-MM-dd");
+    if (!result[dogId]) result[dogId] = [];
+    if (!result[dogId].includes(dateKey)) result[dogId].push(dateKey);
+  }
+  return result;
+}
+
+function getAllOpiekunowie_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(OPIEKUNOWIE_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return {};
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const result = {};
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const dogId = safeStr(row[map["DogId"]]);
+    const name = safeStr(row[map["Wolontariusz"]]);
+    if (!dogId || !name) continue;
+    if (!result[dogId]) result[dogId] = [];
+    result[dogId].push(name);
+  }
+  return result;
 }

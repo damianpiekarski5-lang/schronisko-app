@@ -17,5 +17,12 @@ service cloud.firestore {
     match /dogTraining/{path=**} {
       allow read, write: if request.auth != null;
     }
+
+    // Zaplanowane spacery (widok tabelaryczny — przyszłe dni)
+    match /plannedWalks/{docId} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null;
+      allow delete: if request.auth != null;
+    }
   }
 }

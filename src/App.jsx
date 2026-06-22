@@ -21,6 +21,7 @@ import {
 import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import InstallPrompt from "./InstallPrompt";
+import WalkScheduleView from "./WalkScheduleView";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
@@ -3750,6 +3751,26 @@ useEffect(() => {
     return handleToggleBehaviorystDog(dogId);
   };
 
+  const handleSaveWalkFromTable = useCallback(async (dog, typ = "spacer") => {
+    if (!currentUser) return;
+    const token = await currentUser.getIdToken();
+    await fetch("/api/gs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ action: "recordWalk", dogId: dog.id, dogName: dog.name, notes: "", typ }),
+    });
+  }, [currentUser]);
+
+  const [tableView, setTableView] = useState(() => localStorage.getItem("walkViewMode") === "table");
+
+  const toggleTableView = useCallback(() => {
+    setTableView((prev) => {
+      const next = !prev;
+      localStorage.setItem("walkViewMode", next ? "table" : "card");
+      return next;
+    });
+  }, []);
+
 const handleLogin = async () => {
   if (!isAuthEnabled) return;
 
@@ -3914,19 +3935,52 @@ const handleLogin = async () => {
         />
       )}
       {currentView === "map" && (
-        <MapView
-          dogs={dogs}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          setSelectedPavilion={setSelectedPavilion}
-          setCurrentView={navigateToView}
-          setSelectedDog={setSelectedDog}
-          setDogCardFrom={setDogCardFrom}
-          hoveredCard={hoveredCard}
-          setHoveredCard={setHoveredCard}
-          isAdmin={isAdminUser}
-          isBehavioryst={isBehaviorystUser}
-        />
+        <>
+          <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.5rem 1rem 0" }}>
+            <button
+              onClick={toggleTableView}
+              style={{
+                padding: "0.35rem 0.85rem",
+                borderRadius: "9999px",
+                border: "1px solid #d1d5db",
+                background: tableView ? "#16a34a" : "white",
+                color: tableView ? "white" : "#374151",
+                fontSize: "0.8rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.35rem",
+              }}
+            >
+              {tableView ? "📋 Widok tabeli" : "🗺️ Widok mapy"}
+            </button>
+          </div>
+          {tableView ? (
+            <div style={{ padding: "0.5rem 0.75rem" }}>
+              <WalkScheduleView
+                dogs={dogs}
+                currentUser={currentUser}
+                onSaveWalk={handleSaveWalkFromTable}
+                isAdmin={isAdminUser}
+              />
+            </div>
+          ) : (
+            <MapView
+              dogs={dogs}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
+              setSelectedPavilion={setSelectedPavilion}
+              setCurrentView={navigateToView}
+              setSelectedDog={setSelectedDog}
+              setDogCardFrom={setDogCardFrom}
+              hoveredCard={hoveredCard}
+              setHoveredCard={setHoveredCard}
+              isAdmin={isAdminUser}
+              isBehavioryst={isBehaviorystUser}
+            />
+          )}
+        </>
       )}
       {currentView === "boxes" && (
         <BoxesView
