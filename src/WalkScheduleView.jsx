@@ -100,13 +100,65 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
     return result;
   }
 
+  const SECTOR_COLORS = {
+    A:  "#fffde7",
+    B:  "#fce4ec",
+    C:  "#e3f2fd",
+    D:  "#fbe9e7",
+    E:  "#e8f5e9",
+    F:  "#fff3e0",
+    G:  "#f3e5f5",
+    H:  "#e1f5fe",
+    ZE: "#c8e6c9",
+    ZF: "#ffe0b2",
+    ZG: "#e8d5f5",
+    ZH: "#b3e5fc",
+    ZG1: "#e8d5f5",
+    I:  "#f1f8e9",
+    R:  "#fafafa",
+    P:  "#fafafa",
+    V:  "#f0fdf4",
+    T:  "#fdf4ff",
+    U:  "#fffbeb",
+    X:  "#f0f9ff",
+    Y:  "#fff0f0",
+    L:  "#f5fff0",
+    O:  "#fdf0ff",
+  };
+
+  function getSectorColor(pavilion) {
+    if (!pavilion) return "#ffffff";
+    const pav = String(pavilion).toUpperCase();
+    if (SECTOR_COLORS[pav]) return SECTOR_COLORS[pav];
+    // dopasuj prefix (np. ZF → ZF, ZG → ZG)
+    for (const key of Object.keys(SECTOR_COLORS)) {
+      if (pav.startsWith(key)) return SECTOR_COLORS[key];
+    }
+    return "#ffffff";
+  }
+
+  function getSectorBorderColor(pavilion) {
+    const color = getSectorColor(pavilion);
+    // ciemniejsza wersja dla obramowania sekcji
+    return color === "#ffffff" ? "#e5e7eb" : color.replace(/f/gi, "d");
+  }
+
   const sortedDogs = useMemo(() => {
+    const SECTOR_ORDER = ["A","B","C","D","E","F","G","H","ZE","ZF","ZG","ZH","I","R","P","V","T","U","X","Y","L","O"];
+    function sectorIndex(p) {
+      const pav = String(p || "").toUpperCase();
+      const idx = SECTOR_ORDER.findIndex((s) => pav === s || pav.startsWith(s));
+      return idx === -1 ? 99 : idx;
+    }
     return [...dogs]
       .filter((d) => !d.archived)
       .sort((a, b) => {
-        const aKey = (a.pavilion || "") + (a.kennel || "");
-        const bKey = (b.pavilion || "") + (b.kennel || "");
-        return aKey.localeCompare(bKey, "pl");
+        const ai = sectorIndex(a.pavilion);
+        const bi = sectorIndex(b.pavilion);
+        if (ai !== bi) return ai - bi;
+        const aBox = String(a.kennel || "").padStart(3, "0");
+        const bBox = String(b.kennel || "").padStart(3, "0");
+        return aBox.localeCompare(bBox);
       });
   }, [dogs]);
 
@@ -223,8 +275,8 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
       <table style={{ borderCollapse: "collapse", fontSize: "0.75rem", minWidth: "max-content" }}>
         <thead>
           <tr>
-            <th style={thStyle("#f9fafb", "#374151", 90)}>Boks</th>
-            <th style={thStyle("#f9fafb", "#374151", 130)}>Opiekun (Pies)</th>
+            <th style={thStyle("#f9fafb", "#374151", 54)}>Boks</th>
+            <th style={thStyle("#f9fafb", "#374151", 160)}>Opiekun (Pies)</th>
             {days.map((day) => (
               <th
                 key={day.str}
@@ -245,19 +297,28 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
         </thead>
         <tbody>
           {sortedDogs.map((dog, idx) => {
+            const prevDog = sortedDogs[idx - 1];
+            const sectorChanged = prevDog && prevDog.pavilion !== dog.pavilion;
             const opiekunList = opiekunowie[dog.id] || [];
             const opiekunLabel = opiekunList.length > 0 ? opiekunList[0] : "";
             const dogLabel = opiekunLabel
               ? `${opiekunLabel} (${dog.name})`
               : `(${dog.name})`;
-            const rowBg = idx % 2 === 0 ? "#fff" : "#f9fafb";
+            const rowBg = getSectorColor(dog.pavilion);
+            const boks = `${dog.pavilion || ""}${dog.kennel || ""}`;
 
             return (
-              <tr key={dog.id} style={{ background: rowBg }}>
-                <td style={tdStyle(90, rowBg)}>
-                  {dog.pavilion}{dog.kennel}
+              <tr
+                key={dog.id}
+                style={{
+                  background: rowBg,
+                  borderTop: sectorChanged ? "2px solid #9ca3af" : undefined,
+                }}
+              >
+                <td style={{ ...tdStyle(54, rowBg), fontWeight: 700, color: "#374151" }}>
+                  {boks}
                 </td>
-                <td style={{ ...tdStyle(130, rowBg), fontWeight: 500 }}>
+                <td style={{ ...tdStyle(160, rowBg), fontWeight: 500 }}>
                   {dogLabel}
                 </td>
                 {days.map((day) => {
