@@ -3924,63 +3924,52 @@ const handleLogin = async () => {
         </div>
       )}
       {currentView === "home" && (
-        <HomeView
-          dogs={dogs}
-          onDogClick={handleDogClickFromDashboard}
-          hoveredCard={hoveredCard}
-          setHoveredCard={setHoveredCard}
-          setCurrentView={navigateToView}
-          isAdmin={isAdminUser}
-          isBehavioryst={isBehaviorystUser}
-        />
+        tableView ? (
+          <div style={{ padding: "0.5rem 0.75rem 5rem" }}>
+            <WalkScheduleView
+              dogs={dogs}
+              currentUser={currentUser}
+              onSaveWalk={handleSaveWalkFromTable}
+              isAdmin={isAdminUser}
+            />
+          </div>
+        ) : (
+          <HomeView
+            dogs={dogs}
+            onDogClick={handleDogClickFromDashboard}
+            hoveredCard={hoveredCard}
+            setHoveredCard={setHoveredCard}
+            setCurrentView={navigateToView}
+            isAdmin={isAdminUser}
+            isBehavioryst={isBehaviorystUser}
+          />
+        )
       )}
       {currentView === "map" && (
-        <>
-          <div style={{ display: "flex", justifyContent: "flex-end", padding: "0.5rem 1rem 0" }}>
-            <button
-              onClick={toggleTableView}
-              style={{
-                padding: "0.35rem 0.85rem",
-                borderRadius: "9999px",
-                border: "1px solid #d1d5db",
-                background: tableView ? "#16a34a" : "white",
-                color: tableView ? "white" : "#374151",
-                fontSize: "0.8rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.35rem",
-              }}
-            >
-              {tableView ? "📋 Widok tabeli" : "🗺️ Widok mapy"}
-            </button>
-          </div>
-          {tableView ? (
-            <div style={{ padding: "0.5rem 0.75rem" }}>
-              <WalkScheduleView
-                dogs={dogs}
-                currentUser={currentUser}
-                onSaveWalk={handleSaveWalkFromTable}
-                isAdmin={isAdminUser}
-              />
-            </div>
-          ) : (
-            <MapView
+        tableView ? (
+          <div style={{ padding: "0.5rem 0.75rem" }}>
+            <WalkScheduleView
               dogs={dogs}
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              setSelectedPavilion={setSelectedPavilion}
-              setCurrentView={navigateToView}
-              setSelectedDog={setSelectedDog}
-              setDogCardFrom={setDogCardFrom}
-              hoveredCard={hoveredCard}
-              setHoveredCard={setHoveredCard}
+              currentUser={currentUser}
+              onSaveWalk={handleSaveWalkFromTable}
               isAdmin={isAdminUser}
-              isBehavioryst={isBehaviorystUser}
             />
-          )}
-        </>
+          </div>
+        ) : (
+          <MapView
+            dogs={dogs}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            setSelectedPavilion={setSelectedPavilion}
+            setCurrentView={navigateToView}
+            setSelectedDog={setSelectedDog}
+            setDogCardFrom={setDogCardFrom}
+            hoveredCard={hoveredCard}
+            setHoveredCard={setHoveredCard}
+            isAdmin={isAdminUser}
+            isBehavioryst={isBehaviorystUser}
+          />
+        )
       )}
       {currentView === "boxes" && (
         <BoxesView
@@ -4074,6 +4063,89 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
           allDogs={dogs}
         />
+      )}
+      {["home", "map"].includes(currentView) && currentUser && (
+        <div style={{
+          position: "fixed",
+          bottom: 64,
+          left: 0,
+          right: 0,
+          zIndex: 150,
+          display: "flex",
+          justifyContent: "center",
+          pointerEvents: "none",
+        }}>
+          <div style={{
+            display: "flex",
+            gap: "0.5rem",
+            background: "white",
+            borderRadius: "9999px",
+            padding: "0.3rem 0.6rem",
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            border: "1px solid #e5e7eb",
+            pointerEvents: "all",
+          }}>
+            <button
+              onClick={toggleTableView}
+              title={tableView ? "Widok mapy" : "Widok tabeli"}
+              style={{
+                padding: "0.3rem 0.7rem",
+                borderRadius: "9999px",
+                border: "none",
+                background: tableView ? "#16a34a" : "#f3f4f6",
+                color: tableView ? "white" : "#374151",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+              }}
+            >
+              {tableView ? "📋 Tabela" : "🗺️ Mapa"}
+            </button>
+            <button
+              onClick={() => navigateToView("schedule")}
+              title="Grafik — wkrótce"
+              disabled
+              style={{
+                padding: "0.3rem 0.7rem",
+                borderRadius: "9999px",
+                border: "none",
+                background: "#f3f4f6",
+                color: "#9ca3af",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+              }}
+            >
+              📅 Grafik
+            </button>
+            <button
+              onClick={() => navigateToView("introWalk")}
+              title="Spacer zapoznawczy — wkrótce"
+              disabled
+              style={{
+                padding: "0.3rem 0.7rem",
+                borderRadius: "9999px",
+                border: "none",
+                background: "#f3f4f6",
+                color: "#9ca3af",
+                fontSize: "0.75rem",
+                fontWeight: 600,
+                cursor: "not-allowed",
+                display: "flex",
+                alignItems: "center",
+                gap: "0.3rem",
+              }}
+            >
+              🐾 Spacer zap.
+            </button>
+          </div>
+        </div>
       )}
     </RoleProvider>
   );
