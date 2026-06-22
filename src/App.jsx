@@ -23,6 +23,8 @@ import HomeView from "./HomeView";
 import InstallPrompt from "./InstallPrompt";
 import WalkScheduleView from "./WalkScheduleView";
 import ScheduleView from "./ScheduleView";
+import IntroWalkSection from "./IntroWalkSection";
+import IntroWalkView from "./IntroWalkView";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
@@ -2684,6 +2686,7 @@ const DogCardView = ({
                 </div>
               )}
             </div>
+            <IntroWalkSection dog={selectedDog} currentUser={currentUser} isAdmin={isAdmin} />
             <button
               onClick={() => setShowBehaviorReport(true)}
               style={{
@@ -4071,7 +4074,14 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
         />
       )}
-      {["home", "map", "schedule"].includes(currentView) && currentUser && (
+      {currentView === "introWalk" && (
+        <IntroWalkView
+          currentUser={currentUser}
+          isAdmin={isAdminUser}
+          dogs={dogs}
+        />
+      )}
+      {["home", "map", "schedule", "introWalk"].includes(currentView) && currentUser && (
         <div style={{
           position: "fixed",
           bottom: 64,
@@ -4130,18 +4140,16 @@ const handleLogin = async () => {
               📅 Grafik
             </button>
             <button
-              onClick={() => navigateToView("introWalk")}
-              title="Spacer zapoznawczy — wkrótce"
-              disabled
+              onClick={() => navigateToView(currentView === "introWalk" ? "home" : "introWalk")}
               style={{
                 padding: "0.3rem 0.7rem",
                 borderRadius: "9999px",
                 border: "none",
-                background: "#f3f4f6",
-                color: "#9ca3af",
+                background: currentView === "introWalk" ? "#d97706" : "#f3f4f6",
+                color: currentView === "introWalk" ? "white" : "#374151",
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                cursor: "not-allowed",
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.3rem",
