@@ -22,6 +22,7 @@ import BehaviorReport from "./BehaviorReport";
 import HomeView from "./HomeView";
 import InstallPrompt from "./InstallPrompt";
 import WalkScheduleView from "./WalkScheduleView";
+import ScheduleView from "./ScheduleView";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
@@ -4064,7 +4065,13 @@ const handleLogin = async () => {
           allDogs={dogs}
         />
       )}
-      {["home", "map"].includes(currentView) && currentUser && (
+      {currentView === "schedule" && (
+        <ScheduleView
+          currentUser={currentUser}
+          isAdmin={isAdminUser}
+        />
+      )}
+      {["home", "map", "schedule"].includes(currentView) && currentUser && (
         <div style={{
           position: "fixed",
           bottom: 64,
@@ -4105,18 +4112,16 @@ const handleLogin = async () => {
               {tableView ? "📋 Tabela" : "🗺️ Mapa"}
             </button>
             <button
-              onClick={() => navigateToView("schedule")}
-              title="Grafik — wkrótce"
-              disabled
+              onClick={() => navigateToView(currentView === "schedule" ? "home" : "schedule")}
               style={{
                 padding: "0.3rem 0.7rem",
                 borderRadius: "9999px",
                 border: "none",
-                background: "#f3f4f6",
-                color: "#9ca3af",
+                background: currentView === "schedule" ? "#2563eb" : "#f3f4f6",
+                color: currentView === "schedule" ? "white" : "#374151",
                 fontSize: "0.75rem",
                 fontWeight: 600,
-                cursor: "not-allowed",
+                cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: "0.3rem",
