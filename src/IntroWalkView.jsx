@@ -110,7 +110,7 @@ export default function IntroWalkView({ currentUser, isAdmin, dogs }) {
               const dog = dogMap[entry.dogId];
               const isOwner = entry.volunteerId === currentUser?.uid;
               const canDelete = isOwner || isAdmin;
-              const boks = dog ? `${dog.pavilion || ""}${dog.kennel || ""}` : "";
+              const boks = dog ? `${dog.pavilion || ""}${dog.box || ""}` : "";
 
               return (
                 <div key={entry.id} style={{

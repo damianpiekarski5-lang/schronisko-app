@@ -1889,6 +1889,62 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, za
   );
 };
 
+function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser }) {
+  const { role } = useUserRole();
+  return (
+    <div style={styles.bottomNav}>
+      <button
+        style={{ ...styles.bottomNavButton, ...(currentView === "home" ? styles.bottomNavButtonActive : {}) }}
+        onClick={() => navigateToView("home")}
+      >
+        <Home size={24} />
+        <span style={{ marginTop: "0.25rem" }}>Home</span>
+      </button>
+      <button
+        style={{ ...styles.bottomNavButton, ...(currentView === "map" ? styles.bottomNavButtonActive : {}) }}
+        onClick={() => navigateToView("map")}
+      >
+        <MapPin size={24} />
+        <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+      </button>
+      <button
+        style={{ ...styles.bottomNavButton, ...(currentView === "myDogs" ? styles.bottomNavButtonActive : {}) }}
+        onClick={() => navigateToView("myDogs")}
+      >
+        <Star size={24} />
+        <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
+      </button>
+      {canViewSector(role) && (
+        <button
+          style={{ ...styles.bottomNavButton, ...(currentView === "sector" ? styles.bottomNavButtonActive : {}) }}
+          onClick={() => navigateToView("sector")}
+        >
+          <Building2 size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Sektor</span>
+        </button>
+      )}
+      {isAdmin && (
+        <button
+          style={{ ...styles.bottomNavButton, ...(currentView === "panel" ? styles.bottomNavButtonActive : {}) }}
+          onClick={() => navigateToView("panel")}
+        >
+          <Shield size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Panel</span>
+        </button>
+      )}
+      {isBehaviorystUser && (
+        <button
+          style={{ ...styles.bottomNavButton, ...(currentView === "behaviorystPanel" ? styles.bottomNavButtonActive : {}) }}
+          onClick={() => navigateToView("behaviorystPanel")}
+        >
+          <Dumbbell size={24} />
+          <span style={{ marginTop: "0.25rem" }}>Trening</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
 const DogCardView = ({
   selectedDog,
   setCurrentView,
@@ -4159,6 +4215,14 @@ const handleLogin = async () => {
             </button>
           </div>
         </div>
+      )}
+      {(currentView === "schedule" || currentView === "introWalk" || ((currentView === "home" || currentView === "map") && tableView)) && (
+        <GlobalBottomNav
+          currentView={currentView}
+          navigateToView={navigateToView}
+          isAdmin={isAdminUser}
+          isBehaviorystUser={isBehaviorystUser}
+        />
       )}
     </RoleProvider>
   );

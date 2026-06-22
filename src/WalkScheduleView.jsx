@@ -101,29 +101,29 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
   }
 
   const SECTOR_COLORS = {
-    A:  "#fffde7",
-    B:  "#fce4ec",
-    C:  "#e3f2fd",
-    D:  "#fbe9e7",
-    E:  "#e8f5e9",
-    F:  "#fff3e0",
-    G:  "#f3e5f5",
-    H:  "#e1f5fe",
-    ZE: "#c8e6c9",
-    ZF: "#ffe0b2",
-    ZG: "#e8d5f5",
-    ZH: "#b3e5fc",
-    ZG1: "#e8d5f5",
-    I:  "#f1f8e9",
-    R:  "#fafafa",
-    P:  "#fafafa",
-    V:  "#f0fdf4",
-    T:  "#fdf4ff",
-    U:  "#fffbeb",
-    X:  "#f0f9ff",
-    Y:  "#fff0f0",
-    L:  "#f5fff0",
-    O:  "#fdf0ff",
+    A:  "#a8d5a2",
+    B:  "#d4edd4",
+    C:  "#fce584",
+    D:  "#f9b4d0",
+    E:  "#f2b8c0",
+    F:  "#d5c3a0",
+    G:  "#a8d8d8",
+    H:  "#a8c4e8",
+    ZE: "#b8c8dc",
+    ZF: "#c8b8dc",
+    ZH: "#fde0ec",
+    ZG: "#f4b8c8",
+    P:  "#fcd8c0",
+    R:  "#f8c090",
+    V:  "#fffde7",
+    T:  "#fff9a0",
+    U:  "#fff4c4",
+    L:  "#f4a8c0",
+    X:  "#e88898",
+    Y:  "#80d0c8",
+    I:  "#d4b080",
+    O:  "#a0b8d8",
+    S:  "#e08080",
   };
 
   function getSectorColor(pavilion) {
@@ -144,7 +144,7 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
   }
 
   const sortedDogs = useMemo(() => {
-    const SECTOR_ORDER = ["A","B","C","D","E","F","G","H","ZE","ZF","ZG","ZH","I","R","P","V","T","U","X","Y","L","O"];
+    const SECTOR_ORDER = ["A","B","C","D","E","F","G","H","ZE","ZF","ZH","ZG","P","R","V","T","U","L","X","Y","I","O","S"];
     function sectorIndex(p) {
       const pav = String(p || "").toUpperCase();
       const idx = SECTOR_ORDER.findIndex((s) => pav === s || pav.startsWith(s));
@@ -156,8 +156,8 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
         const ai = sectorIndex(a.pavilion);
         const bi = sectorIndex(b.pavilion);
         if (ai !== bi) return ai - bi;
-        const aBox = String(a.kennel || "").padStart(3, "0");
-        const bBox = String(b.kennel || "").padStart(3, "0");
+        const aBox = String(a.box || "").padStart(3, "0");
+        const bBox = String(b.box || "").padStart(3, "0");
         return aBox.localeCompare(bBox);
       });
   }, [dogs]);
@@ -305,7 +305,7 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
               ? `${opiekunLabel} (${dog.name})`
               : `(${dog.name})`;
             const rowBg = getSectorColor(dog.pavilion);
-            const boks = `${dog.pavilion || ""}${dog.kennel || ""}`;
+            const boks = `${dog.pavilion || ""}${dog.box || ""}`;
 
             return (
               <tr
