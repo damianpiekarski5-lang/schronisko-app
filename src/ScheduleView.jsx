@@ -112,7 +112,7 @@ export default function ScheduleView({ currentUser, isAdmin }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0.75rem 1rem 0.25rem",
+        padding: "0.75rem 5rem 0.25rem 1rem",
         background: "white",
         borderBottom: "1px solid #e5e7eb",
         position: "sticky",
