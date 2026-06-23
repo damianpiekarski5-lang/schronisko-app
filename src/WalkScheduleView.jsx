@@ -300,7 +300,10 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
             const prevDog = sortedDogs[idx - 1];
             const sectorChanged = prevDog && prevDog.pavilion !== dog.pavilion;
             const opiekunList = opiekunowie[dog.id] || [];
-            const opiekunLabel = opiekunList.length > 0 ? opiekunList[0] : "";
+            const opiekunFull = opiekunList.length > 0 ? opiekunList[0] : "";
+            const opiekunLabel = opiekunFull
+              ? opiekunFull.trim().split(/\s+/).pop()
+              : "";
             const dogLabel = opiekunLabel
               ? `${opiekunLabel} (${dog.name})`
               : `(${dog.name})`;
