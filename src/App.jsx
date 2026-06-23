@@ -4175,7 +4175,7 @@ const handleLogin = async () => {
                 gap: "0.3rem",
               }}
             >
-              {tableView ? "📋 Tabela" : "🗺️ Mapa"}
+              {tableView ? "🗺️ Mapa" : "📋 Tabela"}
             </button>
             <button
               onClick={() => navigateToView(currentView === "schedule" ? "home" : "schedule")}
