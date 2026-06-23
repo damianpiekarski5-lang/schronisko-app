@@ -1889,7 +1889,7 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, za
   );
 };
 
-function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser }) {
+function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser, tableView }) {
   const { role } = useUserRole();
   return (
     <div style={styles.bottomNav}>
@@ -1905,7 +1905,7 @@ function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUs
         onClick={() => navigateToView("map")}
       >
         <MapPin size={24} />
-        <span style={{ marginTop: "0.25rem" }}>Mapa</span>
+        <span style={{ marginTop: "0.25rem" }}>{tableView ? "Tabela" : "Mapa"}</span>
       </button>
       <button
         style={{ ...styles.bottomNavButton, ...(currentView === "myDogs" ? styles.bottomNavButtonActive : {}) }}
@@ -4222,6 +4222,7 @@ const handleLogin = async () => {
           navigateToView={navigateToView}
           isAdmin={isAdminUser}
           isBehaviorystUser={isBehaviorystUser}
+          tableView={tableView}
         />
       )}
     </RoleProvider>
