@@ -1679,8 +1679,8 @@ function getAllOpiekunowie_() {
 
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
-    const dogId = safeStr(row[map["DogId"]]);
-    const name = safeStr(row[map["Wolontariusz"]]);
+    const dogId = safeStr(row[map["dogId"]]);
+    const name = safeStr(row[map["displayName"]]);
     if (!dogId || !name) continue;
     if (!result[dogId]) result[dogId] = [];
     result[dogId].push(name);
