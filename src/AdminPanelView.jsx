@@ -334,13 +334,17 @@ const AdminPanelView = ({
                     return (
                       <div key={reportKey} style={styles.dogCard}>
                         <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
-                          <img
-                            src={dog?.photo || ""}
-                            alt={dog?.name || "Pies"}
-                            style={{ ...styles.photo, cursor: "pointer" }}
-                            onClick={() => setSelectedReport(report)}
-                            onError={(e) => { e.currentTarget.style.display = "none"; }}
-                          />
+                          {dog?.photo ? (
+                            <img
+                              src={dog.photo}
+                              alt={dog?.name || "Pies"}
+                              style={{ ...styles.photo, cursor: "pointer" }}
+                              onClick={() => setSelectedReport(report)}
+                              onError={(e) => { e.currentTarget.style.display = "none"; }}
+                            />
+                          ) : (
+                            <div style={{ ...styles.photo, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6", cursor: "pointer" }} onClick={() => setSelectedReport(report)}>🐶</div>
+                          )}
                           <div>
                             <h3 style={{ fontSize: "1.1rem", margin: 0 }}>{dog?.name || "Nieznany pies"}</h3>
                             <p style={{ color: "#374151", margin: "0.35rem 0 0" }}>ID: {report?.dogId || "-"}</p>
@@ -429,7 +433,7 @@ const AdminPanelView = ({
                     onTouchEnd={() => setHoveredCard(null)}
                   >
                     <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
-                      <img src={dog.photo || ""} alt={dog.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+                      {dog.photo ? <img src={dog.photo} alt={dog.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : <div style={{ ...styles.photo, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6" }}>🐶</div>}
                       <div>
                         <h3 style={{ fontSize: "1.25rem", fontWeight: "bold", color: "#111827", margin: 0 }}>{dog.name || "Bez imienia"}</h3>
                         <p style={{ color: "#6b7280", marginTop: "0.35rem", marginBottom: 0 }}>{dog.breed || "-"}</p>
@@ -452,7 +456,7 @@ const AdminPanelView = ({
               <ArrowLeft size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Powrót do zgłoszeń
             </button>
             <div style={{ display: "grid", gridTemplateColumns: "96px 1fr", gap: "1rem", alignItems: "start" }}>
-              <img src={selectedDog?.photo || ""} alt={selectedDog?.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} />
+              {selectedDog?.photo ? <img src={selectedDog.photo} alt={selectedDog?.name || "Pies"} style={styles.photo} onError={(e) => { e.currentTarget.style.display = "none"; }} /> : <div style={{ ...styles.photo, display: "flex", alignItems: "center", justifyContent: "center", background: "#f3f4f6" }}>🐶</div>}
               <div>
                 <h3 style={{ margin: 0 }}>{selectedDog?.name || "Nieznany pies"}</h3>
                 <p style={{ margin: "0.35rem 0 0", color: "#374151" }}>ID: {selectedReport?.dogId || "-"}</p>

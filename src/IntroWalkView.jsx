@@ -24,21 +24,37 @@ function dayLabel(dateStr) {
 export default function IntroWalkView({ currentUser, isAdmin, dogs }) {
   const [entries, setEntries] = useState([]);
   const [deleting, setDeleting] = useState(null);
+  const [loadError, setLoadError] = useState(false);
 
   const todayStr = toPolandDateStr(new Date());
 
   useEffect(() => {
+    // Tylko where + orderBy po tym samym polu — bez indeksu złożonego,
+    // który musiałby być ręcznie utworzony w konsoli Firebase.
+    // Sortowanie po godzinie robimy po stronie klienta.
     const q = query(
       collection(db, "introWalks"),
       where("date", ">=", todayStr),
-      orderBy("date"),
-      orderBy("time")
+      orderBy("date")
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const result = [];
-      snap.forEach((d) => result.push({ id: d.id, ...d.data() }));
-      setEntries(result);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const result = [];
+        snap.forEach((d) => result.push({ id: d.id, ...d.data() }));
+        result.sort((a, b) =>
+          a.date === b.date
+            ? String(a.time || "").localeCompare(String(b.time || ""))
+            : a.date.localeCompare(b.date)
+        );
+        setEntries(result);
+        setLoadError(false);
+      },
+      (error) => {
+        console.error("Błąd pobierania spacerów zapoznawczych:", error);
+        setLoadError(true);
+      }
+    );
     return () => unsub();
   }, [todayStr]);
 
@@ -61,12 +77,28 @@ export default function IntroWalkView({ currentUser, isAdmin, dogs }) {
     if (!currentUser) return;
     const isOwner = entry.volunteerId === currentUser.uid;
     if (!isOwner && !isAdmin) return;
+    if (!window.confirm(`Usunąć spacer zapoznawczy „${entry.interestedName}" (${formatDate(entry.date)}${entry.time ? ", " + entry.time : ""})?`)) return;
     setDeleting(entry.id);
     try {
       await deleteDoc(doc(db, "introWalks", entry.id));
+    } catch (e) {
+      console.error("Błąd usuwania:", e);
+      alert("Nie udało się usunąć wpisu — spróbuj ponownie.");
     } finally {
       setDeleting(null);
     }
+  }
+
+  if (loadError) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
+        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>⚠️</div>
+        <p>Nie udało się pobrać spacerów zapoznawczych</p>
+        <p style={{ fontSize: "0.8rem", marginTop: "0.5rem" }}>
+          Sprawdź połączenie z internetem i odśwież stronę
+        </p>
+      </div>
+    );
   }
 
   if (grouped.length === 0) {

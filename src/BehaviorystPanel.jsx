@@ -165,9 +165,15 @@ function ProgressCard({ exercise, progress, onUpdate }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await onUpdate(exercise.id, local);
-    setSaving(false);
-    setOpen(false);
+    try {
+      await onUpdate(exercise.id, local);
+      setOpen(false);
+    } catch (e) {
+      console.error("Błąd zapisu postępu:", e);
+      alert("Nie udało się zapisać postępu — sprawdź połączenie i spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const successColor = local.successRate >= 80 ? "#16a34a" : local.successRate >= 50 ? "#ca8a04" : "#dc2626";
@@ -228,9 +234,15 @@ function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
 
   const handleSave = async () => {
     setSaving(true);
-    await onSave({ exercises: results, notes: sessionNotes });
-    setSaving(false);
-    onClose();
+    try {
+      await onSave({ exercises: results, notes: sessionNotes });
+      onClose();
+    } catch (e) {
+      console.error("Błąd zapisu sesji:", e);
+      alert("Nie udało się zapisać sesji — sprawdź połączenie i spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -326,14 +338,20 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
 
   const handleAssignProgram = async (programId) => {
     setSavingProgram(true);
-    await fsSaveDogTraining(dog.id, {
-      behavioristId: currentUser.uid,
-      dogName: dog.name,
-      assignedProgramId: programId || null,
-      status: "in_progress",
-    });
-    await load();
-    setSavingProgram(false);
+    try {
+      await fsSaveDogTraining(dog.id, {
+        behavioristId: currentUser.uid,
+        dogName: dog.name,
+        assignedProgramId: programId || null,
+        status: "in_progress",
+      });
+      await load();
+    } catch (e) {
+      console.error("Błąd przypisania programu:", e);
+      alert("Nie udało się przypisać programu — spróbuj ponownie.");
+    } finally {
+      setSavingProgram(false);
+    }
   };
 
   const handleUpdateProgress = async (exerciseId, data) => {
@@ -731,7 +749,7 @@ function ManageDogsModal({ allDogs, behaviorystDogs, onToggle, onClose }) {
                   <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: "600", fontSize: "0.95rem" }}>{dog.name}</div>
                     <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>
-                      {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.kennel || "?"}
+                      {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.box || "?"}
                     </div>
                   </div>
                   <button
@@ -786,7 +804,7 @@ function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
                 <div style={{ flex: 1 }}>
                   <div style={S.dogName}>{dog.name}</div>
                   <div style={S.dogSub}>
-                    {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.kennel || "?"}
+                    {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.box || "?"}
                   </div>
                   {t?.assignedProgramId && (
                     <div style={{ fontSize: "0.78rem", color: "#7c3aed", marginTop: "0.2rem", fontWeight: "600" }}>
