@@ -1,6 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { collection, doc, setDoc, deleteDoc, getDocs, query, where } from "firebase/firestore";
 import { db } from "./firebase";
+import {
+  subscribeDailyWalks,
+  recordWalkFs,
+  undoWalkFs,
+  syncWalkToSheet,
+  syncUndoToSheet,
+  flushSheetQueue,
+} from "./lib/walksStore";
 
 const POLAND_TZ = "Europe/Warsaw";
 
@@ -12,9 +20,8 @@ function getTodayStr() {
   return toPolandDateStr(new Date());
 }
 
-function buildDateWindow() {
+function buildDateWindow(todayStr) {
   const today = new Date();
-  const todayStr = getTodayStr();
   const days = [];
   for (let i = -7; i <= 2; i++) {
     const d = new Date(today);
@@ -52,20 +59,41 @@ const CELL_STYLES = {
   futureMarked: { background: "#bbf7d0", cursor: "pointer" },
 };
 
-export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmin }) {
+export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
   const [walkHistory, setWalkHistory] = useState({});
+  const [dailyWalks, setDailyWalks] = useState({});
   const [plannedWalks, setPlannedWalks] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [opiekunowie, setOpiekunowie] = useState({});
   const [savingCell, setSavingCell] = useState(null);
+  const [banner, setBanner] = useState(null); // {type: "error"|"warning", text}
 
-  const days = useMemo(() => buildDateWindow(), []);
-  const todayStr = useMemo(() => getTodayStr(), []);
+  // todayStr jako stan — odświeża się po przekroczeniu północy
+  // (PWA zostawiona na noc w telefonie nie zapisuje już pod wczorajszą datą)
+  const [todayStr, setTodayStr] = useState(() => getTodayStr());
+  useEffect(() => {
+    const check = () => {
+      const now = getTodayStr();
+      setTodayStr((prev) => (prev === now ? prev : now));
+    };
+    document.addEventListener("visibilitychange", check);
+    window.addEventListener("focus", check);
+    const interval = setInterval(check, 60000);
+    return () => {
+      document.removeEventListener("visibilitychange", check);
+      window.removeEventListener("focus", check);
+      clearInterval(interval);
+    };
+  }, []);
+
+  const days = useMemo(() => buildDateWindow(todayStr), [todayStr]);
   const startDate = days[0].str;
   const endDate = days[days.length - 1].str;
 
   const loadData = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const [history, opiek, planned] = await Promise.all([
         fetchWalkHistory(startDate, endDate),
@@ -77,12 +105,34 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
       setPlannedWalks(planned);
     } catch (e) {
       console.error("Błąd ładowania tabeli spacerów:", e);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
   }, [startDate, endDate]);
 
   useEffect(() => { loadData(); }, [loadData]);
+
+  // Subskrypcja dziennych spacerów z Firestore (na żywo + offline)
+  useEffect(() => {
+    if (!db) return;
+    const unsub = subscribeDailyWalks(
+      startDate,
+      endDate,
+      (data) => setDailyWalks(data),
+      () => setBanner({ type: "error", text: "Błąd połączenia z bazą spacerów" })
+    );
+    return () => unsub();
+  }, [startDate, endDate]);
+
+  // Ponów zaległe zapisy do arkusza (start + powrót online)
+  useEffect(() => {
+    if (!currentUser) return;
+    flushSheetQueue(currentUser);
+    const onOnline = () => flushSheetQueue(currentUser);
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [currentUser]);
 
   async function loadPlannedWalks(start, end) {
     const q = query(
@@ -163,6 +213,7 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
   }, [dogs]);
 
   function hasWalk(dogId, dateStr) {
+    if (dailyWalks[dateStr]?.[dogId]) return true;
     if (walkHistory[dogId]?.includes(dateStr)) return true;
     if (plannedWalks[dogId]?.[dateStr]) return true;
     return false;
@@ -172,9 +223,15 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
     return plannedWalks[dogId]?.[dateStr] || null;
   }
 
+  function showBanner(type, text) {
+    setBanner({ type, text });
+    setTimeout(() => setBanner(null), 6000);
+  }
+
   async function handleCellClick(dog, day) {
     if (day.offset < 0) return; // przeszłe — tylko odczyt
     if (!currentUser) return;
+    if (savingCell) return; // blokada podwójnego tapnięcia
 
     const { str: dateStr, isToday, offset } = day;
     const cellKey = `${dog.id}-${dateStr}`;
@@ -182,27 +239,54 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
 
     try {
       if (isToday) {
-        // Dzisiaj — zapis przez istniejący mechanizm (App.jsx)
-        const alreadyWalked = walkHistory[dog.id]?.includes(dateStr);
-        if (!alreadyWalked) {
-          await onSaveWalk(dog, "spacer");
-          setWalkHistory((prev) => ({
-            ...prev,
-            [dog.id]: [...(prev[dog.id] || []), dateStr],
-          }));
+        const fsEntry = dailyWalks[dateStr]?.[dog.id];
+        const legacyWalked = walkHistory[dog.id]?.includes(dateStr);
+        const plannedToday = getPlannedEntry(dog.id, dateStr);
+
+        if (!fsEntry && !legacyWalked) {
+          // Zapis spaceru: najpierw Firestore (natychmiastowe, działa offline),
+          // potem arkusz w tle (przy błędzie ląduje w kolejce ponawiania)
+          await recordWalkFs(dateStr, dog, currentUser, "spacer");
+          // Jeśli był zaplanowany na dziś — plan staje się wykonany, sprzątamy
+          if (plannedToday && (plannedToday.volunteerId === currentUser.uid || isAdmin)) {
+            deleteDoc(doc(db, "plannedWalks", plannedToday.docId)).catch(() => {});
+            setPlannedWalks((prev) => {
+              const updated = { ...prev, [dog.id]: { ...(prev[dog.id] || {}) } };
+              delete updated[dog.id][dateStr];
+              return updated;
+            });
+          }
+          const synced = await syncWalkToSheet(dog, "spacer", currentUser);
+          if (!synced) {
+            showBanner("warning", "Spacer zapisany — synchronizacja z arkuszem nastąpi po odzyskaniu zasięgu");
+          }
         } else {
-          // cofnięcie dzisiejszego — tylko usuwa z lokalnego stanu (brak API do usunięcia)
-          setWalkHistory((prev) => ({
-            ...prev,
-            [dog.id]: (prev[dog.id] || []).filter((d) => d !== dateStr),
-          }));
+          // Cofnięcie dzisiejszego spaceru (prawdziwe — Firestore + arkusz)
+          if (fsEntry && fsEntry.volunteerId !== currentUser.uid && !isAdmin) {
+            showBanner("warning", `Ten spacer zapisał(a) ${fsEntry.volunteerName} — tylko ta osoba lub admin może go cofnąć`);
+            return;
+          }
+          if (fsEntry) await undoWalkFs(dateStr, dog.id);
+          if (legacyWalked) {
+            setWalkHistory((prev) => ({
+              ...prev,
+              [dog.id]: (prev[dog.id] || []).filter((d) => d !== dateStr),
+            }));
+          }
+          const synced = await syncUndoToSheet(dog.id, dateStr, currentUser);
+          if (!synced) {
+            showBanner("warning", "Cofnięto — synchronizacja z arkuszem nastąpi po odzyskaniu zasięgu");
+          }
         }
       } else if (offset > 0) {
-        // Przyszłość — Firestore
+        // Przyszłość — planowanie w Firestore
         const existing = getPlannedEntry(dog.id, dateStr);
         if (existing) {
           // Tylko twórca lub admin może usunąć
-          if (existing.volunteerId !== currentUser.uid && !isAdmin) return;
+          if (existing.volunteerId !== currentUser.uid && !isAdmin) {
+            showBanner("warning", `Zaplanował(a) ${existing.volunteerName} — tylko ta osoba lub admin może odwołać`);
+            return;
+          }
           await deleteDoc(doc(db, "plannedWalks", existing.docId));
           setPlannedWalks((prev) => {
             const updated = { ...prev };
@@ -236,6 +320,7 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
       }
     } catch (e) {
       console.error("Błąd zapisu:", e);
+      showBanner("error", "Nie udało się zapisać — sprawdź zasięg i spróbuj ponownie");
     } finally {
       setSavingCell(null);
     }
@@ -268,10 +353,43 @@ export default function WalkScheduleView({ dogs, currentUser, onSaveWalk, isAdmi
     );
   }
 
+  if (loadError) {
+    return (
+      <div style={{ padding: "2rem", textAlign: "center", color: "#6b7280" }}>
+        <p style={{ marginBottom: "1rem" }}>⚠️ Nie udało się załadować tabeli spacerów</p>
+        <button
+          onClick={loadData}
+          style={{
+            padding: "0.6rem 1.5rem", borderRadius: "0.5rem", border: "none",
+            background: "#2563eb", color: "white", fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          Spróbuj ponownie
+        </button>
+      </div>
+    );
+  }
+
   const colWidthPx = (day) => (day.isToday ? 56 : 36);
 
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "1rem" }}>
+      {banner && (
+        <div style={{
+          position: "sticky",
+          left: 0,
+          margin: "0 0 0.5rem",
+          padding: "0.5rem 0.75rem",
+          borderRadius: "0.5rem",
+          fontSize: "0.8rem",
+          fontWeight: 600,
+          background: banner.type === "error" ? "#fee2e2" : "#fef3c7",
+          color: banner.type === "error" ? "#991b1b" : "#92400e",
+          border: `1px solid ${banner.type === "error" ? "#fca5a5" : "#fde68a"}`,
+        }}>
+          {banner.text}
+        </div>
+      )}
       <table style={{ borderCollapse: "collapse", fontSize: "0.75rem", minWidth: "max-content" }}>
         <thead>
           <tr>

@@ -3811,16 +3811,6 @@ useEffect(() => {
     return handleToggleBehaviorystDog(dogId);
   };
 
-  const handleSaveWalkFromTable = useCallback(async (dog, typ = "spacer") => {
-    if (!currentUser) return;
-    const token = await currentUser.getIdToken();
-    await fetch("/api/gs", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ action: "recordWalk", dogId: dog.id, dogName: dog.name, notes: "", typ }),
-    });
-  }, [currentUser]);
-
   const [tableView, setTableView] = useState(() => localStorage.getItem("walkViewMode") === "table");
 
   const toggleTableView = useCallback(() => {
@@ -3989,7 +3979,6 @@ const handleLogin = async () => {
             <WalkScheduleView
               dogs={dogs}
               currentUser={currentUser}
-              onSaveWalk={handleSaveWalkFromTable}
               isAdmin={isAdminUser}
             />
           </div>
@@ -4011,7 +4000,6 @@ const handleLogin = async () => {
             <WalkScheduleView
               dogs={dogs}
               currentUser={currentUser}
-              onSaveWalk={handleSaveWalkFromTable}
               isAdmin={isAdminUser}
             />
           </div>
