@@ -698,15 +698,19 @@ const chooseBetterDogRecord = (currentDog, nextDog) => {
   const currentWalkDate = parseDateSafe(currentDog.lastWalk);
   const nextWalkDate = parseDateSafe(nextDog.lastWalk);
 
-  const hasMoreData =
-    Object.values(nextDog).filter((value) => cleanText(value).length > 0).length >
-    Object.values(currentDog).filter((value) => cleanText(value).length > 0).length;
+  // Wiersz z nowszym spacerem jest bazą, ale puste pola duplikatu
+  // nie mogą wymazać wypełnionych danych z drugiego wiersza
+  const nextIsNewer = nextWalkDate && (!currentWalkDate || nextWalkDate > currentWalkDate);
+  const base = nextIsNewer ? nextDog : currentDog;
+  const other = nextIsNewer ? currentDog : nextDog;
 
-  if (nextWalkDate && (!currentWalkDate || nextWalkDate > currentWalkDate)) {
-    return { ...currentDog, ...nextDog };
+  const merged = { ...base };
+  for (const key of Object.keys(other)) {
+    const baseEmpty = cleanText(merged[key]).length === 0;
+    const otherFilled = cleanText(other[key]).length > 0;
+    if (baseEmpty && otherFilled) merged[key] = other[key];
   }
-
-  return hasMoreData ? { ...currentDog, ...nextDog } : currentDog;
+  return merged;
 };
 
 const MapView = ({
@@ -1695,8 +1699,8 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, ho
   );
 };
 
-function formatFlagTime(date) {
-  if (!date) return "odwołania";
+function formatFlagTime(date, fallback = "odwołania") {
+  if (!date) return fallback;
   return date.toLocaleString("pl-PL", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
@@ -1736,12 +1740,12 @@ const FlagBlock = ({ title, flagType, currentFlag, form, setFlagForm, saving, ms
       <p style={{ fontWeight: 700, fontSize: "15px", margin: "0 0 10px", color: "#991b1b" }}>{title}</p>
       {currentFlag.active && (
         <p style={{ fontSize: "13px", color: "#dc2626", marginBottom: "8px", fontWeight: 600 }}>
-          ⚠ Aktywny — {currentFlag.note || "brak opisu"} | od: {formatFlagTime(currentFlag.validFrom)} | do: {formatFlagTime(currentFlag.validUntil)}
+          ⚠ Aktywny — {currentFlag.note || "brak opisu"} | od: {formatFlagTime(currentFlag.validFrom, "teraz")} | do: {formatFlagTime(currentFlag.validUntil)}
         </p>
       )}
       {currentFlag.pending && (
         <p style={{ fontSize: "13px", color: "#b45309", marginBottom: "8px", fontWeight: 600 }}>
-          🕐 Zaplanowano — od: {formatFlagTime(currentFlag.validFrom)} | do: {formatFlagTime(currentFlag.validUntil)}
+          🕐 Zaplanowano — od: {formatFlagTime(currentFlag.validFrom, "teraz")} | do: {formatFlagTime(currentFlag.validUntil)}
         </p>
       )}
       <label style={{ fontSize: "13px", color: "#374151", display: "block", marginBottom: "4px" }}>Powód (opcjonalnie)</label>
@@ -2004,6 +2008,8 @@ const DogCardView = ({
   const [walkHistory, setWalkHistory] = useState([]);
   const [showWalkHistory, setShowWalkHistory] = useState(false);
   const [loadingWalkHistory, setLoadingWalkHistory] = useState(false);
+  const [walkHistoryError, setWalkHistoryError] = useState(false);
+  const [weightHistoryError, setWeightHistoryError] = useState(false);
 
   const [editingStatus, setEditingStatus] = useState(false);
   const [statusInput, setStatusInput] = useState(selectedDog?.status || "dostępny");
@@ -2314,11 +2320,18 @@ const DogCardView = ({
 
   const loadWeightHistory = async () => {
     setLoadingWeightHistory(true);
+    setWeightHistoryError(false);
     try {
       const res = await fetch(`/api/gs?action=getWeightHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
       const result = await res.json();
-      if (result?.ok && Array.isArray(result?.data)) setWeightHistory(result.data);
-    } catch {}
+      if (result?.ok && Array.isArray(result?.data)) {
+        setWeightHistory(result.data);
+      } else {
+        setWeightHistoryError(true);
+      }
+    } catch {
+      setWeightHistoryError(true);
+    }
     setLoadingWeightHistory(false);
   };
 
@@ -2329,11 +2342,18 @@ const DogCardView = ({
 
   const loadWalkHistory = async () => {
     setLoadingWalkHistory(true);
+    setWalkHistoryError(false);
     try {
       const res = await fetch(`/api/gs?action=getDogWalkHistory&dogId=${encodeURIComponent(selectedDog.id)}`);
       const result = await res.json();
-      if (result?.ok && Array.isArray(result?.data)) setWalkHistory(result.data);
-    } catch {}
+      if (result?.ok && Array.isArray(result?.data)) {
+        setWalkHistory(result.data);
+      } else {
+        setWalkHistoryError(true);
+      }
+    } catch {
+      setWalkHistoryError(true);
+    }
     setLoadingWalkHistory(false);
   };
 
@@ -2385,15 +2405,22 @@ const DogCardView = ({
     setTogglingOpiekun(true);
     try {
       const token = await currentUser.getIdToken();
-      await fetch("/api/gs", {
+      const res = await fetch("/api/gs", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ action: "toggleOpiekun", dogId: selectedDog.id }),
       });
+      const result = await res.json();
+      if (!res.ok || !result?.ok) {
+        throw new Error(result?.error || "Błąd zapisu");
+      }
       const r2 = await fetch(`/api/gs?action=getOpiekunowie&dogId=${encodeURIComponent(selectedDog.id)}`);
       const r2json = await r2.json();
       if (r2json?.ok && Array.isArray(r2json?.data)) setOpiekunowie(r2json.data);
-    } catch {
+    } catch (e) {
+      console.error("Błąd zmiany opiekuna:", e);
+      setWalkMessage({ type: "error", text: "Nie udało się zapisać zmiany opiekuna — sprawdź połączenie i spróbuj ponownie" });
+      setTimeout(() => setWalkMessage(null), 5000);
     } finally {
       setTogglingOpiekun(false);
     }
@@ -2717,6 +2744,13 @@ const DogCardView = ({
                 <div style={{ marginTop: "0.75rem", borderTop: "1px solid #fde68a", paddingTop: "0.75rem" }}>
                   {loadingWalkHistory ? (
                     <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Ładowanie...</p>
+                  ) : walkHistoryError ? (
+                    <p style={{ fontSize: "0.85rem", color: "#b45309" }}>
+                      ⚠️ Nie udało się pobrać historii —{" "}
+                      <button onClick={loadWalkHistory} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: 0, fontSize: "0.85rem", textDecoration: "underline" }}>
+                        spróbuj ponownie
+                      </button>
+                    </p>
                   ) : walkHistory.length === 0 ? (
                     <p style={{ fontSize: "0.85rem", color: "#6b7280" }}>Brak historii spacerów</p>
                   ) : (
@@ -2876,14 +2910,12 @@ const DogCardView = ({
               <div style={styles.infoBox}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.4rem" }}>
                   <div style={styles.infoLabel}>⚖️ Waga</div>
-                  {weightHistory.length > 0 || showWeightHistory ? (
-                    <button
-                      onClick={handleToggleWeightHistory}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "2px 6px" }}
-                    >
-                      {showWeightHistory ? "Ukryj historię" : "Historia"}
-                    </button>
-                  ) : null}
+                  <button
+                    onClick={handleToggleWeightHistory}
+                    style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "2px 6px" }}
+                  >
+                    {showWeightHistory ? "Ukryj historię ▲" : "Historia wagi ▼"}
+                  </button>
                 </div>
                 <div style={styles.infoValue}>{selectedDog.weight || "—"}</div>
                 {currentUser && (
@@ -2913,14 +2945,15 @@ const DogCardView = ({
                 )}
                 {showWeightHistory && (
                   <div style={{ marginTop: "0.75rem" }}>
-                    <button
-                      onClick={handleToggleWeightHistory}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "0", marginBottom: "0.4rem", display: "block" }}
-                    >
-                      Historia wagi ▲
-                    </button>
                     {loadingWeightHistory ? (
                       <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Ładowanie...</p>
+                    ) : weightHistoryError ? (
+                      <p style={{ fontSize: "0.8rem", color: "#b45309" }}>
+                        ⚠️ Nie udało się pobrać historii —{" "}
+                        <button onClick={loadWeightHistory} style={{ background: "none", border: "none", color: "#2563eb", cursor: "pointer", padding: 0, fontSize: "0.8rem", textDecoration: "underline" }}>
+                          spróbuj ponownie
+                        </button>
+                      </p>
                     ) : weightHistory.length === 0 ? (
                       <p style={{ fontSize: "0.8rem", color: "#6b7280" }}>Brak historii</p>
                     ) : (
@@ -2945,14 +2978,7 @@ const DogCardView = ({
                     )}
                   </div>
                 )}
-                {!showWeightHistory && (weightHistory.length > 0 || !currentUser) && (
-                  <button
-                    onClick={handleToggleWeightHistory}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: "#2563eb", fontSize: "0.8rem", padding: "0.25rem 0 0", display: "block" }}
-                  >
-                    Historia wagi ▼
-                  </button>
-                )}
+
               </div>
               <div style={styles.infoBox}>
                 <div style={styles.infoLabel}>🆔 ID</div>
@@ -3501,6 +3527,7 @@ const ShelterMapSystem = () => {
   const [selectedDog, setSelectedDog] = useState(_session?.dog || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
 const [currentUser, setCurrentUser] = useState(null);
 const [authReady, setAuthReady] = useState(false);
@@ -3622,6 +3649,7 @@ useEffect(() => {
 }, [isAuthEnabled]);
   const fetchData = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const response = await fetch("/api/gs?action=getDogs");
       const result = await response.json();
@@ -3672,7 +3700,8 @@ useEffect(() => {
       });
       return normalizedDogs;
     } catch (error) {
-      console.error("Błąd:", error);
+      console.error("Błąd pobierania psów:", error);
+      setLoadError(true);
       return [];
     } finally {
       setLoading(false);
@@ -3863,11 +3892,17 @@ const handleLogin = async () => {
   } catch (error) {
     console.error("Błąd logowania Google:", error);
 
+    // Świadome zamknięcie okienka przez użytkownika to nie błąd —
+    // nie przekierowujemy na pełnoekranowe logowanie ani nie straszymy komunikatem
     if (
-      error?.code === "auth/popup-blocked" ||
       error?.code === "auth/popup-closed-by-user" ||
       error?.code === "auth/cancelled-popup-request"
     ) {
+      return;
+    }
+
+    // Popup zablokowany przez przeglądarkę — spróbuj przez przekierowanie
+    if (error?.code === "auth/popup-blocked") {
       try {
         await signInWithRedirect(auth, googleProvider);
         return;
@@ -3876,22 +3911,19 @@ const handleLogin = async () => {
       }
     }
 
-    if (error?.code === "auth/configuration-not-found") {
+    // Błędy konfiguracji — szczegóły do konsoli, wolontariusz dostaje prostą instrukcję
+    if (
+      error?.code === "auth/configuration-not-found" ||
+      error?.code === "auth/unauthorized-domain"
+    ) {
       setLoginError(
-        "Firebase Auth nie jest poprawnie skonfigurowany dla tego projektu (CONFIGURATION_NOT_FOUND). Włącz metodę Google w Firebase Console → Authentication → Sign-in method oraz sprawdź czy używasz właściwego klucza API/projektu."
-      );
-      return;
-    }
-
-    if (error?.code === "auth/unauthorized-domain") {
-      setLoginError(
-        "Ta domena nie jest dozwolona w Firebase Auth. Dodaj domenę aplikacji w Firebase Console → Authentication → Settings → Authorized domains."
+        "Logowanie jest chwilowo niedostępne z powodu błędu konfiguracji. Skontaktuj się z administratorem aplikacji."
       );
       return;
     }
 
     setLoginError(
-      "Nie udało się zalogować przez Google. Jeśli jesteś na laptopie, sprawdź czy przeglądarka nie blokuje popupów i spróbuj ponownie."
+      "Nie udało się zalogować przez Google. Sprawdź połączenie z internetem (i czy przeglądarka nie blokuje wyskakujących okienek), po czym spróbuj ponownie."
     );
   }
 };
@@ -3982,6 +4014,32 @@ const handleLogin = async () => {
           >
             Ładowanie...
           </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError && dogs.length === 0) {
+    return (
+      <div style={styles.loadingContainer}>
+        <div style={{ textAlign: "center", padding: "1rem" }}>
+          <div style={{ fontSize: "2.5rem", marginBottom: "0.75rem" }}>📡</div>
+          <p style={{ fontSize: "1.05rem", color: "#374151", fontWeight: 600, marginBottom: "0.5rem" }}>
+            Nie udało się pobrać listy psów
+          </p>
+          <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "1.25rem" }}>
+            Sprawdź połączenie z internetem i spróbuj ponownie
+          </p>
+          <button
+            onClick={fetchData}
+            style={{
+              padding: "0.7rem 2rem", borderRadius: "0.75rem", border: "none",
+              background: "#2563eb", color: "white", fontWeight: 700,
+              fontSize: "0.95rem", cursor: "pointer",
+            }}
+          >
+            Spróbuj ponownie
+          </button>
         </div>
       </div>
     );

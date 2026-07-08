@@ -110,12 +110,14 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
     return () => clearInterval(id);
   }, [fetchReports]);
 
+  // Zwraca true przy sukcesie — modal zamykamy tylko wtedy,
+  // żeby nieudane zamknięcie nie wyglądało jak wykonane (i nie gubiło notatki)
   const handleUpdateStatus = async (reportId, newStatus, note = "") => {
-    if (!currentUser || updatingId) return;
+    if (!currentUser || updatingId) return false;
     setUpdatingId(reportId);
     try {
       const token = await currentUser.getIdToken();
-      await fetch("/api/gs", {
+      const res = await fetch("/api/gs", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -126,17 +128,29 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
           updatedBy: currentUser.displayName || "Nieznany",
         }),
       });
+      const result = await res.json();
+      if (!res.ok || !result?.ok) {
+        throw new Error(result?.error || "Błąd zapisu");
+      }
       await fetchReports();
-    } catch {}
-    setUpdatingId(null);
+      return true;
+    } catch (e) {
+      console.error("Błąd zmiany statusu zgłoszenia:", e);
+      alert("Nie udało się zapisać zmiany statusu — sprawdź połączenie i spróbuj ponownie.");
+      return false;
+    } finally {
+      setUpdatingId(null);
+    }
   };
 
   const handleCloseReport = async () => {
     if (!closeModal || closingReport) return;
     setClosingReport(true);
-    await handleUpdateStatus(closeModal.id, "zamknięte", closeNote.trim());
-    setCloseModal(null);
-    setCloseNote("");
+    const ok = await handleUpdateStatus(closeModal.id, "zamknięte", closeNote.trim());
+    if (ok) {
+      setCloseModal(null);
+      setCloseNote("");
+    }
     setClosingReport(false);
   };
 
