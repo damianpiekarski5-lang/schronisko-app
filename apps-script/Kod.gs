@@ -60,6 +60,8 @@ function doGet(e) {
   const action = safeStr(e?.parameter?.action);
 
   try {
+    validateSharedSecretParam_(e);
+
     if (action === "getDogs") {
       const includeArchived = String(e?.parameter?.includeArchived || "false") === "true";
       return json({ ok: true, data: getDogs(includeArchived) });
@@ -120,7 +122,9 @@ function doGet(e) {
 
 function doPost(e) {
   const lock = LockService.getScriptLock();
-  lock.tryLock(30000);
+  if (!lock.tryLock(30000)) {
+    return json({ ok: false, error: "Serwer zajęty — spróbuj ponownie za chwilę" });
+  }
 
   try {
     const payload = JSON.parse(e?.postData?.contents || "{}");
@@ -353,6 +357,8 @@ function buildLastWalkTypeMap_(ss) {
 }
 
 function setArchive(payload) {
+  requireRole_(payload, ["staff", "admin"]);
+
   const dogId = safeStr(payload?.dogId);
   const archived = Boolean(payload?.archived);
 
@@ -434,7 +440,7 @@ function recordWalk(payload) {
     safeStr(dogRow[map[H.PAVILION]]),
     safeStr(dogRow[map[H.KENNEL]]),
     safeStr(payload?.user?.displayName) || "Wolontariusz",
-    safeStr(payload?.notes),
+    sanitizeText_(payload?.notes, 2000),
     typ,
   ]);
 
@@ -465,7 +471,7 @@ function reportBehavior(payload) {
     safeStr(payload?.dogName),
     safeStr(payload?.dogId),
     safeStr(payload?.user?.displayName) || "Wolontariusz",
-    safeStr(payload?.opis),
+    sanitizeText_(payload?.opis, 5000),
     "NOWE",
     false,
     "",
@@ -721,14 +727,52 @@ function validateSharedSecret(payload) {
   }
 }
 
+// Walidacja sekretu dla żądań GET — proxy (api/gs.js) dokleja go do parametrów.
+// Bez sekretu bezpośrednie wywołania /exec zwracają błąd.
+function validateSharedSecretParam_(e) {
+  const expected = PropertiesService.getScriptProperties().getProperty(SHARED_SECRET_PROPERTY_NAME);
+  if (!expected) throw new Error("SHARED_SECRET nie jest skonfigurowany w Script Properties");
+
+  if (safeStr(e?.parameter?.__secret) !== safeStr(expected)) {
+    throw new Error("Unauthorized");
+  }
+}
+
+function isAdminEmail_(email) {
+  const userEmail = safeStr(email).toLowerCase();
+  if (!userEmail) return false;
+  const raw = PropertiesService.getScriptProperties().getProperty(ADMIN_EMAILS_PROPERTY_NAME) || "";
+  const adminEmails = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  return adminEmails.includes(userEmail);
+}
+
 function requireAdmin(payload) {
   const userEmail = safeStr(payload?.user?.email).toLowerCase();
   if (!userEmail) throw new Error("Brak emaila użytkownika");
 
-  const raw = PropertiesService.getScriptProperties().getProperty(ADMIN_EMAILS_PROPERTY_NAME) || "";
-  const adminEmails = raw.split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  // Admin = e-mail na liście ADMIN_EMAILS lub rola "admin" w arkuszu Roles
+  if (!isAdminEmail_(userEmail) && getUserRole_(userEmail) !== "admin") {
+    throw new Error("Brak uprawnień administratora");
+  }
+}
 
-  if (!adminEmails.includes(userEmail)) throw new Error("Brak uprawnień administratora");
+// Wymaga jednej z podanych ról (albo admina z listy e-maili)
+function requireRole_(payload, roles) {
+  const userEmail = safeStr(payload?.user?.email);
+  if (!userEmail) throw new Error("Brak emaila użytkownika");
+  if (isAdminEmail_(userEmail)) return;
+  const role = getUserRole_(userEmail);
+  if (!roles.includes(role)) {
+    throw new Error("Brak uprawnień do tej operacji");
+  }
+}
+
+// Ochrona przed wstrzyknięciem formuł do arkusza + limit długości pól tekstowych
+function sanitizeText_(value, maxLen) {
+  let s = safeStr(value);
+  if (maxLen && s.length > maxLen) s = s.slice(0, maxLen);
+  if (/^[=+\-@]/.test(s)) s = "'" + s;
+  return s;
 }
 
 // ===============================
@@ -795,7 +839,7 @@ function addDogHistory(payload) {
   ensureHeaders(sh, ["timestamp","dogId","dogName","kategoria","wartość","uwagi","autor"]);
   sh.appendRow([
     nowInPolandText(), dogId, safeStr(payload?.dogName),
-    kategoria, safeStr(payload?.wartosc), safeStr(payload?.uwagi),
+    kategoria, sanitizeText_(payload?.wartosc, 2000), sanitizeText_(payload?.uwagi, 2000),
     safeStr(payload?.user?.displayName) || "Nieznany",
   ]);
 }
@@ -1077,7 +1121,7 @@ function setMedicalFlag_(payload) {
   const id = "mf_" + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
   const validFrom = safeStr(payload?.validFrom) || new Date().toISOString();
   const validUntil = safeStr(payload?.validUntil) || "";
-  const note = safeStr(payload?.note) || "";
+  const note = sanitizeText_(payload?.note, 2000) || "";
   const createdBy = safeStr(payload?.createdBy) || safeStr(payload?.user?.displayName) || "Nieznany";
   const createdAt = nowInPolandText();
 
@@ -1159,7 +1203,7 @@ function updateDogDiet_(payload) {
   const dogId = safeStr(payload?.dogId);
   if (!dogId) throw new Error("Brakuje dogId");
 
-  const diet = safeStr(payload?.diet);
+  const diet = sanitizeText_(payload?.diet, 2000);
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sh = ss.getSheetByName(DOGS_SHEET_NAME);
@@ -1229,7 +1273,7 @@ function setCastration_(payload) {
   if (!VALID.includes(kastracja)) throw new Error("Nieprawidłowa wartość kastracji: " + kastracja);
 
   const kastracjaData = safeStr(payload?.kastracjaData);
-  const kastracyjaPowod = safeStr(payload?.kastracyjaPowod);
+  const kastracyjaPowod = sanitizeText_(payload?.kastracyjaPowod, 1000);
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sh = ss.getSheetByName(DOGS_SHEET_NAME);
@@ -1252,6 +1296,8 @@ function setCastration_(payload) {
 // HISTORIA WAGI
 // ===============================
 function addWeightEntry_(payload) {
+  requireRole_(payload, ["staff", "ambulatorium", "admin"]);
+
   const dogId = safeStr(payload?.dogId);
   const weight = safeStr(payload?.weight);
   const recordedByName = safeStr(payload?.user?.displayName) || "Nieznany";
@@ -1414,7 +1460,7 @@ function getSectorDogs_() {
 
 function submitMedicalReport_(payload) {
   const dogId = safeStr(payload?.dogId);
-  const description = safeStr(payload?.description);
+  const description = sanitizeText_(payload?.description, 5000);
   if (!dogId || !description) throw new Error("Brakuje dogId lub description");
 
   const id = Date.now() + "_" + Math.random().toString(36).substr(2, 4);
@@ -1525,7 +1571,7 @@ function updateMedicalReportStatus_(payload) {
   sh.getRange(rowIdx + 1, hm["status"] + 1).setValue(status);
   sh.getRange(rowIdx + 1, hm["status_updated_by"] + 1).setValue(safeStr(payload?.updatedBy));
   sh.getRange(rowIdx + 1, hm["status_updated_at"] + 1).setValue(new Date().toISOString());
-  sh.getRange(rowIdx + 1, hm["status_note"] + 1).setValue(safeStr(payload?.note));
+  sh.getRange(rowIdx + 1, hm["status_note"] + 1).setValue(sanitizeText_(payload?.note, 2000));
 
   return { success: true };
 }
@@ -1593,7 +1639,7 @@ function addDogTask_(payload) {
   const dogId = safeStr(payload?.dogId);
   const dogName = safeStr(payload?.dogName);
   const taskType = safeStr(payload?.taskType);
-  const taskNote = safeStr(payload?.taskNote || "");
+  const taskNote = sanitizeText_(payload?.taskNote, 2000);
   const createdBy = safeStr(payload?.user?.displayName) || "Nieznany";
 
   if (!dogId || !taskType) throw new Error("Brakuje dogId lub taskType");

@@ -2,41 +2,69 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Admini — zsynchronizowane z listą ADMIN_EMAILS aplikacji
+    function isAdmin() {
+      return isSignedIn()
+        && request.auth.token.email in ['damian.piekarski5@gmail.com'];
+    }
+
+    // Wpis należy do zalogowanego użytkownika
+    function ownsResource() {
+      return isSignedIn() && resource.data.volunteerId == request.auth.uid;
+    }
+
+    // Nowy wpis musi być podpisany własnym uid
+    function createsAsSelf() {
+      return isSignedIn() && request.resource.data.volunteerId == request.auth.uid;
+    }
+
     // Biblioteka ćwiczeń
     match /exercises/{exerciseId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
 
     // Programy treningowe
     match /programs/{programId} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
 
     // Dane treningowe per pies — {path=**} obejmuje dokument główny
     // oraz podkolekcje: progress/* i sessions/*
     match /dogTraining/{path=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if isSignedIn();
     }
 
     // Zaplanowane spacery (widok tabelaryczny — przyszłe dni)
     match /plannedWalks/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isSignedIn();
+      allow create: if createsAsSelf()
+        && request.resource.data.dogId is string
+        && request.resource.data.date is string;
+      allow delete: if ownsResource() || isAdmin();
     }
 
     // Grafik obecności wolontariuszy
     match /scheduleEntries/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isSignedIn();
+      allow create: if createsAsSelf()
+        && request.resource.data.date is string
+        && request.resource.data.section is string;
+      allow delete: if ownsResource() || isAdmin();
     }
 
     // Spacery zapoznawcze (adopcje)
     match /introWalks/{docId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow read: if isSignedIn();
+      allow create: if createsAsSelf()
+        && request.resource.data.dogId is string
+        && request.resource.data.date is string
+        && request.resource.data.interestedName is string
+        && request.resource.data.interestedName.size() <= 200;
+      allow delete: if ownsResource() || isAdmin();
     }
   }
 }
