@@ -75,7 +75,7 @@ const styles = {
     width: "100%",
     maxWidth: "100vw",
     backgroundColor: "#f9fafb",
-    paddingBottom: "80px",
+    paddingBottom: "130px",
     overflowX: "hidden",
     boxSizing: "border-box",
   },
@@ -1441,7 +1441,7 @@ const DogsListView = ({
                 key={dog.id}
                 onClick={() => {
                   setSelectedDog(dog);
-                  setDogCardFrom("map");
+                  setDogCardFrom("dogs");
                   setCurrentView("dogCard");
                 }}
                 style={{
@@ -3466,9 +3466,15 @@ const DogCardView = ({
 
 const SESSION_KEY = "schronisko_session";
 
-function saveSession(view, dog, from) {
+function saveSession(view, dog, from, pavilion, box) {
   try {
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ view, dog: dog ?? null, from: from ?? "home" }));
+    sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+      view,
+      dog: dog ?? null,
+      from: from ?? "home",
+      pavilion: pavilion ?? null,
+      box: box ?? null,
+    }));
   } catch {}
 }
 
@@ -3482,10 +3488,16 @@ function loadSession() {
 const ShelterMapSystem = () => {
   const [dogs, setDogs] = useState([]);
   const _session = loadSession();
-  const [currentView, setCurrentView] = useState(_session?.view || "home");
+  // Widoki boxes/dogs bez zapamiętanego pawilonu pokazywałyby "Pawilon null"
+  const _sessionView = (() => {
+    const v = _session?.view || "home";
+    if ((v === "boxes" || v === "dogs") && !_session?.pavilion) return "home";
+    return v;
+  })();
+  const [currentView, setCurrentView] = useState(_sessionView);
   const [dogCardFrom, setDogCardFrom] = useState(_session?.from || "home");
-  const [selectedPavilion, setSelectedPavilion] = useState(null);
-  const [selectedBox, setSelectedBox] = useState(null);
+  const [selectedPavilion, setSelectedPavilion] = useState(_session?.pavilion ?? null);
+  const [selectedBox, setSelectedBox] = useState(_session?.box ?? null);
   const [selectedDog, setSelectedDog] = useState(_session?.dog || null);
   const [searchTerm, setSearchTerm] = useState("");
   const [loading, setLoading] = useState(true);
@@ -3510,11 +3522,19 @@ const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
 const isBehaviorystUser = String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
 
+// Przywrócony widok wymagający uprawnień, których użytkownik nie ma,
+// renderowałby pustą stronę bez nawigacji (np. po zmianie konta)
+useEffect(() => {
+  if (!authReady) return;
+  if (currentView === "panel" && !isAdminUser) setCurrentView("home");
+  if (currentView === "behaviorystPanel" && !isBehaviorystUser) setCurrentView("home");
+}, [authReady, currentView, isAdminUser, isBehaviorystUser]);
+
 const navRef = useRef({ currentView: "home", dogCardFrom: "home" });
 useEffect(() => {
   navRef.current = { currentView, dogCardFrom };
-  saveSession(currentView, selectedDog, dogCardFrom);
-}, [currentView, dogCardFrom, selectedDog]);
+  saveSession(currentView, selectedDog, dogCardFrom, selectedPavilion, selectedBox);
+}, [currentView, dogCardFrom, selectedDog, selectedPavilion, selectedBox]);
 
 const scrollPositions = useRef({});
 const currentViewRef = useRef("home");
@@ -3551,6 +3571,8 @@ useEffect(() => {
     } else if (view === "panel") {
       setCurrentView("home");
     } else if (view === "behaviorystPanel") {
+      setCurrentView("home");
+    } else if (view === "schedule" || view === "introWalk") {
       setCurrentView("home");
     }
     history.pushState(null, "", window.location.href);
@@ -4140,7 +4162,7 @@ const handleLogin = async () => {
       {["home", "map", "schedule", "introWalk"].includes(currentView) && currentUser && (
         <div style={{
           position: "fixed",
-          bottom: 64,
+          bottom: 84,
           left: 0,
           right: 0,
           zIndex: 150,
