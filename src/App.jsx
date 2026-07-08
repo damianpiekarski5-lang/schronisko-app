@@ -1966,7 +1966,7 @@ const DogCardView = ({
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
 
   const { role } = useUserRole();
-  const { noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
+  const { noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, flagsError, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
 
   const ALL_FLAG_TYPES = ["no_food", "walk_blocked", "próbka_kału", "pobranie_krwi", "zakropienie_oczu", "inne"];
   const initFlagForm = { note: "", validFrom: "", validUntil: "" };
@@ -2501,6 +2501,38 @@ const DogCardView = ({
               </p>
             )}
           </div>
+          {flagsError && (
+            <div style={{ padding: "1rem 1.5rem 0" }}>
+              <div style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "0.6rem",
+                padding: "0.75rem 1rem",
+                borderRadius: "0.75rem",
+                background: "#fef3c7",
+                border: "1px solid #f59e0b",
+                color: "#92400e",
+                fontSize: "0.85rem",
+                fontWeight: 600,
+              }}>
+                <span>⚠️</span>
+                <span style={{ flex: 1 }}>
+                  Nie udało się pobrać flag medycznych — pies może mieć aktywne
+                  ograniczenia (np. zakaz spaceru), których tu nie widać.
+                </span>
+                <button
+                  onClick={refreshFlags}
+                  style={{
+                    border: "1px solid #f59e0b", background: "white", color: "#92400e",
+                    borderRadius: "0.5rem", padding: "0.3rem 0.6rem", fontWeight: 700,
+                    fontSize: "0.75rem", cursor: "pointer", whiteSpace: "nowrap",
+                  }}
+                >
+                  Odśwież
+                </button>
+              </div>
+            </div>
+          )}
           {(noFood.active || walkBlocked.active || próbkaKału.active || pobranieKrwi.active || zakropienieOczu.active || inne.active ||
             noFood.pending || walkBlocked.pending || próbkaKału.pending || pobranieKrwi.pending || zakropienieOczu.pending || inne.pending) && (
             <div style={{ padding: "1rem 1.5rem 0" }}>

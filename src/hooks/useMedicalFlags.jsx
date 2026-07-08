@@ -24,23 +24,35 @@ const EMPTY_RAW = { noFood: null, walkBlocked: null, próbkaKału: null, pobrani
 export default function useMedicalFlags(dogId) {
   const [raw, setRaw] = useState(EMPTY_RAW);
   const [loading, setLoading] = useState(true);
+  // true = nie udało się pobrać flag — pies może mieć aktywne ograniczenia
+  // (np. ZAKAZ SPACERU), których nie widać; UI musi to zakomunikować
+  const [error, setError] = useState(false);
 
   const fetchFlags = useCallback(async () => {
     if (!dogId) {
       setRaw(EMPTY_RAW);
+      setError(false);
       setLoading(false);
       return;
     }
     try {
       const res = await fetch(`/api/gs?action=getMedicalFlags&dogId=${encodeURIComponent(dogId)}`);
       const result = await res.json();
-      if (result?.ok && result?.data) setRaw(result.data);
-    } catch {}
+      if (result?.ok && result?.data) {
+        setRaw(result.data);
+        setError(false);
+      } else {
+        setError(true);
+      }
+    } catch {
+      setError(true);
+    }
     setLoading(false);
   }, [dogId]);
 
   useEffect(() => {
     setLoading(true);
+    setError(false);
     setRaw(EMPTY_RAW);
     fetchFlags();
     const id = setInterval(() => {
@@ -57,6 +69,7 @@ export default function useMedicalFlags(dogId) {
     zakropienieOczu: parseFlag(raw.zakropienieOczu),
     inne: parseFlag(raw.inne),
     loading,
+    flagsError: error,
     refresh: fetchFlags,
   };
 }
