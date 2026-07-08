@@ -57,7 +57,9 @@ export const getCalendarDayDiff = (value, now = new Date()) => {
 
   const walkDay = startOfDay(parsed);
   const today = startOfDay(now);
-  return Math.floor((today - walkDay) / (1000 * 60 * 60 * 24));
+  // round, nie floor — doba przy zmianie czasu letniego ma 23h
+  // i floor pokazywałby wczorajszy spacer jako "Dzisiaj"
+  return Math.round((today - walkDay) / (1000 * 60 * 60 * 24));
 };
 
 export const getLastWalkPresentation = (value) => {
