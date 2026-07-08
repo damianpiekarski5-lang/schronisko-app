@@ -174,9 +174,15 @@ export default async function handler(req, res) {
 
     if (req.method === "GET") {
       for (const [key, value] of Object.entries(req.query || {})) {
+        // __secret nigdy nie może przyjść od klienta — tylko z env poniżej
+        if (key === "__secret") continue;
         if (value !== undefined && value !== null) {
           url.searchParams.set(key, String(value));
         }
+      }
+
+      if (process.env.APPS_SCRIPT_SHARED_SECRET) {
+        url.searchParams.set("__secret", process.env.APPS_SCRIPT_SHARED_SECRET);
       }
 
       if (ADMIN_ACTIONS.has(action)) {
