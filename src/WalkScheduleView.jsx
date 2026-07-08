@@ -368,7 +368,13 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
       }
     } catch (e) {
       console.error("Błąd zapisu:", e);
-      showBanner("error", "Nie udało się zapisać — sprawdź zasięg i spróbuj ponownie");
+      if (e?.code === "permission-denied") {
+        showBanner("error", "Brak uprawnień zapisu — administrator musi wgrać aktualne reguły Firestore w konsoli Firebase (plik firestore.rules)");
+      } else if (e?.code === "unavailable") {
+        showBanner("error", "Brak połączenia z bazą — zapis spróbuje się ponowić automatycznie");
+      } else {
+        showBanner("error", `Nie udało się zapisać (${e?.code || e?.message || "nieznany błąd"}) — spróbuj ponownie`);
+      }
     } finally {
       setSavingCell(null);
     }

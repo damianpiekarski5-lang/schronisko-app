@@ -10,7 +10,6 @@ import {
   query,
   where,
   setDoc,
-  updateDoc,
   deleteField,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -71,9 +70,13 @@ export async function recordWalkFs(dateStr, dog, currentUser, typ = "spacer") {
 }
 
 export async function undoWalkFs(dateStr, dogId) {
-  await updateDoc(doc(db, "dailyWalks", dateStr), {
-    [`walks.${dogId}`]: deleteField(),
-  });
+  // setDoc+merge zamiast updateDoc — nie rzuca not-found,
+  // gdy dokument dnia jeszcze nie istnieje
+  await setDoc(
+    doc(db, "dailyWalks", dateStr),
+    { walks: { [dogId]: deleteField() } },
+    { merge: true }
+  );
 }
 
 // ---------- Arkusz: zapis w tle + kolejka ponawiania ----------
