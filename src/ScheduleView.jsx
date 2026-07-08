@@ -195,11 +195,11 @@ export default function ScheduleView({ currentUser, isAdmin }) {
                   background: day.isToday ? "#166534" : day.isWeekend ? "#fce7f3" : "#f0fdf4",
                   color: day.isToday ? "white" : day.isWeekend ? "#9d174d" : "#166534",
                   fontWeight: day.isToday ? 700 : 600,
-                  minWidth: day.isToday ? 90 : 75,
-                  width: day.isToday ? 90 : 75,
+                  minWidth: day.isToday ? 110 : 90,
+                  width: day.isToday ? 110 : 90,
                 }}>
                   <div>{day.dayName}</div>
-                  <div style={{ fontWeight: 400, fontSize: "0.65rem" }}>{day.label}</div>
+                  <div style={{ fontWeight: 400, fontSize: "0.72rem" }}>{day.label}</div>
                 </th>
               ))}
             </tr>
@@ -250,9 +250,9 @@ export default function ScheduleView({ currentUser, isAdmin }) {
                             opacity: isSaving ? 0.5 : 1,
                             fontWeight: entry ? 600 : 400,
                             color: entry ? "#1e3a5f" : "#9ca3af",
-                            fontSize: entry ? "0.72rem" : "0.7rem",
-                            minWidth: day.isToday ? 90 : 75,
-                            width: day.isToday ? 90 : 75,
+                            fontSize: entry ? "0.8rem" : "0.75rem",
+                            minWidth: day.isToday ? 110 : 90,
+                            width: day.isToday ? 110 : 90,
                           }}
                           title={entry ? `${entry.volunteerName}${canDelete ? " — kliknij aby usunąć" : ""}` : isPast ? "" : "Kliknij aby się wpisać"}
                         >
@@ -330,12 +330,12 @@ const sectionLabelStyle = {
 };
 
 const slotCellStyle = {
-  padding: "0.2rem 0.3rem",
+  padding: "0.3rem 0.3rem",
   border: "1px solid #e5e7eb",
   textAlign: "center",
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
-  maxWidth: 90,
-  height: 24,
+  maxWidth: 110,
+  height: 38,
 };
