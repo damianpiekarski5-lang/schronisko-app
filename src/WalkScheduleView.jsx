@@ -284,6 +284,50 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     setTimeout(() => setBanner(null), 6000);
   }
 
+  // Test zapisu do każdej kolekcji — pokazuje, która dokładnie odmawia
+  // (diagnoza problemów z regułami Firestore; tylko dla admina)
+  async function runWriteDiagnostics() {
+    if (!currentUser) return;
+    const results = [];
+
+    try {
+      await setDoc(
+        doc(db, "dailyWalks", todayStr),
+        { walks: { __diag: null } },
+        { merge: true }
+      );
+      results.push("dailyWalks ✓");
+    } catch (e) {
+      results.push(`dailyWalks ✗ (${e?.code || e?.message})`);
+    }
+
+    const diagPlanId = `__diag_${currentUser.uid.slice(0, 8)}`;
+    try {
+      await setDoc(doc(db, "plannedWalks", diagPlanId), {
+        dogId: "__diag",
+        date: "1970-01-01",
+        volunteerId: currentUser.uid,
+        volunteerName: "diagnostyka",
+        createdAt: new Date().toISOString(),
+      });
+      results.push("plannedWalks:create ✓");
+      try {
+        await deleteDoc(doc(db, "plannedWalks", diagPlanId));
+        results.push("plannedWalks:delete ✓");
+      } catch (e) {
+        results.push(`plannedWalks:delete ✗ (${e?.code || e?.message})`);
+      }
+    } catch (e) {
+      results.push(`plannedWalks:create ✗ (${e?.code || e?.message})`);
+    }
+
+    const pid = db?.app?.options?.projectId || "?";
+    showBanner(
+      results.some((r) => r.includes("✗")) ? "error" : "warning",
+      `Diagnostyka (projekt ${pid}): ${results.join(" · ")}`
+    );
+  }
+
   async function handleCellClick(dog, day) {
     if (day.offset < 0) return; // przeszłe — tylko odczyt
     if (!currentUser) return;
@@ -481,6 +525,25 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
               boxSizing: "border-box",
             }}
           />
+          {isAdmin && (
+            <button
+              onClick={runWriteDiagnostics}
+              title="Testuje zapis do każdej kolekcji Firestore i pokazuje, która odmawia"
+              style={{
+                padding: "0.45rem 0.7rem",
+                border: "1px solid #d1d5db",
+                borderRadius: "0.5rem",
+                background: "#f9fafb",
+                color: "#374151",
+                fontSize: "0.78rem",
+                fontWeight: 600,
+                cursor: "pointer",
+                whiteSpace: "nowrap",
+              }}
+            >
+              🔧 Test zapisu
+            </button>
+          )}
         </div>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", fontSize: "0.75rem", color: "#4b5563", marginTop: "0.4rem" }}>
           <span><span style={{ background: "#16a34a", color: "white", padding: "0 5px", borderRadius: 3, fontWeight: 700 }}>X</span> dziś wykonany</span>
