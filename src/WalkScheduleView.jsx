@@ -50,6 +50,28 @@ async function fetchAllOpiekunowie() {
   return result?.ok ? result.data : {};
 }
 
+const TABLE_CACHE_KEY = "walkTableCache_v1";
+
+// Cache danych z arkusza (historia + opiekunowie) — tabela otwiera się
+// natychmiast z ostatnich danych, świeże dociągają się w tle
+function loadTableCache() {
+  try {
+    const raw = localStorage.getItem(TABLE_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function saveTableCache(walkHistory, opiekunowie) {
+  try {
+    localStorage.setItem(TABLE_CACHE_KEY, JSON.stringify({ ts: Date.now(), walkHistory, opiekunowie }));
+  } catch {}
+}
+
 const CELL_STYLES = {
   past: { background: "#f3f4f6", cursor: "default" },
   today: { background: "#dcfce7", cursor: "pointer" },
@@ -60,12 +82,13 @@ const CELL_STYLES = {
 };
 
 export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
-  const [walkHistory, setWalkHistory] = useState({});
+  const [walkHistory, setWalkHistory] = useState(() => loadTableCache()?.walkHistory || {});
   const [dailyWalks, setDailyWalks] = useState({});
   const [plannedWalks, setPlannedWalks] = useState({});
-  const [loading, setLoading] = useState(true);
+  // Pełne "Ładowanie..." tylko przy pierwszym otwarciu (brak cache)
+  const [loading, setLoading] = useState(() => !loadTableCache());
   const [loadError, setLoadError] = useState(false);
-  const [opiekunowie, setOpiekunowie] = useState({});
+  const [opiekunowie, setOpiekunowie] = useState(() => loadTableCache()?.opiekunowie || {});
   const [savingCell, setSavingCell] = useState(null);
   const [banner, setBanner] = useState(null); // {type: "error"|"warning", text}
   const [search, setSearch] = useState("");
@@ -93,20 +116,24 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
   const endDate = days[days.length - 1].str;
 
   const loadData = useCallback(async () => {
-    setLoading(true);
     setLoadError(false);
     try {
-      const [history, opiek, planned] = await Promise.all([
+      // Plany z Firestore są szybkie — nie czekają na wolny Apps Script
+      loadPlannedWalks(startDate, endDate)
+        .then(setPlannedWalks)
+        .catch((e) => console.error("Błąd ładowania planów:", e));
+
+      const [history, opiek] = await Promise.all([
         fetchWalkHistory(startDate, endDate),
         fetchAllOpiekunowie(),
-        loadPlannedWalks(startDate, endDate),
       ]);
       setWalkHistory(history);
       setOpiekunowie(opiek);
-      setPlannedWalks(planned);
+      saveTableCache(history, opiek);
     } catch (e) {
       console.error("Błąd ładowania tabeli spacerów:", e);
-      setLoadError(true);
+      // Ekran błędu tylko gdy nie mamy nic z cache
+      setLoadError((prev) => prev || !loadTableCache());
     } finally {
       setLoading(false);
     }

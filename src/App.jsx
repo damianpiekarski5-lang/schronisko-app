@@ -25,6 +25,7 @@ import WalkScheduleView from "./WalkScheduleView";
 import ScheduleView from "./ScheduleView";
 import IntroWalkSection from "./IntroWalkSection";
 import IntroWalkView from "./IntroWalkView";
+import PlannedWalkToday from "./PlannedWalkToday";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
@@ -1893,7 +1894,7 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, za
   );
 };
 
-function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser, tableView }) {
+function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser }) {
   const { role } = useUserRole();
   return (
     <div style={styles.bottomNav}>
@@ -1909,7 +1910,7 @@ function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUs
         onClick={() => navigateToView("map")}
       >
         <MapPin size={24} />
-        <span style={{ marginTop: "0.25rem" }}>{tableView ? "Tabela" : "Mapa"}</span>
+        <span style={{ marginTop: "0.25rem" }}>Mapa</span>
       </button>
       <button
         style={{ ...styles.bottomNavButton, ...(currentView === "myDogs" ? styles.bottomNavButtonActive : {}) }}
@@ -2577,6 +2578,7 @@ const DogCardView = ({
               )}
             </div>
           )}
+          <PlannedWalkToday dog={selectedDog} currentUser={currentUser} isAdmin={isAdmin} />
           <div style={{ padding: "1.5rem", paddingBottom: 0 }}>
             <DogPhoto
               photo={selectedDog.photo}
@@ -3654,7 +3656,7 @@ useEffect(() => {
       setCurrentView("home");
     } else if (view === "behaviorystPanel") {
       setCurrentView("home");
-    } else if (view === "schedule" || view === "introWalk") {
+    } else if (view === "schedule" || view === "introWalk" || view === "walkTable") {
       setCurrentView("home");
     }
     history.pushState(null, "", window.location.href);
@@ -3920,15 +3922,6 @@ useEffect(() => {
     return handleToggleBehaviorystDog(dogId);
   };
 
-  const [tableView, setTableView] = useState(() => localStorage.getItem("walkViewMode") === "table");
-
-  const toggleTableView = useCallback(() => {
-    setTableView((prev) => {
-      const next = !prev;
-      localStorage.setItem("walkViewMode", next ? "table" : "card");
-      return next;
-    });
-  }, []);
 
 const handleLogin = async () => {
   if (!isAuthEnabled) return;
@@ -4112,50 +4105,39 @@ const handleLogin = async () => {
         </div>
       )}
       {currentView === "home" && (
-        tableView ? (
-          <div style={{ padding: "0.5rem 0.75rem 5rem" }}>
-            <WalkScheduleView
-              dogs={dogs}
-              currentUser={currentUser}
-              isAdmin={isAdminUser}
-            />
-          </div>
-        ) : (
-          <HomeView
+        <HomeView
+          dogs={dogs}
+          onDogClick={handleDogClickFromDashboard}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+          setCurrentView={navigateToView}
+          isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
+        />
+      )}
+      {currentView === "walkTable" && (
+        <div style={{ padding: "0.5rem 0.75rem 5rem" }}>
+          <WalkScheduleView
             dogs={dogs}
-            onDogClick={handleDogClickFromDashboard}
-            hoveredCard={hoveredCard}
-            setHoveredCard={setHoveredCard}
-            setCurrentView={navigateToView}
+            currentUser={currentUser}
             isAdmin={isAdminUser}
-            isBehavioryst={isBehaviorystUser}
           />
-        )
+        </div>
       )}
       {currentView === "map" && (
-        tableView ? (
-          <div style={{ padding: "0.5rem 0.75rem" }}>
-            <WalkScheduleView
-              dogs={dogs}
-              currentUser={currentUser}
-              isAdmin={isAdminUser}
-            />
-          </div>
-        ) : (
-          <MapView
-            dogs={dogs}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            setSelectedPavilion={setSelectedPavilion}
-            setCurrentView={navigateToView}
-            setSelectedDog={setSelectedDog}
-            setDogCardFrom={setDogCardFrom}
-            hoveredCard={hoveredCard}
-            setHoveredCard={setHoveredCard}
-            isAdmin={isAdminUser}
-            isBehavioryst={isBehaviorystUser}
-          />
-        )
+        <MapView
+          dogs={dogs}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          setSelectedPavilion={setSelectedPavilion}
+          setCurrentView={navigateToView}
+          setSelectedDog={setSelectedDog}
+          setDogCardFrom={setDogCardFrom}
+          hoveredCard={hoveredCard}
+          setHoveredCard={setHoveredCard}
+          isAdmin={isAdminUser}
+          isBehavioryst={isBehaviorystUser}
+        />
       )}
       {currentView === "boxes" && (
         <BoxesView
@@ -4263,7 +4245,7 @@ const handleLogin = async () => {
           dogs={dogs}
         />
       )}
-      {["home", "map", "schedule", "introWalk"].includes(currentView) && currentUser && (
+      {["home", "map", "schedule", "introWalk", "walkTable"].includes(currentView) && currentUser && (
         <div style={{
           position: "fixed",
           bottom: 84,
@@ -4285,14 +4267,13 @@ const handleLogin = async () => {
             pointerEvents: "all",
           }}>
             <button
-              onClick={toggleTableView}
-              title={tableView ? "Widok mapy" : "Widok tabeli"}
+              onClick={() => navigateToView(currentView === "walkTable" ? "home" : "walkTable")}
               style={{
                 padding: "0.3rem 0.7rem",
                 borderRadius: "9999px",
                 border: "none",
-                background: tableView ? "#16a34a" : "#f3f4f6",
-                color: tableView ? "white" : "#374151",
+                background: currentView === "walkTable" ? "#16a34a" : "#f3f4f6",
+                color: currentView === "walkTable" ? "white" : "#374151",
                 fontSize: "0.75rem",
                 fontWeight: 600,
                 cursor: "pointer",
@@ -4342,13 +4323,12 @@ const handleLogin = async () => {
           </div>
         </div>
       )}
-      {(currentView === "schedule" || currentView === "introWalk" || ((currentView === "home" || currentView === "map") && tableView)) && (
+      {["schedule", "introWalk", "walkTable"].includes(currentView) && (
         <GlobalBottomNav
           currentView={currentView}
           navigateToView={navigateToView}
           isAdmin={isAdminUser}
           isBehaviorystUser={isBehaviorystUser}
-          tableView={tableView}
         />
       )}
     </RoleProvider>
