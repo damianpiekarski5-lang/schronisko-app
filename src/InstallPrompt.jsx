@@ -17,10 +17,14 @@ export default function InstallPrompt() {
       setVisible(true);
     };
 
+    const installedHandler = () => setInstalled(true);
     window.addEventListener("beforeinstallprompt", handler);
-    window.addEventListener("appinstalled", () => setInstalled(true));
+    window.addEventListener("appinstalled", installedHandler);
 
-    return () => window.removeEventListener("beforeinstallprompt", handler);
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+      window.removeEventListener("appinstalled", installedHandler);
+    };
   }, []);
 
   const handleInstall = async () => {

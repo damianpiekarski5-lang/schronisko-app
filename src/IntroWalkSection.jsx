@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import {
-  collection, query, where, orderBy, onSnapshot,
+  collection, query, where, onSnapshot,
   addDoc, deleteDoc, doc, serverTimestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -37,17 +37,26 @@ export default function IntroWalkSection({ dog, currentUser, isAdmin }) {
 
   useEffect(() => {
     if (!dog?.id) return;
+    // Same filtry równościowe — bez orderBy nie potrzeba indeksu
+    // złożonego; sortowanie po godzinie po stronie klienta
     const q = query(
       collection(db, "introWalks"),
       where("dogId", "==", dog.id),
-      where("date", "==", todayStr),
-      orderBy("time")
+      where("date", "==", todayStr)
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const result = [];
-      snap.forEach((d) => result.push({ id: d.id, ...d.data() }));
-      setTodayEntries(result);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const result = [];
+        snap.forEach((d) => result.push({ id: d.id, ...d.data() }));
+        result.sort((a, b) => String(a.time || "").localeCompare(String(b.time || "")));
+        setTodayEntries(result);
+      },
+      (err) => {
+        console.error("Błąd pobierania spacerów zapoznawczych:", err);
+        setError("Nie udało się pobrać dzisiejszych spacerów — sprawdź połączenie");
+      }
+    );
     return () => unsub();
   }, [dog?.id, todayStr]);
 
@@ -89,9 +98,13 @@ export default function IntroWalkSection({ dog, currentUser, isAdmin }) {
   async function handleDelete(entry) {
     const isOwner = entry.volunteerId === currentUser?.uid;
     if (!isOwner && !isAdmin) return;
+    if (!window.confirm(`Usunąć spacer zapoznawczy „${entry.interestedName}" (${entry.time})?`)) return;
     setDeleting(entry.id);
     try {
       await deleteDoc(doc(db, "introWalks", entry.id));
+    } catch (e) {
+      console.error("Błąd usuwania:", e);
+      setError("Nie udało się usunąć wpisu — spróbuj ponownie");
     } finally {
       setDeleting(null);
     }
@@ -171,7 +184,13 @@ export default function IntroWalkSection({ dog, currentUser, isAdmin }) {
         );
       })}
 
-      {todayEntries.length === 0 && !showForm && (
+      {error && !showForm && (
+        <p style={{ fontSize: "0.72rem", color: "#dc2626", margin: "0 0 0.25rem" }}>
+          ⚠️ {error}
+        </p>
+      )}
+
+      {todayEntries.length === 0 && !showForm && !error && (
         <p style={{ fontSize: "0.72rem", color: "#a16207", margin: 0 }}>
           Brak spacerów zapoznawczych dziś
         </p>

@@ -49,6 +49,12 @@ export default function ScheduleView({ currentUser, isAdmin }) {
   const [weekOffset, setWeekOffset] = useState(0);
   const [entries, setEntries] = useState({});
   const [saving, setSaving] = useState(null);
+  const [banner, setBanner] = useState(null);
+
+  function showBanner(text) {
+    setBanner(text);
+    setTimeout(() => setBanner(null), 6000);
+  }
 
   const weekStart = useMemo(() => getWeekStart(weekOffset), [weekOffset]);
   const days = useMemo(() => buildWeekDays(weekStart), [weekStart]);
@@ -62,27 +68,41 @@ export default function ScheduleView({ currentUser, isAdmin }) {
       where("date", ">=", startDate),
       where("date", "<=", endDate)
     );
-    const unsub = onSnapshot(q, (snap) => {
-      const result = {};
-      snap.forEach((d) => {
-        result[d.id] = d.data();
-      });
-      setEntries(result);
-    });
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const result = {};
+        snap.forEach((d) => {
+          result[d.id] = d.data();
+        });
+        setEntries(result);
+      },
+      (error) => {
+        console.error("Błąd subskrypcji grafiku:", error);
+        showBanner("Błąd połączenia z grafikiem — odśwież stronę lub sprawdź zasięg");
+      }
+    );
     return () => unsub();
   }, [startDate, endDate]);
 
   const handleSlotClick = useCallback(async (section, date, slotIndex) => {
     if (!currentUser) return;
+    if (saving) return; // blokada podwójnego tapnięcia
     const docId = slotDocId(section, date, slotIndex);
     const existing = entries[docId];
 
     if (existing) {
       const isOwner = existing.volunteerId === currentUser.uid;
       if (!isOwner && !isAdmin) return;
+      // Potwierdzenie — przypadkowe tapnięcie nie może cicho skasować dyżuru
+      const who = isOwner ? "swój wpis" : `wpis „${existing.volunteerName}"`;
+      if (!window.confirm(`Usunąć ${who} z grafiku (${date})?`)) return;
       setSaving(docId);
       try {
         await deleteDoc(doc(db, "scheduleEntries", docId));
+      } catch (e) {
+        console.error("Błąd usuwania wpisu:", e);
+        showBanner("Nie udało się usunąć wpisu — spróbuj ponownie");
       } finally {
         setSaving(null);
       }
@@ -97,16 +117,38 @@ export default function ScheduleView({ currentUser, isAdmin }) {
           volunteerName: currentUser.displayName || currentUser.email || "Wolontariusz",
           createdAt: new Date().toISOString(),
         });
+      } catch (e) {
+        // Reguły Firestore blokują nadpisanie — ktoś był szybszy
+        console.error("Błąd zapisu do grafiku:", e);
+        if (e?.code === "permission-denied") {
+          showBanner("Ktoś właśnie zapisał się w ten slot — wybierz inny");
+        } else {
+          showBanner("Nie udało się zapisać — sprawdź zasięg i spróbuj ponownie");
+        }
       } finally {
         setSaving(null);
       }
     }
-  }, [currentUser, entries, isAdmin]);
+  }, [currentUser, entries, isAdmin, saving]);
 
   const todayStr = toPolandDateStr(new Date());
 
   return (
     <div style={{ paddingBottom: "5rem" }}>
+      {banner && (
+        <div style={{
+          margin: "0.5rem 1rem 0",
+          padding: "0.5rem 0.75rem",
+          borderRadius: "0.5rem",
+          fontSize: "0.8rem",
+          fontWeight: 600,
+          background: "#fef3c7",
+          color: "#92400e",
+          border: "1px solid #fde68a",
+        }}>
+          {banner}
+        </div>
+      )}
       {/* Nagłówek z nawigacją */}
       <div style={{
         display: "flex",
