@@ -288,8 +288,7 @@ function getDogs(includeArchived) {
   const map = headerMap(values[0]);
   requireHeaders(map, [H.ID, H.NAME, H.ARCHIVE]);
 
-  const lastVolunteerMap = buildLastVolunteerMap_(ss);
-  const lastWalkTypeMap = buildLastWalkTypeMap_(ss);
+  const lastWalkMeta = buildLastWalkMeta_(ss);
 
   const out = [];
   for (let r = 1; r < values.length; r++) {
@@ -315,8 +314,8 @@ function getDogs(includeArchived) {
       extra: safeStr(row[map[H.EXTRA]]),
       photo: safeStr(row[map[H.PHOTO]]),
       lastWalk: safeStr(displayValues[r][map[H.LAST_WALK]]),
-      lastVolunteer: lastVolunteerMap[dogId] || "",
-      lastWalkType: lastWalkTypeMap[dogId] || "spacer",
+      lastVolunteer: lastWalkMeta[dogId]?.volunteer || "",
+      lastWalkType: lastWalkMeta[dogId]?.typ || "spacer",
       weight: safeStr(row[map[H.WEIGHT]]),
       status: safeStr(row[map[H.STATUS]]) || "dostępny",
       nieWydawacWlascicielowi: Boolean(row[map[H.NIE_WYDAWAC]]),
@@ -330,7 +329,10 @@ function getDogs(includeArchived) {
   return out;
 }
 
-function buildLastVolunteerMap_(ss) {
+// Jeden przebieg po arkuszu Spacery zamiast dwóch pełnych odczytów —
+// getDogs to najczęstsze zapytanie i rośnie z każdym zapisanym spacerem.
+// "Ostatni" wpis wybierany po dacie, nie po kolejności wierszy.
+function buildLastWalkMeta_(ss) {
   const sh = ss.getSheetByName(WALKS_SHEET_NAME);
   if (!sh) return {};
   const values = sh.getDataRange().getValues();
@@ -339,23 +341,15 @@ function buildLastVolunteerMap_(ss) {
   const result = {};
   for (let i = 1; i < values.length; i++) {
     const dogId = safeStr(values[i][wMap["DogId"]]);
-    const vol = safeStr(values[i][wMap["Wolontariusz"]]);
-    if (dogId && vol) result[dogId] = vol;
-  }
-  return result;
-}
-
-function buildLastWalkTypeMap_(ss) {
-  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
-  if (!sh) return {};
-  const values = sh.getDataRange().getValues();
-  if (values.length < 2) return {};
-  const wMap = headerMap(values[0]);
-  const result = {};
-  for (let i = 1; i < values.length; i++) {
-    const dogId = safeStr(values[i][wMap["DogId"]]);
-    const typ = safeStr(values[i][wMap["Typ"]]) || "spacer";
-    if (dogId) result[dogId] = typ;
+    if (!dogId) continue;
+    const dateStr = safeStr(values[i][wMap["Data spaceru"]]);
+    const existing = result[dogId];
+    if (existing && existing.date > dateStr) continue;
+    result[dogId] = {
+      date: dateStr,
+      volunteer: safeStr(values[i][wMap["Wolontariusz"]]),
+      typ: safeStr(values[i][wMap["Typ"]]) || "spacer",
+    };
   }
   return result;
 }
