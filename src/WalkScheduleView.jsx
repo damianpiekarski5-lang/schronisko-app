@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { collection, doc, setDoc, deleteDoc, getDocs, query, where } from "firebase/firestore";
+import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import {
   subscribeDailyWalks,
@@ -118,11 +118,6 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
   const loadData = useCallback(async () => {
     setLoadError(false);
     try {
-      // Plany z Firestore są szybkie — nie czekają na wolny Apps Script
-      loadPlannedWalks(startDate, endDate)
-        .then(setPlannedWalks)
-        .catch((e) => console.error("Błąd ładowania planów:", e));
-
       const [history, opiek] = await Promise.all([
         fetchWalkHistory(startDate, endDate),
         fetchAllOpiekunowie(),
@@ -137,6 +132,35 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     } finally {
       setLoading(false);
     }
+  }, [startDate, endDate]);
+
+  // Plany na żywo — jednorazowy odczyt potrafił pokazywać nieświeże dane,
+  // a próba zapisu na istniejący (niewidoczny) plan kończyła się
+  // odmową uprawnień (reguły nie pozwalają nadpisywać planów)
+  useEffect(() => {
+    if (!db) return;
+    const q = query(
+      collection(db, "plannedWalks"),
+      where("date", ">=", startDate),
+      where("date", "<=", endDate)
+    );
+    const unsub = onSnapshot(
+      q,
+      (snap) => {
+        const result = {};
+        snap.forEach((d) => {
+          const { dogId, date, volunteerId, volunteerName } = d.data();
+          if (!result[dogId]) result[dogId] = {};
+          result[dogId][date] = { volunteerId, volunteerName, docId: d.id };
+        });
+        setPlannedWalks(result);
+      },
+      (e) => {
+        console.error("Błąd subskrypcji planów:", e);
+        showBanner("error", `Nie udało się pobrać planów spacerów (${e?.code || "błąd"})`);
+      }
+    );
+    return () => unsub();
   }, [startDate, endDate]);
 
   useEffect(() => { loadData(); }, [loadData]);
@@ -161,22 +185,6 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     window.addEventListener("online", onOnline);
     return () => window.removeEventListener("online", onOnline);
   }, [currentUser]);
-
-  async function loadPlannedWalks(start, end) {
-    const q = query(
-      collection(db, "plannedWalks"),
-      where("date", ">=", start),
-      where("date", "<=", end)
-    );
-    const snap = await getDocs(q);
-    const result = {};
-    snap.forEach((d) => {
-      const { dogId, date, volunteerId, volunteerName } = d.data();
-      if (!result[dogId]) result[dogId] = {};
-      result[dogId][date] = { volunteerId, volunteerName, docId: d.id };
-    });
-    return result;
-  }
 
   const SECTOR_COLORS = {
     A:  "#a8d5a2",
@@ -369,7 +377,9 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     } catch (e) {
       console.error("Błąd zapisu:", e);
       if (e?.code === "permission-denied") {
-        showBanner("error", "Brak uprawnień zapisu — administrator musi wgrać aktualne reguły Firestore w konsoli Firebase (plik firestore.rules)");
+        const pid = db?.app?.options?.projectId || "?";
+        const who = currentUser?.uid ? `uid ${String(currentUser.uid).slice(0, 6)}…` : "NIEZALOGOWANY";
+        showBanner("error", `Brak uprawnień zapisu (projekt: ${pid}, ${who}) — porównaj z projektem, w którym wgrano reguły Firestore`);
       } else if (e?.code === "unavailable") {
         showBanner("error", "Brak połączenia z bazą — zapis spróbuje się ponowić automatycznie");
       } else {
