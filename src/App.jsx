@@ -3523,6 +3523,27 @@ const DogCardView = ({
 };
 
 const SESSION_KEY = "schronisko_session";
+const DOGS_CACHE_KEY = "schronisko_dogs_cache_v1";
+
+// Cache listy psów — aplikacja otwiera się natychmiast z ostatnimi danymi,
+// a świeże dociągają się w tle (Apps Script potrafi odpowiadać kilka sekund)
+function loadDogsCache() {
+  try {
+    const raw = localStorage.getItem(DOGS_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed?.dogs) || parsed.dogs.length === 0) return null;
+    return parsed.dogs;
+  } catch {
+    return null;
+  }
+}
+
+function saveDogsCache(dogs) {
+  try {
+    localStorage.setItem(DOGS_CACHE_KEY, JSON.stringify({ ts: Date.now(), dogs }));
+  } catch {}
+}
 
 function saveSession(view, dog, from, pavilion, box) {
   try {
@@ -3544,7 +3565,7 @@ function loadSession() {
 }
 
 const ShelterMapSystem = () => {
-  const [dogs, setDogs] = useState([]);
+  const [dogs, setDogs] = useState(() => loadDogsCache() || []);
   const _session = loadSession();
   // Widoki boxes/dogs bez zapamiętanego pawilonu pokazywałyby "Pawilon null"
   const _sessionView = (() => {
@@ -3558,7 +3579,9 @@ const ShelterMapSystem = () => {
   const [selectedBox, setSelectedBox] = useState(_session?.box ?? null);
   const [selectedDog, setSelectedDog] = useState(_session?.dog || null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [loading, setLoading] = useState(true);
+  // Pełny spinner tylko przy pierwszym uruchomieniu (brak cache);
+  // przy kolejnych — od razu widok, świeże dane w tle
+  const [loading, setLoading] = useState(dogs.length === 0);
   const [loadError, setLoadError] = useState(false);
   const [hoveredCard, setHoveredCard] = useState(null);
 const [currentUser, setCurrentUser] = useState(null);
@@ -3680,7 +3703,9 @@ useEffect(() => {
   return () => unsub();
 }, [isAuthEnabled]);
   const fetchData = async () => {
-    setLoading(true);
+    // Spinner tylko gdy nie mamy nic do pokazania (brak cache) —
+    // odświeżanie w tle nie może chować działającego widoku
+    if (dogs.length === 0) setLoading(true);
     setLoadError(false);
     try {
       const response = await fetch("/api/gs?action=getDogs");
@@ -3725,6 +3750,7 @@ useEffect(() => {
 
       const normalizedDogs = Array.from(dogsData.values());
       setDogs(normalizedDogs);
+      saveDogsCache(normalizedDogs);
       setSelectedDog((prev) => {
         if (!prev) return prev;
         const fresh = normalizedDogs.find((d) => d.id === prev.id);
