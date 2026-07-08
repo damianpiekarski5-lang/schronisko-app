@@ -38,6 +38,14 @@ service cloud.firestore {
       allow read, write: if isSignedIn();
     }
 
+    // Spacery dzienne — jeden dokument na dzień (mapa dogId -> wpis).
+    // Zapis/aktualizacja dla zalogowanych (każdy wolontariusz może
+    // zapisać i cofnąć dzisiejszy spacer); bez usuwania całych dni.
+    match /dailyWalks/{dateId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn();
+    }
+
     // Zaplanowane spacery (widok tabelaryczny — przyszłe dni)
     match /plannedWalks/{docId} {
       allow read: if isSignedIn();

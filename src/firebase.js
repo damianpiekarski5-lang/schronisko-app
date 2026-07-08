@@ -5,7 +5,11 @@ import {
   getAuth,
   setPersistence,
 } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 
 const firebaseConfig = {
   apiKey: process.env.REACT_APP_FIREBASE_API_KEY,
@@ -38,7 +42,18 @@ if (hasFirebaseConfig) {
   try {
     const app = initializeApp(firebaseConfig);
     auth = getAuth(app);
-    db = getFirestore(app);
+    // Cache offline: zapisy czekają w kolejce przy braku zasięgu
+    // i synchronizują się automatycznie po powrocie online
+    try {
+      db = initializeFirestore(app, {
+        localCache: persistentLocalCache({
+          tabManager: persistentMultipleTabManager(),
+        }),
+      });
+    } catch (cacheError) {
+      console.warn("Cache offline niedostępny, używam trybu online:", cacheError);
+      db = initializeFirestore(app, {});
+    }
     googleProvider = new GoogleAuthProvider();
 
     setPersistence(auth, browserLocalPersistence).catch((error) => {

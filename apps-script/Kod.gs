@@ -136,6 +136,10 @@ function doPost(e) {
       return json({ ok: true, data: { success: true } });
     }
 
+    if (action === "deleteWalk") {
+      return json({ ok: true, data: deleteWalk(payload) });
+    }
+
     if (action === "reportBehavior") {
       reportBehavior(payload);
       return json({ ok: true, data: { success: true } });
@@ -417,7 +421,17 @@ function recordWalk(payload) {
   if (rowIndex === -1) throw new Error("Nie znaleziono psa o ID: " + dogId);
 
   const dogRow = dogsValues[rowIndex];
-  const now = nowInPolandText();
+
+  // Opcjonalny walkAt — dla zapisów z kolejki offline (max 7 dni wstecz)
+  let now = nowInPolandText();
+  const walkAt = safeStr(payload?.walkAt);
+  if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(walkAt)) {
+    const parsed = new Date(walkAt.replace(" ", "T"));
+    const ageDays = (Date.now() - parsed.getTime()) / 86400000;
+    if (!isNaN(parsed) && ageDays >= 0 && ageDays <= 7) {
+      now = walkAt;
+    }
+  }
 
   const typ = safeStr(payload?.typ) === "wybieg" ? "wybieg" : "spacer";
 
@@ -444,7 +458,74 @@ function recordWalk(payload) {
     typ,
   ]);
 
-  dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
+  // Aktualizuj "Ostatni spacer" tylko jeśli nowy wpis jest nowszy
+  // (zapis z kolejki offline nie może cofnąć świeższego spaceru)
+  const currentLast = safeStr(dogRow[map[H.LAST_WALK]]);
+  if (!currentLast || now >= currentLast) {
+    dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
+  }
+}
+
+// Cofnięcie spaceru — usuwa wpisy psa z danego dnia (tylko dzisiejszego,
+// żeby wolontariusz mógł poprawić pomyłkowe tapnięcie) i odtwarza
+// poprzednią wartość "Ostatni spacer".
+function deleteWalk(payload) {
+  const dogId = safeStr(payload?.dogId);
+  const date = safeStr(payload?.date);
+  if (!dogId) throw new Error("Brak dogId");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) throw new Error("Nieprawidłowa data");
+
+  const todayPoland = Utilities.formatDate(new Date(), POLAND_TIMEZONE, "yyyy-MM-dd");
+  if (date !== todayPoland && !isAdminEmail_(payload?.user?.email)) {
+    throw new Error("Można cofnąć tylko dzisiejszy spacer");
+  }
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const walksSheet = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!walksSheet || walksSheet.getLastRow() < 2) return { success: true, deleted: 0 };
+
+  const values = walksSheet.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, ["Data spaceru", "DogId"]);
+
+  let deleted = 0;
+  let latestRemaining = "";
+  // Od dołu, żeby usuwanie nie przesuwało indeksów
+  for (let i = values.length - 1; i >= 1; i--) {
+    const row = values[i];
+    if (safeStr(row[map["DogId"]]) !== dogId) continue;
+    const dateKey = walkDateKey_(row[map["Data spaceru"]]);
+    if (dateKey === date) {
+      walksSheet.deleteRow(i + 1);
+      deleted++;
+    } else if (safeStr(row[map["Data spaceru"]]) > latestRemaining) {
+      latestRemaining = safeStr(row[map["Data spaceru"]]);
+    }
+  }
+
+  // Odtwórz "Ostatni spacer" z pozostałych wpisów
+  const dogsSheet = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (dogsSheet && deleted > 0) {
+    const dogsValues = dogsSheet.getDataRange().getValues();
+    const dogsMap = headerMap(dogsValues[0]);
+    const rowIndex = findDogRow(dogsValues, dogsMap, dogId);
+    if (rowIndex !== -1 && dogsMap[H.LAST_WALK] !== undefined) {
+      dogsSheet.getRange(rowIndex + 1, dogsMap[H.LAST_WALK] + 1).setValue(latestRemaining);
+    }
+  }
+
+  return { success: true, deleted: deleted };
+}
+
+// Klucz dnia (yyyy-MM-dd) z komórki "Data spaceru" — bez przechodzenia
+// przez new Date(string), które parsuje w strefie serwera, nie polskiej
+function walkDateKey_(rawDate) {
+  if (rawDate instanceof Date) {
+    return Utilities.formatDate(rawDate, POLAND_TIMEZONE, "yyyy-MM-dd");
+  }
+  const s = safeStr(rawDate);
+  const m = s.match(/^(\d{4}-\d{2}-\d{2})/);
+  return m ? m[1] : "";
 }
 
 // ===============================
@@ -1693,21 +1774,19 @@ function getWalksByDateRange_(startDate, endDate) {
   const sh = ss.getSheetByName(WALKS_SHEET_NAME);
   if (!sh || sh.getLastRow() < 2) return {};
 
-  const start = new Date(startDate + "T00:00:00");
-  const end = new Date(endDate + "T23:59:59");
   const values = sh.getDataRange().getValues();
   const map = headerMap(values[0]);
   const result = {};
 
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
-    const rawDate = row[map["Data spaceru"]];
-    const walkDate = rawDate instanceof Date ? rawDate : new Date(rawDate);
-    if (isNaN(walkDate) || walkDate < start || walkDate > end) continue;
+    // Porównanie po kluczu dnia (string) — new Date(string) parsowałby
+    // w strefie serwera i spacery koło północy lądowałyby w złym dniu
+    const dateKey = walkDateKey_(row[map["Data spaceru"]]);
+    if (!dateKey || dateKey < startDate || dateKey > endDate) continue;
 
     const dogId = safeStr(row[map["DogId"]]);
     if (!dogId) continue;
-    const dateKey = Utilities.formatDate(walkDate, POLAND_TIMEZONE, "yyyy-MM-dd");
     if (!result[dogId]) result[dogId] = [];
     if (!result[dogId].includes(dateKey)) result[dogId].push(dateKey);
   }
