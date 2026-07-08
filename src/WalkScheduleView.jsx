@@ -68,6 +68,7 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
   const [opiekunowie, setOpiekunowie] = useState({});
   const [savingCell, setSavingCell] = useState(null);
   const [banner, setBanner] = useState(null); // {type: "error"|"warning", text}
+  const [search, setSearch] = useState("");
 
   // todayStr jako stan — odświeża się po przekroczeniu północy
   // (PWA zostawiona na noc w telefonie nie zapisuje już pod wczorajszą datą)
@@ -212,9 +213,29 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
       });
   }, [dogs]);
 
-  function hasWalk(dogId, dateStr) {
+  const filteredDogs = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    if (!term) return sortedDogs;
+    return sortedDogs.filter((dog) => {
+      const boks = `${dog.pavilion || ""}${dog.box || ""}`.toLowerCase();
+      const opiekun = (opiekunowie[dog.id] || []).join(" ").toLowerCase();
+      return (
+        String(dog.name || "").toLowerCase().includes(term) ||
+        boks.includes(term) ||
+        opiekun.includes(term)
+      );
+    });
+  }, [sortedDogs, search, opiekunowie]);
+
+  // Spacer wykonany (Firestore lub archiwum arkusza) — bez planów
+  function hasDoneWalk(dogId, dateStr) {
     if (dailyWalks[dateStr]?.[dogId]) return true;
     if (walkHistory[dogId]?.includes(dateStr)) return true;
+    return false;
+  }
+
+  function hasWalk(dogId, dateStr) {
+    if (hasDoneWalk(dogId, dateStr)) return true;
     if (plannedWalks[dogId]?.[dateStr]) return true;
     return false;
   }
@@ -327,10 +348,16 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
   }
 
   function getCellStyle(dog, day) {
-    const walked = hasWalk(dog.id, day.str);
-    if (day.offset < 0) return walked ? CELL_STYLES.pastMarked : CELL_STYLES.past;
-    if (day.isToday) return walked ? CELL_STYLES.todayMarked : CELL_STYLES.today;
-    return walked ? CELL_STYLES.futureMarked : CELL_STYLES.future;
+    const done = hasDoneWalk(dog.id, day.str);
+    const planned = !done && !!getPlannedEntry(dog.id, day.str);
+    if (day.offset < 0) return done || planned ? CELL_STYLES.pastMarked : CELL_STYLES.past;
+    if (day.isToday) {
+      if (done) return CELL_STYLES.todayMarked;
+      // zaplanowany, ale jeszcze nie wykonany — jasna zieleń jak plan
+      if (planned) return CELL_STYLES.futureMarked;
+      return CELL_STYLES.today;
+    }
+    return done || planned ? CELL_STYLES.futureMarked : CELL_STYLES.future;
   }
 
   const headerDayColor = (day) => {
@@ -370,7 +397,8 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     );
   }
 
-  const colWidthPx = (day) => (day.isToday ? 56 : 36);
+  // >=48px — wygodne dla palca (także w rękawiczce)
+  const colWidthPx = (day) => (day.isToday ? 64 : 48);
 
   return (
     <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: "1rem" }}>
@@ -390,11 +418,39 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
           {banner.text}
         </div>
       )}
-      <table style={{ borderCollapse: "collapse", fontSize: "0.75rem", minWidth: "max-content" }}>
+      <div style={{ position: "sticky", left: 0, padding: "0.25rem 0 0.5rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: "1rem", fontWeight: 700, color: "#111827", margin: 0 }}>
+            📋 Harmonogram wyjść
+          </h2>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Szukaj: pies, boks, opiekun..."
+            style={{
+              flex: 1,
+              minWidth: 160,
+              padding: "0.45rem 0.6rem",
+              border: "1px solid #d1d5db",
+              borderRadius: "0.5rem",
+              fontSize: "0.85rem",
+              boxSizing: "border-box",
+            }}
+          />
+        </div>
+        <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", fontSize: "0.75rem", color: "#4b5563", marginTop: "0.4rem" }}>
+          <span><span style={{ background: "#16a34a", color: "white", padding: "0 5px", borderRadius: 3, fontWeight: 700 }}>X</span> dziś wykonany</span>
+          <span><span style={{ background: "#bbf7d0", padding: "0 5px", borderRadius: 3, fontWeight: 700 }}>P</span> zaplanowany</span>
+          <span><span style={{ background: "#d1fae5", padding: "0 5px", borderRadius: 3, fontWeight: 700 }}>X</span> wykonany wcześniej</span>
+          <span>Kliknij dziś/przyszłość aby zapisać lub cofnąć</span>
+        </div>
+      </div>
+      <table style={{ borderCollapse: "collapse", fontSize: "0.8rem", minWidth: "max-content" }}>
         <thead>
           <tr>
-            <th style={thStyle("#f9fafb", "#374151", 54)}>Boks</th>
-            <th style={thStyle("#f9fafb", "#374151", 160)}>Opiekun (Pies)</th>
+            <th style={{ ...thStyle("#f9fafb", "#374151", 62), left: 0, zIndex: 4 }}>Boks</th>
+            <th style={{ ...thStyle("#f9fafb", "#374151", 160), left: 62, zIndex: 4 }}>Opiekun (Pies)</th>
             {days.map((day) => (
               <th
                 key={day.str}
@@ -408,14 +464,14 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
                 }}
               >
                 <div>{day.dow}</div>
-                <div style={{ fontWeight: 400, fontSize: "0.65rem" }}>{day.label}</div>
+                <div style={{ fontWeight: 400, fontSize: "0.72rem" }}>{day.label}</div>
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {sortedDogs.map((dog, idx) => {
-            const prevDog = sortedDogs[idx - 1];
+          {filteredDogs.map((dog, idx) => {
+            const prevDog = filteredDogs[idx - 1];
             const sectorChanged = prevDog && prevDog.pavilion !== dog.pavilion;
             const opiekunList = opiekunowie[dog.id] || [];
             const opiekunFull = opiekunList.length > 0 ? opiekunList[0] : "";
@@ -436,16 +492,18 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
                   borderTop: sectorChanged ? "2px solid #9ca3af" : undefined,
                 }}
               >
-                <td style={{ ...tdStyle(54, rowBg), fontWeight: 700, color: "#374151" }}>
+                <td style={{ ...tdStyle(62, rowBg), fontWeight: 700, color: "#374151", position: "sticky", left: 0, zIndex: 1 }}>
                   {boks}
                 </td>
-                <td style={{ ...tdStyle(160, rowBg), fontWeight: 500 }}>
+                <td style={{ ...tdStyle(160, rowBg), fontWeight: 500, position: "sticky", left: 62, zIndex: 1 }}>
                   {dogLabel}
                 </td>
                 {days.map((day) => {
                   const cellKey = `${dog.id}-${day.str}`;
                   const isSaving = savingCell === cellKey;
-                  const walked = hasWalk(dog.id, day.str);
+                  const done = hasDoneWalk(dog.id, day.str);
+                  const planned = !done && !!getPlannedEntry(dog.id, day.str);
+                  const walked = done || planned;
                   const cellStyle = getCellStyle(dog, day);
                   const isClickable = day.offset >= 0;
 
@@ -471,7 +529,7 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
                           : undefined
                       }
                     >
-                      {isSaving ? "…" : walked ? "X" : ""}
+                      {isSaving ? "…" : done ? "X" : planned ? "P" : ""}
                     </td>
                   );
                 })}
@@ -495,7 +553,7 @@ const thBase = {
 };
 
 const tdBase = {
-  padding: "0.2rem 0.25rem",
+  padding: "0.55rem 0.25rem",
   border: "1px solid #e5e7eb",
 };
 
