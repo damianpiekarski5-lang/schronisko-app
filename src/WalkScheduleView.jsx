@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
-import { collection, doc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
+import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
 import {
   subscribeDailyWalks,
@@ -398,24 +398,49 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
           });
         } else {
           const docId = `${dog.id}_${dateStr}`;
-          await setDoc(doc(db, "plannedWalks", docId), {
-            dogId: dog.id,
-            date: dateStr,
-            volunteerId: currentUser.uid,
-            volunteerName: currentUser.displayName || currentUser.email,
-            createdAt: new Date().toISOString(),
-          });
-          setPlannedWalks((prev) => ({
-            ...prev,
-            [dog.id]: {
-              ...(prev[dog.id] || {}),
-              [dateStr]: {
-                volunteerId: currentUser.uid,
-                volunteerName: currentUser.displayName || currentUser.email,
-                docId,
+          try {
+            await setDoc(doc(db, "plannedWalks", docId), {
+              dogId: dog.id,
+              date: dateStr,
+              volunteerId: currentUser.uid,
+              volunteerName: currentUser.displayName || currentUser.email,
+              createdAt: new Date().toISOString(),
+            });
+            setPlannedWalks((prev) => ({
+              ...prev,
+              [dog.id]: {
+                ...(prev[dog.id] || {}),
+                [dateStr]: {
+                  volunteerId: currentUser.uid,
+                  volunteerName: currentUser.displayName || currentUser.email,
+                  docId,
+                },
               },
-            },
-          }));
+            }));
+          } catch (e) {
+            // Reguły nie pozwalają nadpisać istniejącego planu — jeśli pod tym
+            // id siedzi stary/niewidoczny dokument, pokaż go i pozwól odwołać
+            if (e?.code === "permission-denied") {
+              const snap = await getDoc(doc(db, "plannedWalks", docId));
+              if (snap.exists()) {
+                const d = snap.data();
+                setPlannedWalks((prev) => ({
+                  ...prev,
+                  [dog.id]: {
+                    ...(prev[dog.id] || {}),
+                    [dateStr]: {
+                      volunteerId: d.volunteerId || "",
+                      volunteerName: d.volunteerName || "nieznany",
+                      docId,
+                    },
+                  },
+                }));
+                showBanner("warning", `Ten termin miał już plan (${d.volunteerName || "nieznany"}) — kliknij ponownie, aby go odwołać`);
+                return;
+              }
+            }
+            throw e;
+          }
         }
       }
     } catch (e) {
