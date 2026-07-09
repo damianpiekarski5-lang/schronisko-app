@@ -395,9 +395,27 @@ const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
               fontWeight: "bold",
               color: "#111827",
               marginBottom: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              flexWrap: "wrap",
             }}
           >
             {dog.name}
+            {(walkPresentation.daysSince ?? 0) >= 5 && (
+              <span style={{
+                fontSize: "0.68rem",
+                fontWeight: 700,
+                color: "#991b1b",
+                background: "#fee2e2",
+                border: "1px solid #fca5a5",
+                borderRadius: "9999px",
+                padding: "0.15rem 0.55rem",
+                whiteSpace: "nowrap",
+              }}>
+                {walkPresentation.daysSince >= 999 ? "brak danych o spacerze" : `${walkPresentation.daysSince} dni bez spaceru`}
+              </span>
+            )}
           </h3>
           <p
             style={{
