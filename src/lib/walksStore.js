@@ -17,6 +17,14 @@ import { db } from "../firebase";
 const QUEUE_KEY = "walkSheetQueue";
 const POLAND_TZ = "Europe/Warsaw";
 
+// ID psów z arkusza bywają w formacie "P 156/07/25" — ukośnik w id
+// dokumentu Firestore tworzy ścieżkę podkolekcji, do której nie pasuje
+// żadna reguła (permission-denied). Zamieniamy znaki specjalne na "_".
+export function planDocId(dogId, dateStr) {
+  const safe = String(dogId).replace(/[\/#?%\.]/g, "_");
+  return `${safe}_${dateStr}`;
+}
+
 function nowPolandText() {
   const d = new Date();
   const date = new Intl.DateTimeFormat("sv-SE", { timeZone: POLAND_TZ }).format(d);

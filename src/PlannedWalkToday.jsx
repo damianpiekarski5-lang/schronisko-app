@@ -4,7 +4,7 @@ import {
   doc, getDoc, setDoc, deleteDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { recordWalkFs, syncWalkToSheet } from "./lib/walksStore";
+import { recordWalkFs, syncWalkToSheet, planDocId } from "./lib/walksStore";
 
 const POLAND_TZ = "Europe/Warsaw";
 
@@ -103,7 +103,7 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
     if (!currentUser || busy) return;
     setBusy(true);
     setError("");
-    const docId = `${dog.id}_${dateStr}`;
+    const docId = planDocId(dog.id, dateStr);
     try {
       await setDoc(doc(db, "plannedWalks", docId), {
         dogId: dog.id,

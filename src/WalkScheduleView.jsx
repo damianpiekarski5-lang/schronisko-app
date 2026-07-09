@@ -8,6 +8,7 @@ import {
   syncWalkToSheet,
   syncUndoToSheet,
   flushSheetQueue,
+  planDocId,
 } from "./lib/walksStore";
 
 const POLAND_TZ = "Europe/Warsaw";
@@ -397,7 +398,7 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
             return updated;
           });
         } else {
-          const docId = `${dog.id}_${dateStr}`;
+          const docId = planDocId(dog.id, dateStr);
           try {
             await setDoc(doc(db, "plannedWalks", docId), {
               dogId: dog.id,
