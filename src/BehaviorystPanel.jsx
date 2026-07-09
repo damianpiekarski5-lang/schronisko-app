@@ -55,6 +55,7 @@ const PANEL_TABS = [
   { key: "dogs", label: "Psy", icon: "🐕" },
   { key: "today", label: "Dziś", icon: "📅" },
   { key: "library", label: "Biblioteka", icon: "📚" },
+  { key: "report", label: "Raport", icon: "📊" },
 ];
 
 function formatDate(ts) {
@@ -298,6 +299,9 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [tab, setTab] = useState("progress");
   const [showSession, setShowSession] = useState(false);
   const [savingProgram, setSavingProgram] = useState(false);
+  const [showNote, setShowNote] = useState(false);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -344,6 +348,8 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
         dogName: dog.name,
         assignedProgramId: programId || null,
         status: "in_progress",
+        // data rozpoczęcia pracy z psem — ustawiana raz, do raportów
+        ...(training?.startedAt ? {} : { startedAt: serverTimestamp() }),
       });
       await load();
     } catch (e) {
@@ -425,6 +431,37 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           {assignedProgram && (
             <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.4rem" }}>{assignedProgram.description}</div>
           )}
+          <div style={{ ...S.row, marginTop: "0.75rem", gap: "0.75rem", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <label style={S.label}>Następna sesja (plan)</label>
+              <input
+                type="date"
+                value={training?.nextSessionDate || ""}
+                onChange={async (e) => {
+                  const v = e.target.value;
+                  try {
+                    await fsSaveDogTraining(dog.id, { nextSessionDate: v || null });
+                    await load();
+                  } catch (err) {
+                    console.error("Błąd zapisu planu sesji:", err);
+                    alert("Nie udało się zapisać planu sesji.");
+                  }
+                }}
+                style={S.input}
+              />
+            </div>
+            <button
+              onClick={() => setShowNote(true)}
+              style={{ ...S.btn, ...S.btnSecondary, ...S.btnSmall, alignSelf: "flex-end" }}
+            >
+              📝 Notatka
+            </button>
+          </div>
+          {training?.nextSessionDate && training.nextSessionDate < new Date().toISOString().slice(0, 10) && (
+            <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>
+              ⚠️ Zaplanowana sesja zaległa ({formatDate(training.nextSessionDate)})
+            </div>
+          )}
         </div>
 
         {/* Tabs */}
@@ -468,7 +505,9 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
                 <div key={s.id} style={S.card}>
                   <div style={{ ...S.row, justifyContent: "space-between", marginBottom: "0.4rem" }}>
                     <span style={{ fontWeight: "600", fontSize: "0.9rem" }}>{formatDate(s.date)}</span>
-                    <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>{s.exercises?.length || 0} ćwiczeń</span>
+                    <span style={{ fontSize: "0.8rem", color: "#6b7280" }}>
+                      {s.type === "note" || !s.exercises?.length ? "📝 Notatka" : `${s.exercises.length} ćwiczeń`}
+                    </span>
                   </div>
                   {s.exercises?.map((e, i) => {
                     const res = RESULTS.find(r => r.key === e.result);
@@ -495,6 +534,46 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           onClose={() => setShowSession(false)}
           onSave={handleSaveSession}
         />
+      )}
+
+      {showNote && (
+        <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", padding: "1rem" }}>
+          <div style={{ backgroundColor: "white", borderRadius: "1rem", padding: "1.25rem", width: "100%", maxWidth: 420 }}>
+            <div style={{ fontWeight: 700, marginBottom: "0.6rem" }}>📝 Notatka — {dog.name}</div>
+            <textarea
+              value={noteText}
+              onChange={(e) => setNoteText(e.target.value)}
+              style={{ ...S.textarea, minHeight: 110 }}
+              placeholder="Obserwacje, zachowanie, zalecenia..."
+              autoFocus
+            />
+            <div style={{ ...S.row, marginTop: "0.75rem" }}>
+              <button onClick={() => { setShowNote(false); setNoteText(""); }} style={{ ...S.btn, ...S.btnSecondary, flex: 1 }}>
+                Anuluj
+              </button>
+              <button
+                disabled={savingNote || !noteText.trim()}
+                onClick={async () => {
+                  setSavingNote(true);
+                  try {
+                    await fsAddSession(dog.id, { exercises: [], notes: noteText.trim(), type: "note" });
+                    setShowNote(false);
+                    setNoteText("");
+                    await load();
+                  } catch (e) {
+                    console.error("Błąd zapisu notatki:", e);
+                    alert("Nie udało się zapisać notatki.");
+                  } finally {
+                    setSavingNote(false);
+                  }
+                }}
+                style={{ ...S.btn, ...S.btnPrimary, flex: 2, opacity: savingNote || !noteText.trim() ? 0.6 : 1 }}
+              >
+                {savingNote ? "Zapisuję..." : "Zapisz notatkę"}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <div style={S.bottomNav}>
@@ -886,6 +965,195 @@ function TodayTab({ dogs, trainings, onSelectDog }) {
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Raport miesięczny ────────────────────────────────────────────────────────
+// Zbiera dane wszystkich psów behawiorysty za wybrany miesiąc i renderuje
+// raport gotowy do druku / zapisu jako PDF (window.print).
+
+function tsToDate(ts) {
+  if (!ts) return null;
+  return ts instanceof Timestamp ? ts.toDate() : new Date(ts);
+}
+
+function ReportTab({ dogs, programs, currentUser }) {
+  const [month, setMonth] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+  const [report, setReport] = useState(null);
+  const [generating, setGenerating] = useState(false);
+  const [genError, setGenError] = useState("");
+
+  const monthLabel = (m) =>
+    new Date(m + "-01T12:00:00").toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+
+  const generate = async () => {
+    setGenerating(true);
+    setGenError("");
+    try {
+      const rows = [];
+      for (const dog of dogs) {
+        const [training, progress, sessions] = await Promise.all([
+          fsGetDogTraining(dog.id),
+          fsGetDogProgress(dog.id),
+          fsGetDogSessions(dog.id),
+        ]);
+        const dated = sessions
+          .map((sess) => ({ ...sess, _d: tsToDate(sess.date) }))
+          .filter((sess) => sess._d);
+        const inMonth = dated.filter((sess) => {
+          const k = `${sess._d.getFullYear()}-${String(sess._d.getMonth() + 1).padStart(2, "0")}`;
+          return k === month;
+        }).sort((a, b) => a._d - b._d);
+        const firstEver = dated.length ? dated.reduce((a, b) => (a._d < b._d ? a : b))._d : null;
+        const startedAt = tsToDate(training?.startedAt) || firstEver;
+        const program = programs.find((pr) => pr.id === training?.assignedProgramId);
+        rows.push({
+          dog,
+          program,
+          startedAt,
+          progress: progress || [],
+          sessionsInMonth: inMonth,
+          totalSessions: dated.length,
+        });
+      }
+      setReport({ month, rows, generatedAt: new Date() });
+    } catch (e) {
+      console.error("Błąd generowania raportu:", e);
+      setGenError("Nie udało się wygenerować raportu — sprawdź połączenie i spróbuj ponownie.");
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const resultLabel = (r) =>
+    r === "sukces" ? "✔ sukces" : r === "częściowo" ? "◐ częściowo" : r === "nieudane" ? "✘ nieudane" : "";
+
+  return (
+    <div style={S.content}>
+      <style>{`
+        @media print {
+          body * { visibility: hidden; }
+          #behav-report, #behav-report * { visibility: visible; }
+          #behav-report { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; }
+          .report-dog { break-inside: avoid; }
+        }
+      `}</style>
+
+      <div style={S.card}>
+        <label style={S.label}>Miesiąc raportu</label>
+        <div style={{ ...S.row, gap: "0.6rem" }}>
+          <input
+            type="month"
+            value={month}
+            onChange={(e) => setMonth(e.target.value)}
+            style={{ ...S.input, flex: 1 }}
+          />
+          <button
+            onClick={generate}
+            disabled={generating || dogs.length === 0}
+            style={{ ...S.btn, ...S.btnPrimary, whiteSpace: "nowrap", opacity: generating ? 0.6 : 1 }}
+          >
+            {generating ? "Generuję..." : "Generuj raport"}
+          </button>
+        </div>
+        {dogs.length === 0 && (
+          <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem" }}>
+            Brak psów w panelu — dodaj psy w zakładce Psy.
+          </div>
+        )}
+        {genError && (
+          <div style={{ fontSize: "0.8rem", color: "#dc2626", marginTop: "0.5rem", fontWeight: 600 }}>{genError}</div>
+        )}
+      </div>
+
+      {report && (
+        <>
+          <button
+            onClick={() => window.print()}
+            style={{ ...S.btn, ...S.btnSecondary, width: "100%", marginBottom: "0.75rem" }}
+          >
+            🖨 Drukuj / zapisz jako PDF
+          </button>
+
+          <div id="behav-report" style={{ background: "white", borderRadius: "0.75rem", border: "1px solid #e5e7eb", padding: "1.25rem" }}>
+            <div style={{ borderBottom: "2px solid #7c3aed", paddingBottom: "0.75rem", marginBottom: "1rem" }}>
+              <div style={{ fontSize: "1.15rem", fontWeight: 800, color: "#111827" }}>
+                Raport pracy behawioralnej — {monthLabel(report.month)}
+              </div>
+              <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                Behawiorysta: {currentUser?.displayName || currentUser?.email || "—"} ·
+                wygenerowano {report.generatedAt.toLocaleDateString("pl-PL")} ·
+                psów w pracy: {report.rows.length}
+              </div>
+            </div>
+
+            {report.rows.map(({ dog, program, startedAt, progress, sessionsInMonth, totalSessions }) => (
+              <div key={dog.id} className="report-dog" style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb" }}>
+                <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827" }}>
+                  {dog.name}
+                  <span style={{ fontWeight: 400, color: "#6b7280", fontSize: "0.82rem", marginLeft: "0.5rem" }}>
+                    ID: {dog.id}{dog.pavilion ? ` · ${dog.pavilion}${dog.box ? "/" + dog.box : ""}` : ""}
+                  </span>
+                </div>
+                <div style={{ fontSize: "0.82rem", color: "#374151", margin: "0.35rem 0 0.6rem" }}>
+                  Początek pracy: <strong>{startedAt ? startedAt.toLocaleDateString("pl-PL") : "—"}</strong>
+                  {" · "}Program: <strong>{program?.name || "brak"}</strong>
+                  {" · "}Sesje w miesiącu: <strong>{sessionsInMonth.length}</strong> (łącznie: {totalSessions})
+                </div>
+
+                {progress.length > 0 && (
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem", marginBottom: "0.6rem" }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #d1d5db", textAlign: "left", color: "#6b7280" }}>
+                        <th style={{ padding: "0.25rem 0.3rem" }}>Ćwiczenie</th>
+                        <th style={{ padding: "0.25rem 0.3rem" }}>Etap</th>
+                        <th style={{ padding: "0.25rem 0.3rem" }}>Skuteczność</th>
+                        <th style={{ padding: "0.25rem 0.3rem" }}>Sesje</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {progress.map((pr) => (
+                        <tr key={pr.id} style={{ borderBottom: "1px solid #f3f4f6" }}>
+                          <td style={{ padding: "0.25rem 0.3rem" }}>{pr.exerciseName || pr.id}</td>
+                          <td style={{ padding: "0.25rem 0.3rem" }}>{pr.stage || 1}/5</td>
+                          <td style={{ padding: "0.25rem 0.3rem", fontWeight: 600, color: (pr.successRate || 0) >= 80 ? "#16a34a" : (pr.successRate || 0) >= 50 ? "#ca8a04" : "#dc2626" }}>
+                            {pr.successRate || 0}%
+                          </td>
+                          <td style={{ padding: "0.25rem 0.3rem" }}>{pr.sessionsCount || 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+
+                {sessionsInMonth.length > 0 ? (
+                  <div style={{ fontSize: "0.78rem" }}>
+                    <div style={{ fontWeight: 700, color: "#374151", marginBottom: "0.25rem" }}>Sesje i notatki:</div>
+                    {sessionsInMonth.map((sess) => (
+                      <div key={sess.id} style={{ padding: "0.25rem 0", borderBottom: "1px dotted #e5e7eb" }}>
+                        <strong>{sess._d.toLocaleDateString("pl-PL")}</strong>
+                        {sess.exercises?.length > 0 && (
+                          <span style={{ color: "#374151" }}>
+                            {" — "}
+                            {sess.exercises.filter((e) => e.result).map((e) => `${e.exerciseName}: ${resultLabel(e.result)}`).join("; ")}
+                          </span>
+                        )}
+                        {sess.notes && <div style={{ color: "#6b7280", fontStyle: "italic" }}>„{sess.notes}"</div>}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "0.78rem", color: "#9ca3af" }}>Brak sesji w tym miesiącu</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, onToggleBehaviorystDog, setCurrentView, onLogout }) {
   const [tab, setTab] = useState("dogs");
   const [exercises, setExercises] = useState([]);
@@ -1036,6 +1304,9 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
             />
           )}
           {tab === "today" && <TodayTab dogs={behaviorystDogs || []} trainings={trainings} onSelectDog={setSelectedDog} />}
+          {tab === "report" && (
+            <ReportTab dogs={behaviorystDogs || []} programs={programs} currentUser={currentUser} />
+          )}
           {tab === "library" && (
             <LibraryView
               exercises={exercises}

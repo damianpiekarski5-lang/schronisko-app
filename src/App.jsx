@@ -27,6 +27,8 @@ import IntroWalkSection from "./IntroWalkSection";
 import IntroWalkView from "./IntroWalkView";
 import PlannedWalkToday from "./PlannedWalkToday";
 import { recordWalkFs, syncWalkToSheet } from "./lib/walksStore";
+import { db } from "./firebase";
+import { doc as fsDoc, onSnapshot as fsOnSnapshot } from "firebase/firestore";
 import { TopBar, AppNav } from "./components/AppShell";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
@@ -2144,6 +2146,20 @@ const DogCardView = ({
       .catch(() => {});
   }, [selectedDog?.id]);
 
+  // Dzisiejszy spacer z Firestore — "Ostatni spacer" widzi zapisy
+  // z tabeli/karty na żywo, zanim arkusz i lista psów się odświeżą
+  const [todayFsWalk, setTodayFsWalk] = useState(null);
+  useEffect(() => {
+    if (!selectedDog?.id || !db) return;
+    const todayStr = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Warsaw" }).format(new Date());
+    const unsub = fsOnSnapshot(
+      fsDoc(db, "dailyWalks", todayStr),
+      (snap) => setTodayFsWalk(snap.data()?.walks?.[selectedDog.id] || null),
+      () => {}
+    );
+    return () => unsub();
+  }, [selectedDog?.id]);
+
   const handleSaveWalkType = async (typ) => {
     if (!currentUser || savingWalk) return;
     setSavingWalk(typ);
@@ -2241,7 +2257,13 @@ const DogCardView = ({
 
   if (!selectedDog) return null;
 
-  const formattedLastWalk = formatLastWalkDate(selectedDog.lastWalk);
+  // Nowszy wpis z Firestore (dzisiejszy) wygrywa ze starą wartością z arkusza
+  const fsWalkNewer =
+    todayFsWalk?.at && (!selectedDog.lastWalk || String(todayFsWalk.at) > String(selectedDog.lastWalk));
+  const effLastWalk = fsWalkNewer ? todayFsWalk.at : selectedDog.lastWalk;
+  const effLastVolunteer = fsWalkNewer ? todayFsWalk.volunteerName : selectedDog.lastVolunteer;
+  const effLastWalkType = fsWalkNewer ? (todayFsWalk.type || "spacer") : selectedDog.lastWalkType;
+  const formattedLastWalk = formatLastWalkDate(effLastWalk);
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
@@ -2551,7 +2573,7 @@ const DogCardView = ({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.5rem" }}>
                 <h3 style={{ ...styles.sectionTitle, margin: 0 }}>
                   <Clock size={20} style={{ marginRight: "0.5rem" }} />
-                  {selectedDog.lastWalkType === "wybieg" ? "Ostatni wybieg" : "Ostatni spacer"}
+                  {effLastWalkType === "wybieg" ? "Ostatni wybieg" : "Ostatni spacer"}
                 </h3>
                 <button
                   onClick={handleToggleWalkHistory}
@@ -2563,8 +2585,8 @@ const DogCardView = ({
               {formattedLastWalk ? (
                 <>
                   <p style={{ color: "#374151", fontSize: "1.125rem", fontWeight: "600" }}>{formattedLastWalk}</p>
-                  {selectedDog.lastVolunteer && (
-                    <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>👤 {selectedDog.lastVolunteer}</p>
+                  {effLastVolunteer && (
+                    <p style={{ color: "#6b7280", fontSize: "0.875rem", marginTop: "0.25rem" }}>👤 {effLastVolunteer}</p>
                   )}
                 </>
               ) : (
