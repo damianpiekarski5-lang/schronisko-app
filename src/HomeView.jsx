@@ -248,6 +248,10 @@ const HomeView = ({
   const filteredDogs = filterDogs();
   const dogsNeedingWalk = getDogsNeedingWalk();
   const allDogsSorted = getAllDogsSorted();
+  // Sekcja pilnych ograniczona do 10 — bez tego strona renderowała
+  // ~200 kart w sekcji pilnych i drugie tyle w "Wszystkie psy"
+  const [showAllUrgent, setShowAllUrgent] = useState(false);
+  const urgentShown = showAllUrgent ? dogsNeedingWalk : dogsNeedingWalk.slice(0, 10);
 
   return (
     <div style={styles.pageContainer}>
@@ -325,7 +329,7 @@ const HomeView = ({
                     ⏰ Potrzebują spaceru ({dogsNeedingWalk.length})
                   </h2>
                 </div>
-                {dogsNeedingWalk.map((dog) => (
+                {urgentShown.map((dog) => (
                   <DogCard
                     key={dog.id}
                     dog={dog}
@@ -335,6 +339,26 @@ const HomeView = ({
                     urgent
                   />
                 ))}
+                {dogsNeedingWalk.length > 10 && (
+                  <button
+                    onClick={() => setShowAllUrgent((v) => !v)}
+                    style={{
+                      width: "100%",
+                      padding: "0.7rem",
+                      borderRadius: "0.75rem",
+                      border: "1px solid #fca5a5",
+                      background: "#fef2f2",
+                      color: "#991b1b",
+                      fontWeight: 600,
+                      fontSize: "0.85rem",
+                      cursor: "pointer",
+                    }}
+                  >
+                    {showAllUrgent
+                      ? "Zwiń listę ▲"
+                      : `Pokaż wszystkie pilne (${dogsNeedingWalk.length}) ▼`}
+                  </button>
+                )}
               </div>
             )}
 

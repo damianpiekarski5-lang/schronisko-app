@@ -26,6 +26,7 @@ import ScheduleView from "./ScheduleView";
 import IntroWalkSection from "./IntroWalkSection";
 import IntroWalkView from "./IntroWalkView";
 import PlannedWalkToday from "./PlannedWalkToday";
+import { recordWalkFs, syncWalkToSheet } from "./lib/walksStore";
 import { TopBar, AppNav } from "./components/AppShell";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
@@ -2148,24 +2149,30 @@ const DogCardView = ({
     setSavingWalk(typ);
     setWalkMessage(null);
     try {
-      const token = await currentUser.getIdToken();
-      const response = await fetch("/api/gs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "recordWalk", dogId: selectedDog.id, dogName: selectedDog.name, notes: "", typ }),
+      // Firestore najpierw (tabela widzi zapis na żywo, działa offline,
+      // spacer da się cofnąć); arkusz w tle z kolejką ponawiania
+      const todayStr = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Warsaw" }).format(new Date());
+      await recordWalkFs(todayStr, selectedDog, currentUser, typ);
+      const synced = await syncWalkToSheet(selectedDog, typ, currentUser);
+
+      const volunteerName = currentUser.displayName || "Wolontariusz";
+      const label = typ === "wybieg" ? "Wybieg" : "Spacer";
+      setWalkMessage({
+        type: "success",
+        text: synced
+          ? `✅ ${label} zapisany przez ${volunteerName}!`
+          : `✅ ${label} zapisany — synchronizacja z arkuszem po odzyskaniu zasięgu`,
       });
-      const result = await response.json();
-      if (result?.ok) {
-        const volunteerName = currentUser.displayName || "Wolontariusz";
-        const label = typ === "wybieg" ? "Wybieg" : "Spacer";
-        setWalkMessage({ type: "success", text: `✅ ${label} zapisany przez ${volunteerName}!` });
-        onSurveySaved?.(selectedDog.id);
-        setTimeout(() => setWalkMessage(null), 5000);
-      } else {
-        setWalkMessage({ type: "error", text: "❌ " + (result?.error || "Błąd zapisu") });
-      }
-    } catch {
-      setWalkMessage({ type: "error", text: "❌ Błąd połączenia" });
+      onSurveySaved?.(selectedDog.id);
+      setTimeout(() => setWalkMessage(null), 5000);
+    } catch (e) {
+      console.error("Błąd zapisu spaceru:", e);
+      setWalkMessage({
+        type: "error",
+        text: e?.code === "permission-denied"
+          ? "❌ Brak uprawnień zapisu — skontaktuj się z administratorem"
+          : "❌ Błąd zapisu — sprawdź zasięg i spróbuj ponownie",
+      });
     } finally {
       setSavingWalk(false);
     }

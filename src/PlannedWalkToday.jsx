@@ -4,7 +4,7 @@ import {
   doc, getDoc, setDoc, deleteDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
-import { recordWalkFs, syncWalkToSheet, planDocId } from "./lib/walksStore";
+import { recordWalkFs, syncWalkToSheet, undoWalkFs, syncUndoToSheet, planDocId } from "./lib/walksStore";
 
 const POLAND_TZ = "Europe/Warsaw";
 
@@ -99,6 +99,29 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
     }
   }
 
+  // Cofnięcie dzisiejszego spaceru (pomyłkowe kliknięcie) —
+  // usuwa wpis z Firestore i z arkusza (autor wpisu lub admin)
+  async function handleUndo() {
+    if (!currentUser || busy || !doneEntry) return;
+    const isOwner = doneEntry.volunteerId === currentUser.uid;
+    if (!isOwner && !isAdmin) return;
+    if (!window.confirm(`Cofnąć dzisiejszy ${doneEntry.type === "wybieg" ? "wybieg" : "spacer"} (${doneEntry.volunteerName})?`)) return;
+    setBusy(true);
+    setError("");
+    try {
+      await undoWalkFs(todayStr, dog.id);
+      const synced = await syncUndoToSheet(dog.id, todayStr, currentUser);
+      if (!synced) {
+        setError("Cofnięto — synchronizacja z arkuszem nastąpi po odzyskaniu zasięgu");
+      }
+    } catch (e) {
+      console.error("Błąd cofania spaceru:", e);
+      setError(friendlyError(e, "cofnięcie"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function handlePlan(dateStr) {
     if (!currentUser || busy) return;
     setBusy(true);
@@ -175,15 +198,29 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
           background: "#dcfce7",
           border: "1px solid #86efac",
           color: "#166534",
-          fontSize: "0.9rem",
-          fontWeight: 600,
         }}>
-          ✅ Dziś wyprowadził(a) mnie: {doneEntry.volunteerName || "Wolontariusz"}
-          {doneEntry.at && (
-            <span style={{ fontWeight: 400, fontSize: "0.78rem", marginLeft: "0.4rem", color: "#15803d" }}>
-              ({String(doneEntry.at).slice(11, 16)})
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.9rem", fontWeight: 600 }}>
+              ✅ Dziś {doneEntry.type === "wybieg" ? "na wybiegu ze mną był(a)" : "wyprowadził(a) mnie"}: {doneEntry.volunteerName || "Wolontariusz"}
+              {doneEntry.at && (
+                <span style={{ fontWeight: 400, fontSize: "0.78rem", marginLeft: "0.4rem", color: "#15803d" }}>
+                  ({String(doneEntry.at).slice(11, 16)})
+                </span>
+              )}
             </span>
-          )}
+            {(doneEntry.volunteerId === currentUser?.uid || isAdmin) && (
+              <button
+                onClick={handleUndo}
+                disabled={busy}
+                style={{
+                  background: "none", border: "none", color: "#6b7280", cursor: "pointer",
+                  fontSize: "0.75rem", textDecoration: "underline", whiteSpace: "nowrap",
+                }}
+              >
+                cofnij
+              </button>
+            )}
+          </div>
         </div>
       )}
 
