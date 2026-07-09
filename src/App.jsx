@@ -26,6 +26,7 @@ import ScheduleView from "./ScheduleView";
 import IntroWalkSection from "./IntroWalkSection";
 import IntroWalkView from "./IntroWalkView";
 import PlannedWalkToday from "./PlannedWalkToday";
+import { TopBar, AppNav } from "./components/AppShell";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
@@ -1159,55 +1160,7 @@ const MapView = ({
         )}
       </div>
 
-      <div style={styles.bottomNav}>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("home")}
-        >
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button
-          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
-        >
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("myDogs")}
-        >
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        {canViewSector(userRole) && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("sector")}
-          >
-            <Building2 size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-        {isBehavioryst && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behaviorystPanel")}
-          >
-            <Dumbbell size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Trening</span>
-          </button>
-        )}
-      </div>
+      
     </div>
   );
 };
@@ -1330,55 +1283,7 @@ const BoxesView = ({
           })}
         </div>
       </div>
-      <div style={styles.bottomNav}>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("home")}
-        >
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button
-          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
-        >
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("myDogs")}
-        >
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        {canViewSector(userRole) && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("sector")}
-          >
-            <Building2 size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-        {isBehavioryst && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behaviorystPanel")}
-          >
-            <Dumbbell size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Trening</span>
-          </button>
-        )}
-      </div>
+      
     </div>
   );
 };
@@ -1543,55 +1448,7 @@ const DogsListView = ({
           </div>
         )}
       </div>
-      <div style={styles.bottomNav}>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("home")}
-        >
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button
-          style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}
-        >
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("myDogs")}
-        >
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        {canViewSector(userRole) && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("sector")}
-          >
-            <Building2 size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-        {isBehavioryst && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behaviorystPanel")}
-          >
-            <Dumbbell size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Trening</span>
-          </button>
-        )}
-      </div>
+      
     </div>
   );
 };
@@ -1664,38 +1521,7 @@ const MyDogsView = ({ myDogs, setCurrentView, setSelectedDog, setDogCardFrom, ho
           ))
         )}
       </div>
-      <div style={styles.bottomNav}>
-        <button style={styles.bottomNavButton} onClick={() => setCurrentView("home")}>
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button style={styles.bottomNavButton} onClick={() => setCurrentView("map")}>
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}>
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        {canViewSector(userRole) && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("sector")}>
-            <Building2 size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-          </button>
-        )}
-        {isAdmin && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("panel")}>
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-        {isBehavioryst && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("behaviorystPanel")}>
-            <Dumbbell size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Trening</span>
-          </button>
-        )}
-      </div>
+      
     </div>
   );
 };
@@ -1893,62 +1719,6 @@ const AmbulatoriumPanel = ({ noFood, walkBlocked, próbkaKału, pobranieKrwi, za
     </div>
   );
 };
-
-function GlobalBottomNav({ currentView, navigateToView, isAdmin, isBehaviorystUser }) {
-  const { role } = useUserRole();
-  return (
-    <div style={styles.bottomNav}>
-      <button
-        style={{ ...styles.bottomNavButton, ...(currentView === "home" ? styles.bottomNavButtonActive : {}) }}
-        onClick={() => navigateToView("home")}
-      >
-        <Home size={24} />
-        <span style={{ marginTop: "0.25rem" }}>Home</span>
-      </button>
-      <button
-        style={{ ...styles.bottomNavButton, ...(currentView === "map" ? styles.bottomNavButtonActive : {}) }}
-        onClick={() => navigateToView("map")}
-      >
-        <MapPin size={24} />
-        <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-      </button>
-      <button
-        style={{ ...styles.bottomNavButton, ...(currentView === "myDogs" ? styles.bottomNavButtonActive : {}) }}
-        onClick={() => navigateToView("myDogs")}
-      >
-        <Star size={24} />
-        <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-      </button>
-      {canViewSector(role) && (
-        <button
-          style={{ ...styles.bottomNavButton, ...(currentView === "sector" ? styles.bottomNavButtonActive : {}) }}
-          onClick={() => navigateToView("sector")}
-        >
-          <Building2 size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-        </button>
-      )}
-      {isAdmin && (
-        <button
-          style={{ ...styles.bottomNavButton, ...(currentView === "panel" ? styles.bottomNavButtonActive : {}) }}
-          onClick={() => navigateToView("panel")}
-        >
-          <Shield size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Panel</span>
-        </button>
-      )}
-      {isBehaviorystUser && (
-        <button
-          style={{ ...styles.bottomNavButton, ...(currentView === "behaviorystPanel" ? styles.bottomNavButtonActive : {}) }}
-          onClick={() => navigateToView("behaviorystPanel")}
-        >
-          <Dumbbell size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Trening</span>
-        </button>
-      )}
-    </div>
-  );
-}
 
 const DogCardView = ({
   selectedDog,
@@ -3463,56 +3233,7 @@ const DogCardView = ({
           </div>
         </div>
       </div>
-      <div style={styles.bottomNav}>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("home")}
-        >
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("map")}
-        >
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button
-          style={styles.bottomNavButton}
-          onClick={() => setCurrentView("myDogs")}
-        >
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        {canViewSector(role) && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("sector")}
-          >
-            <Building2 size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-          </button>
-        )}
-        {isAdmin && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("panel")}
-          >
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-        {isBehaviorystOwner && (
-          <button
-            style={styles.bottomNavButton}
-            onClick={() => setCurrentView("behaviorystPanel")}
-          >
-            <Dumbbell size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Trening</span>
-          </button>
-        )}
-      </div>
+      
       {showBehaviorReport && (
         <BehaviorReport
           dog={selectedDog}
@@ -4089,15 +3810,11 @@ const handleLogin = async () => {
   return (
     <RoleProvider currentUser={currentUser}>
       <InstallPrompt />
-      {isAuthEnabled && currentUser && currentView !== "behaviorystPanel" && (
-        <div style={{ position: "fixed", top: 8, right: 8, zIndex: 200 }}>
-          <button
-            onClick={handleLogout}
-            style={{ background: "white", border: "1px solid #e5e7eb", borderRadius: "9999px", padding: "0.5rem 0.75rem", display: "flex", alignItems: "center", gap: "0.35rem", cursor: "pointer" }}
-          >
-            <LogOut size={16} /> Wyloguj
-          </button>
-        </div>
+      {currentView !== "behaviorystPanel" && currentView !== "mapEditor" && (
+        <TopBar
+          currentView={currentView}
+          onLogout={isAuthEnabled && currentUser ? handleLogout : null}
+        />
       )}
       {!isAuthEnabled && (
         <div style={{ padding: "0.75rem 1rem", backgroundColor: "#fff7ed", color: "#9a3412", borderBottom: "1px solid #fdba74" }}>
@@ -4245,90 +3962,12 @@ const handleLogin = async () => {
           dogs={dogs}
         />
       )}
-      {["home", "map", "schedule", "introWalk", "walkTable"].includes(currentView) && currentUser && (
-        <div style={{
-          position: "fixed",
-          bottom: 84,
-          left: 0,
-          right: 0,
-          zIndex: 150,
-          display: "flex",
-          justifyContent: "center",
-          pointerEvents: "none",
-        }}>
-          <div style={{
-            display: "flex",
-            gap: "0.5rem",
-            background: "white",
-            borderRadius: "9999px",
-            padding: "0.3rem 0.6rem",
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            border: "1px solid #e5e7eb",
-            pointerEvents: "all",
-          }}>
-            <button
-              onClick={() => navigateToView(currentView === "walkTable" ? "home" : "walkTable")}
-              style={{
-                padding: "0.3rem 0.7rem",
-                borderRadius: "9999px",
-                border: "none",
-                background: currentView === "walkTable" ? "#16a34a" : "#f3f4f6",
-                color: currentView === "walkTable" ? "white" : "#374151",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.3rem",
-              }}
-            >
-              📋 Tabela
-            </button>
-            <button
-              onClick={() => navigateToView(currentView === "schedule" ? "home" : "schedule")}
-              style={{
-                padding: "0.3rem 0.7rem",
-                borderRadius: "9999px",
-                border: "none",
-                background: currentView === "schedule" ? "#2563eb" : "#f3f4f6",
-                color: currentView === "schedule" ? "white" : "#374151",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.3rem",
-              }}
-            >
-              📅 Grafik
-            </button>
-            <button
-              onClick={() => navigateToView(currentView === "introWalk" ? "home" : "introWalk")}
-              style={{
-                padding: "0.3rem 0.7rem",
-                borderRadius: "9999px",
-                border: "none",
-                background: currentView === "introWalk" ? "#d97706" : "#f3f4f6",
-                color: currentView === "introWalk" ? "white" : "#374151",
-                fontSize: "0.75rem",
-                fontWeight: 600,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                gap: "0.3rem",
-              }}
-            >
-              🐾 Spacer zap.
-            </button>
-          </div>
-        </div>
-      )}
-      {["schedule", "introWalk", "walkTable"].includes(currentView) && (
-        <GlobalBottomNav
+      {!["behaviorystPanel", "mapEditor"].includes(currentView) && (!isAuthEnabled || currentUser) && (
+        <AppNav
           currentView={currentView}
-          navigateToView={navigateToView}
+          onNavigate={navigateToView}
           isAdmin={isAdminUser}
-          isBehaviorystUser={isBehaviorystUser}
+          isBehavioryst={isBehaviorystUser}
         />
       )}
     </RoleProvider>

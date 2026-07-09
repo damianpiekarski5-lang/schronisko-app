@@ -418,30 +418,7 @@ const SectorView = ({ setCurrentView, setSelectedDog, setDogCardFrom, currentUse
         </div>
       )}
 
-      <div style={styles.bottomNav}>
-        <button style={styles.bottomNavButton} onClick={() => setCurrentView("home")}>
-          <Home size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Home</span>
-        </button>
-        <button style={styles.bottomNavButton} onClick={() => setCurrentView("map")}>
-          <MapPin size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Mapa</span>
-        </button>
-        <button style={styles.bottomNavButton} onClick={() => setCurrentView("myDogs")}>
-          <Star size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Moje psy</span>
-        </button>
-        <button style={{ ...styles.bottomNavButton, ...styles.bottomNavButtonActive }}>
-          <Building2 size={24} />
-          <span style={{ marginTop: "0.25rem" }}>Sektor</span>
-        </button>
-        {isAdmin && (
-          <button style={styles.bottomNavButton} onClick={() => setCurrentView("panel")}>
-            <Shield size={24} />
-            <span style={{ marginTop: "0.25rem" }}>Panel</span>
-          </button>
-        )}
-      </div>
+      
     </div>
   );
 };
