@@ -2367,27 +2367,6 @@ const DogCardView = ({
             )}
           </div>
           <div style={{ padding: "1.25rem" }}>
-            <button
-              onClick={() => onToggleFavorite(selectedDog.id)}
-              disabled={!currentUser || isFavoriteToggleInProgress}
-              style={{
-                ...styles.walkButton,
-                backgroundColor: isFavorite ? "#f59e0b" : "#2563eb",
-                boxShadow: isFavorite
-                  ? "0 2px 4px rgba(245, 158, 11, 0.3)"
-                  : "0 2px 4px rgba(37, 99, 235, 0.3)",
-                ...((!currentUser || isFavoriteToggleInProgress)
-                  ? styles.walkButtonDisabled
-                  : {}),
-              }}
-            >
-              <Star size={24} style={{ marginRight: "0.75rem" }} />
-              {isFavoriteToggleInProgress
-                ? "Zapisywanie..."
-                : isFavorite
-                ? "Odepnij z Moje psy"
-                : "Przypnij do Moje psy"}
-            </button>
             {favoriteActionState?.error && (
               <div
                 style={{
@@ -2416,7 +2395,8 @@ const DogCardView = ({
                 {behaviorystState.error}
               </div>
             )}
-            <div style={{ display: "flex", gap: "0.5rem", marginBottom: "0" }}>
+            {/* Główne akcje wolontariusza — zawsze na górze karty */}
+            <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.5rem" }}>
               <button
                 onClick={() => handleSaveWalkType("spacer")}
                 disabled={!currentUser || !!savingWalk || walkBlocked.active}
@@ -2424,8 +2404,9 @@ const DogCardView = ({
                   flex: 1,
                   ...styles.walkButton,
                   marginBottom: 0,
-                  fontSize: "1rem",
-                  padding: "1rem 0.5rem",
+                  fontSize: "1.05rem",
+                  padding: "1.1rem 0.5rem",
+                  backgroundColor: (!currentUser || !!savingWalk || walkBlocked.active) ? undefined : "#16a34a",
                   ...(!currentUser || !!savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
                 }}
               >
@@ -2438,8 +2419,8 @@ const DogCardView = ({
                   flex: 1,
                   ...styles.walkButton,
                   marginBottom: 0,
-                  fontSize: "1rem",
-                  padding: "1rem 0.5rem",
+                  fontSize: "1.05rem",
+                  padding: "1.1rem 0.5rem",
                   backgroundColor: (!currentUser || !!savingWalk || walkBlocked.active) ? undefined : "#2563eb",
                   ...(!currentUser || !!savingWalk || walkBlocked.active ? styles.walkButtonDisabled : {}),
                 }}
@@ -2470,6 +2451,33 @@ const DogCardView = ({
                 {walkMessage.text}
               </div>
             )}
+            <button
+              onClick={() => onToggleFavorite(selectedDog.id)}
+              disabled={!currentUser || isFavoriteToggleInProgress}
+              style={{
+                width: "100%",
+                padding: "0.7rem",
+                marginBottom: "0.75rem",
+                borderRadius: "0.75rem",
+                border: isFavorite ? "1px solid #f59e0b" : "1px solid #d1d5db",
+                background: isFavorite ? "#fef3c7" : "white",
+                color: isFavorite ? "#92400e" : "#374151",
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: (!currentUser || isFavoriteToggleInProgress) ? 0.55 : 1,
+              }}
+            >
+              <Star size={18} style={{ marginRight: "0.5rem" }} />
+              {isFavoriteToggleInProgress
+                ? "Zapisywanie..."
+                : isFavorite
+                ? "Odepnij z Moje psy"
+                : "Przypnij do Moje psy"}
+            </button>
             {medReportSuccessMsg && (
               <div style={{ marginBottom: "1rem", padding: "0.75rem", borderRadius: "0.75rem", backgroundColor: "#dcfce7", color: "#166534", fontSize: "0.875rem", fontWeight: 600 }}>
                 {medReportSuccessMsg}
@@ -2478,7 +2486,18 @@ const DogCardView = ({
             {currentUser && (
               <button
                 onClick={() => { setShowMedReportModal(true); setMedReportModalErr(null); }}
-                style={{ ...styles.walkButton, backgroundColor: "#DC2626", boxShadow: "0 2px 4px rgba(220,38,38,0.3)", marginBottom: "0.5rem" }}
+                style={{
+                  width: "100%",
+                  padding: "0.7rem",
+                  marginBottom: "0.75rem",
+                  borderRadius: "0.75rem",
+                  border: "1px solid #fca5a5",
+                  background: "#fef2f2",
+                  color: "#991b1b",
+                  fontWeight: 700,
+                  fontSize: "0.9rem",
+                  cursor: "pointer",
+                }}
               >
                 🚨 Zgłoś problem medyczny
               </button>
@@ -2584,27 +2603,45 @@ const DogCardView = ({
             <button
               onClick={() => setShowBehaviorReport(true)}
               style={{
-                ...styles.walkButton,
-                backgroundColor: "#f59e0b",
-                boxShadow: "0 2px 4px rgba(245, 158, 11, 0.3)",
+                width: "100%",
+                padding: "0.7rem",
+                marginBottom: "0.75rem",
+                borderRadius: "0.75rem",
+                border: "1px solid #d1d5db",
+                background: "white",
+                color: "#374151",
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}
             >
-              <ClipboardPlus size={24} style={{ marginRight: "0.75rem" }} />
+              <ClipboardPlus size={18} style={{ marginRight: "0.5rem" }} />
               Zgłoszenie do pracy behawioralnej
             </button>
             <button
               onClick={handleToggleOpiekun}
               disabled={!currentUser || togglingOpiekun}
               style={{
-                ...styles.walkButton,
-                backgroundColor: isOpiekun ? "#16a34a" : "#6b7280",
-                boxShadow: isOpiekun
-                  ? "0 2px 4px rgba(22,163,74,0.3)"
-                  : "0 2px 4px rgba(107,114,128,0.3)",
-                ...(!currentUser || togglingOpiekun ? styles.walkButtonDisabled : {}),
+                width: "100%",
+                padding: "0.7rem",
+                marginBottom: "0.75rem",
+                borderRadius: "0.75rem",
+                border: isOpiekun ? "1px solid #86efac" : "1px solid #d1d5db",
+                background: isOpiekun ? "#dcfce7" : "white",
+                color: isOpiekun ? "#166534" : "#374151",
+                fontWeight: 600,
+                fontSize: "0.9rem",
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                opacity: (!currentUser || togglingOpiekun) ? 0.55 : 1,
               }}
             >
-              <Users size={24} style={{ marginRight: "0.75rem" }} />
+              <Users size={18} style={{ marginRight: "0.5rem" }} />
               {togglingOpiekun
                 ? "Zapisywanie..."
                 : isOpiekun
