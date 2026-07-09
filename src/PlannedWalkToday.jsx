@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from "react";
 import {
   collection, query, where, onSnapshot,
-  doc, setDoc, deleteDoc,
+  doc, getDoc, setDoc, deleteDoc,
 } from "firebase/firestore";
 import { db } from "./firebase";
 import { recordWalkFs, syncWalkToSheet } from "./lib/walksStore";
@@ -24,11 +24,12 @@ function dayLabel(offset) {
   return "Pojutrze";
 }
 
-function friendlyError(e) {
+function friendlyError(e, op) {
+  const code = e?.code || e?.message || "nieznany błąd";
   if (e?.code === "permission-denied") {
-    return "Brak uprawnień zapisu — administrator musi wgrać aktualne reguły Firestore";
+    return `Brak uprawnień (${op}: permission-denied) — prześlij ten komunikat administratorowi`;
   }
-  return "Nie udało się zapisać — sprawdź zasięg i spróbuj ponownie";
+  return `Nie udało się zapisać (${op}: ${code}) — spróbuj ponownie`;
 }
 
 // Sekcja spacerów na karcie psa:
@@ -92,7 +93,7 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
       }
     } catch (e) {
       console.error("Błąd potwierdzania spaceru:", e);
-      setError(friendlyError(e));
+      setError(friendlyError(e, "potwierdzenie"));
     } finally {
       setBusy(false);
     }
@@ -102,8 +103,9 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
     if (!currentUser || busy) return;
     setBusy(true);
     setError("");
+    const docId = `${dog.id}_${dateStr}`;
     try {
-      await setDoc(doc(db, "plannedWalks", `${dog.id}_${dateStr}`), {
+      await setDoc(doc(db, "plannedWalks", docId), {
         dogId: dog.id,
         date: dateStr,
         volunteerId: currentUser.uid,
@@ -113,7 +115,27 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
       setShowPlanner(false);
     } catch (e) {
       console.error("Błąd planowania spaceru:", e);
-      setError(friendlyError(e));
+      // Reguły nie pozwalają nadpisać istniejącego planu — jeśli pod tym
+      // terminem siedzi stary/niewidoczny dokument, pokaż go zamiast błędu
+      if (e?.code === "permission-denied") {
+        try {
+          const snap = await getDoc(doc(db, "plannedWalks", docId));
+          if (snap.exists()) {
+            const d = snap.data();
+            setPlans((prev) => {
+              if (prev.some((pln) => pln.docId === docId)) return prev;
+              return [...prev, { docId, ...d, date: dateStr, dogId: dog.id }]
+                .sort((a, b) => a.date.localeCompare(b.date));
+            });
+            setShowPlanner(false);
+            setError(`Ten termin miał już plan (${d.volunteerName || "nieznany"}) — możesz go odwołać poniżej`);
+            return;
+          }
+        } catch (readErr) {
+          console.error("Błąd odczytu istniejącego planu:", readErr);
+        }
+      }
+      setError(friendlyError(e, "planowanie"));
     } finally {
       setBusy(false);
     }
@@ -130,7 +152,7 @@ export default function PlannedWalkToday({ dog, currentUser, isAdmin }) {
       await deleteDoc(doc(db, "plannedWalks", plan.docId));
     } catch (e) {
       console.error("Błąd odwoływania planu:", e);
-      setError(friendlyError(e));
+      setError(friendlyError(e, "odwołanie planu"));
     } finally {
       setBusy(false);
     }
