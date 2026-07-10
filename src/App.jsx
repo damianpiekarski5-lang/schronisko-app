@@ -3992,6 +3992,7 @@ const handleLogin = async () => {
             hoveredCard={hoveredCard}
             setHoveredCard={setHoveredCard}
             onStartWork={handleStartBehaviorystWork}
+            onRefreshDogs={fetchData}
           />
         )}
         {currentView === "behaviorystPanel" && isBehaviorystUser && (

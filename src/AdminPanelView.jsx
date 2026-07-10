@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft, Users } from "lucide-react";
+import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft, Users, Database } from "lucide-react";
+import { parseDogListPdf, normalizeDogId } from "./lib/pdfDogList";
 import { ROLES, ROLE_LABELS } from "./lib/roles";
 
 const styles = {
@@ -101,6 +102,7 @@ const AdminPanelView = ({
   hoveredCard,
   setHoveredCard,
   onStartWork,
+  onRefreshDogs,
 }) => {
   const [activeTab, setActiveTab] = useState("reports");
   const [reports, setReports] = useState([]);
@@ -292,7 +294,7 @@ const AdminPanelView = ({
       <div style={styles.content}>
         {!selectedReport && (
           <>
-            <div style={{ ...styles.tabs, gridTemplateColumns: "1fr 1fr 1fr" }}>
+            <div style={{ ...styles.tabs, gridTemplateColumns: "1fr 1fr" }}>
               <button
                 onClick={() => setActiveTab("reports")}
                 style={{ ...styles.tabButton, ...(activeTab === "reports" ? styles.tabButtonActive : {}) }}
@@ -310,6 +312,12 @@ const AdminPanelView = ({
                 style={{ ...styles.tabButton, ...(activeTab === "users" ? styles.tabButtonActive : {}) }}
               >
                 <Users size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Użytkownicy
+              </button>
+              <button
+                onClick={() => setActiveTab("database")}
+                style={{ ...styles.tabButton, ...(activeTab === "database" ? styles.tabButtonActive : {}) }}
+              >
+                <Database size={16} style={{ marginRight: 6, verticalAlign: "text-bottom" }} /> Baza
               </button>
             </div>
 
@@ -357,6 +365,10 @@ const AdminPanelView = ({
                   })
                 )}
               </>
+            )}
+
+            {activeTab === "database" && (
+              <DatabaseUpdateTab dogs={dogs} currentUser={currentUser} onRefreshDogs={onRefreshDogs} />
             )}
 
             {activeTab === "users" && (
@@ -490,5 +502,212 @@ const AdminPanelView = ({
     </div>
   );
 };
+
+// ─── Zbiorcza aktualizacja bazy z rejestru PDF ────────────────────────────────
+// Admin wgrywa PDF "Rejestr zwierząt przebywających"; narzędzie porównuje go
+// z bazą aplikacji i po zatwierdzeniu wykonuje jedną zbiorczą aktualizację:
+// nowe psy, przenosiny (pawilon/boks), archiwizacja nieobecnych.
+function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
+  const [parsing, setParsing] = useState(false);
+  const [diff, setDiff] = useState(null);
+  const [checks, setChecks] = useState(null);
+  const [running, setRunning] = useState(false);
+  const [result, setResult] = useState(null);
+  const [error, setError] = useState("");
+
+  const box = { background: "white", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", marginBottom: "0.75rem" };
+  const secTitle = { fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.5rem", color: "#111827" };
+
+  const handleFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setParsing(true);
+    setError("");
+    setDiff(null);
+    setResult(null);
+    try {
+      const rows = await parseDogListPdf(file);
+      if (rows.length === 0) {
+        setError("Nie znaleziono psów w tym pliku — upewnij się, że to PDF rejestru zwierząt.");
+        return;
+      }
+      const appById = new Map(
+        (dogs || []).filter((d) => d.id).map((d) => [normalizeDogId(d.id), d])
+      );
+      const pdfById = new Map(rows.map((r) => [r.id, r]));
+
+      const toAdd = rows.filter((r) => !appById.has(r.id));
+      const toArchive = (dogs || []).filter((d) => d.id && !pdfById.has(normalizeDogId(d.id)));
+      const toRelocate = rows
+        .map((r) => {
+          const d = appById.get(r.id);
+          if (!d) return null;
+          const samePav = String(d.pavilion || "").toUpperCase() === r.pavilion;
+          const sameBox = Number(d.box) === Number(r.box);
+          if (samePav && sameBox) return null;
+          return { pdf: r, app: d };
+        })
+        .filter(Boolean);
+      const unmatchable = (dogs || []).filter((d) => !d.id);
+
+      setDiff({ fileName: file.name, count: rows.length, toAdd, toArchive, toRelocate, unmatchable });
+      setChecks({
+        add: Object.fromEntries(toAdd.map((r) => [r.id, true])),
+        relocate: Object.fromEntries(toRelocate.map((r) => [r.pdf.id, true])),
+        archive: Object.fromEntries(toArchive.map((d) => [normalizeDogId(d.id), true])),
+      });
+    } catch (err) {
+      console.error("Błąd parsowania PDF:", err);
+      setError("Nie udało się odczytać PDF: " + (err?.message || "nieznany błąd"));
+    } finally {
+      setParsing(false);
+    }
+  };
+
+  const toggle = (group, key) =>
+    setChecks((c) => ({ ...c, [group]: { ...c[group], [key]: !c[group][key] } }));
+
+  const selCount = (group, list) => list.filter((k) => checks?.[group]?.[k]).length;
+
+  const execute = async () => {
+    if (!diff || !currentUser || running) return;
+    const add = diff.toAdd.filter((r) => checks.add[r.id]).map((r) => ({ id: r.id, name: r.name, pavilion: r.pavilion, box: r.box }));
+    const relocate = diff.toRelocate.filter((r) => checks.relocate[r.pdf.id]).map((r) => ({ dogId: r.app.id, pavilion: r.pdf.pavilion, box: r.pdf.box }));
+    const archive = diff.toArchive.filter((d) => checks.archive[normalizeDogId(d.id)]).map((d) => ({ dogId: d.id }));
+    const total = add.length + relocate.length + archive.length;
+    if (total === 0) { setError("Nie zaznaczono żadnych zmian."); return; }
+    if (!window.confirm(`Wykonać aktualizację bazy?\n\n• nowe psy: ${add.length}\n• przenosiny: ${relocate.length}\n• do archiwum: ${archive.length}\n\nZmiany trafią do arkusza Google.`)) return;
+
+    setRunning(true);
+    setError("");
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "bulkUpdateDogs", add, relocate, archive }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      setResult(json.data);
+      setDiff(null);
+      onRefreshDogs?.();
+    } catch (err) {
+      console.error("Błąd aktualizacji bazy:", err);
+      setError("Aktualizacja nie powiodła się: " + (err?.message || "nieznany błąd"));
+    } finally {
+      setRunning(false);
+    }
+  };
+
+  const CheckRow = ({ checked, onChange, children }) => (
+    <label style={{ display: "flex", alignItems: "center", gap: "0.5rem", padding: "0.35rem 0", borderBottom: "1px solid #f3f4f6", fontSize: "0.85rem", cursor: "pointer" }}>
+      <input type="checkbox" checked={checked} onChange={onChange} style={{ width: 18, height: 18, flexShrink: 0 }} />
+      <span style={{ flex: 1 }}>{children}</span>
+    </label>
+  );
+
+  return (
+    <div>
+      <div style={box}>
+        <div style={secTitle}>📄 Aktualizacja bazy z rejestru PDF</div>
+        <p style={{ fontSize: "0.82rem", color: "#6b7280", margin: "0 0 0.75rem" }}>
+          Wgraj PDF „Rejestr zwierząt przebywających". Narzędzie porówna go z bazą aplikacji
+          i pokaże zmiany do zatwierdzenia — nic nie dzieje się automatycznie.
+        </p>
+        <label style={{ display: "inline-block", padding: "0.65rem 1.25rem", borderRadius: "0.5rem", background: "#2563eb", color: "white", fontWeight: 700, fontSize: "0.9rem", cursor: "pointer" }}>
+          {parsing ? "Czytam PDF..." : "Wybierz plik PDF"}
+          <input type="file" accept="application/pdf" onChange={handleFile} disabled={parsing} style={{ display: "none" }} />
+        </label>
+        {error && (
+          <p style={{ marginTop: "0.6rem", color: "#991b1b", fontSize: "0.85rem", fontWeight: 600 }}>⚠️ {error}</p>
+        )}
+      </div>
+
+      {result && (
+        <div style={{ ...box, background: "#dcfce7", border: "1px solid #86efac" }}>
+          <div style={{ fontWeight: 700, color: "#166534", marginBottom: "0.3rem" }}>✅ Aktualizacja wykonana</div>
+          <div style={{ fontSize: "0.85rem", color: "#166534" }}>
+            Dodano: {result.added} · przeniesiono: {result.relocated} · zarchiwizowano: {result.archived}
+          </div>
+          {result.errors?.length > 0 && (
+            <div style={{ fontSize: "0.78rem", color: "#92400e", marginTop: "0.4rem" }}>
+              Uwagi: {result.errors.join("; ")}
+            </div>
+          )}
+        </div>
+      )}
+
+      {diff && (
+        <>
+          <div style={{ ...box, background: "#eff6ff", border: "1px solid #bfdbfe" }}>
+            <div style={{ fontSize: "0.85rem", color: "#1e40af" }}>
+              <strong>{diff.fileName}</strong> — {diff.count} psów w rejestrze, {(dogs || []).length} w aplikacji.
+            </div>
+          </div>
+
+          {diff.toAdd.length > 0 && (
+            <div style={box}>
+              <div style={secTitle}>🆕 Nowe psy ({selCount("add", diff.toAdd.map((r) => r.id))}/{diff.toAdd.length})</div>
+              {diff.toAdd.map((r) => (
+                <CheckRow key={r.id} checked={!!checks.add[r.id]} onChange={() => toggle("add", r.id)}>
+                  <strong>{r.name || "(bez imienia)"}</strong> · {r.id} · {r.pavilion}{r.box ?? ""}
+                </CheckRow>
+              ))}
+            </div>
+          )}
+
+          {diff.toRelocate.length > 0 && (
+            <div style={box}>
+              <div style={secTitle}>📦 Przenosiny ({selCount("relocate", diff.toRelocate.map((r) => r.pdf.id))}/{diff.toRelocate.length})</div>
+              {diff.toRelocate.map((r) => (
+                <CheckRow key={r.pdf.id} checked={!!checks.relocate[r.pdf.id]} onChange={() => toggle("relocate", r.pdf.id)}>
+                  <strong>{r.app.name}</strong> · {r.pdf.id}: {String(r.app.pavilion || "?")}{r.app.box ?? "?"} → <strong>{r.pdf.pavilion}{r.pdf.box ?? ""}</strong>
+                </CheckRow>
+              ))}
+            </div>
+          )}
+
+          {diff.toArchive.length > 0 && (
+            <div style={{ ...box, border: "1px solid #fca5a5" }}>
+              <div style={{ ...secTitle, color: "#991b1b" }}>
+                🗄 Do archiwum — brak w rejestrze ({selCount("archive", diff.toArchive.map((d) => normalizeDogId(d.id)))}/{diff.toArchive.length})
+              </div>
+              {diff.toArchive.map((d) => (
+                <CheckRow key={d.id} checked={!!checks.archive[normalizeDogId(d.id)]} onChange={() => toggle("archive", normalizeDogId(d.id))}>
+                  <strong>{d.name}</strong> · {d.id} · {d.pavilion}{d.box ?? ""}
+                </CheckRow>
+              ))}
+            </div>
+          )}
+
+          {diff.unmatchable.length > 0 && (
+            <div style={{ ...box, background: "#fef3c7", border: "1px solid #fde68a" }}>
+              <div style={{ fontSize: "0.8rem", color: "#92400e" }}>
+                ⚠️ {diff.unmatchable.length} psów w aplikacji nie ma ID — nie można ich porównać z rejestrem:
+                {" "}{diff.unmatchable.map((d) => d.name).join(", ")}
+              </div>
+            </div>
+          )}
+
+          {diff.toAdd.length === 0 && diff.toRelocate.length === 0 && diff.toArchive.length === 0 ? (
+            <div style={{ ...box, background: "#dcfce7", border: "1px solid #86efac", color: "#166534", fontWeight: 600 }}>
+              ✅ Baza jest zgodna z rejestrem — nic do zrobienia.
+            </div>
+          ) : (
+            <button
+              onClick={execute}
+              disabled={running}
+              style={{ width: "100%", padding: "0.9rem", borderRadius: "0.75rem", border: "none", background: running ? "#9ca3af" : "#16a34a", color: "white", fontWeight: 700, fontSize: "1rem", cursor: running ? "not-allowed" : "pointer", marginBottom: "1rem" }}
+            >
+              {running ? "Aktualizuję bazę..." : "✅ Wykonaj aktualizację bazy"}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
 
 export default AdminPanelView;

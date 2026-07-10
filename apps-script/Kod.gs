@@ -145,6 +145,10 @@ function doPost(e) {
       return json({ ok: true, data: { success: true } });
     }
 
+    if (action === "bulkUpdateDogs") {
+      return json({ ok: true, data: bulkUpdateDogs_(payload) });
+    }
+
     if (action === "setArchive") {
       const result = setArchive(payload);
       return json({ ok: true, data: result });
@@ -394,6 +398,90 @@ function setArchive(payload) {
   }
 
   return { success: true, dogId, archived };
+}
+
+// Zbiorcza aktualizacja bazy psów na podstawie rejestru (PDF w aplikacji):
+// - add: nowe psy (id, name, pavilion, box)
+// - relocate: zmiana pawilonu/boksu istniejących psów
+// - archive: psy nieobecne w rejestrze -> przeniesienie do Archiwum
+// Tylko admin; wszystko w jednym wywołaniu (jeden lock, mniejsze quoty).
+function bulkUpdateDogs_(payload) {
+  requireAdmin(payload);
+
+  const add = Array.isArray(payload?.add) ? payload.add : [];
+  const relocate = Array.isArray(payload?.relocate) ? payload.relocate : [];
+  const archive = Array.isArray(payload?.archive) ? payload.archive : [];
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!sh) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
+
+  let values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  requireHeaders(map, [H.ID, H.NAME, H.PAVILION, H.KENNEL, H.ARCHIVE]);
+  const headerRow = values[0];
+
+  const errors = [];
+  let relocated = 0, added = 0, archivedCount = 0;
+
+  // 1. Przenosiny
+  for (const r of relocate) {
+    const dogId = safeStr(r?.dogId);
+    const rowIndex = findDogRow(values, map, dogId);
+    if (rowIndex === -1) { errors.push("relokacja: nie znaleziono " + dogId); continue; }
+    sh.getRange(rowIndex + 1, map[H.PAVILION] + 1).setValue(sanitizeText_(r?.pavilion, 20));
+    sh.getRange(rowIndex + 1, map[H.KENNEL] + 1).setValue(sanitizeText_(String(r?.box ?? ""), 20));
+    relocated++;
+  }
+
+  // 2. Nowe psy
+  for (const a of add) {
+    const id = sanitizeText_(a?.id, 50);
+    const name = sanitizeText_(a?.name, 100);
+    if (!id || !name) { errors.push("dodawanie: brak id lub imienia"); continue; }
+    if (findDogRow(values, map, id) !== -1) { errors.push("dodawanie: " + id + " już istnieje"); continue; }
+    const row = new Array(headerRow.length).fill("");
+    row[map[H.ID]] = id;
+    row[map[H.NAME]] = name;
+    row[map[H.PAVILION]] = sanitizeText_(a?.pavilion, 20);
+    row[map[H.KENNEL]] = sanitizeText_(String(a?.box ?? ""), 20);
+    row[map[H.ARCHIVE]] = false;
+    sh.appendRow(row);
+    added++;
+  }
+
+  // 3. Archiwizacja — świeży odczyt (dodawanie/relokacje zmieniły arkusz),
+  //    usuwanie od dołu, żeby indeksy się nie przesuwały
+  if (archive.length > 0) {
+    values = sh.getDataRange().getValues();
+    const archiveSheet = getOrCreateSheet(ss, ARCHIVE_SHEET_NAME);
+    if (archiveSheet.getLastRow() === 0) {
+      archiveSheet.getRange(1, 1, 1, headerRow.length).setValues([headerRow]);
+      archiveSheet.setFrozenRows(1);
+    }
+    const wanted = archive.map((x) => safeStr(x?.dogId)).filter(Boolean);
+    const rowsToArchive = [];
+    for (let i = 1; i < values.length; i++) {
+      const id = safeStr(values[i][map[H.ID]]);
+      if (wanted.indexOf(id) !== -1) rowsToArchive.push(i);
+    }
+    rowsToArchive.sort((a, b) => b - a);
+    for (const i of rowsToArchive) {
+      const dataRow = values[i].map((cell) => {
+        if (cell instanceof Date) return Utilities.formatDate(cell, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+        return cell;
+      });
+      archiveSheet.appendRow(dataRow);
+      sh.deleteRow(i + 1);
+      archivedCount++;
+    }
+    const foundIds = rowsToArchive.map((i) => safeStr(values[i][map[H.ID]]));
+    for (const w of wanted) {
+      if (foundIds.indexOf(w) === -1) errors.push("archiwum: nie znaleziono " + w);
+    }
+  }
+
+  return { success: true, added: added, relocated: relocated, archived: archivedCount, errors: errors };
 }
 
 // ===============================

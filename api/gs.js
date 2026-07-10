@@ -12,6 +12,7 @@ const ADMIN_ACTIONS = new Set([
   "adminUpdateBehaviorReport",
   "setUserRole",
   "listUsersForAdmin",
+  "bulkUpdateDogs",
 ]);
 
 // Akcje dostępne tylko dla zalogowanych użytkowników (nie wymagają roli admin)
