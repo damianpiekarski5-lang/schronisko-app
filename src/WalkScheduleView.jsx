@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import { collection, doc, getDoc, setDoc, deleteDoc, onSnapshot, query, where } from "firebase/firestore";
 import { db } from "./firebase";
+import { getSectorColor } from "./lib/sectorColors";
 import {
   subscribeDailyWalks,
   recordWalkFs,
@@ -187,42 +188,6 @@ export default function WalkScheduleView({ dogs, currentUser, isAdmin }) {
     return () => window.removeEventListener("online", onOnline);
   }, [currentUser]);
 
-  const SECTOR_COLORS = {
-    A:  "#a8d5a2",
-    B:  "#d4edd4",
-    C:  "#fce584",
-    D:  "#f9b4d0",
-    E:  "#f2b8c0",
-    F:  "#d5c3a0",
-    G:  "#a8d8d8",
-    H:  "#a8c4e8",
-    ZE: "#b8c8dc",
-    ZF: "#c8b8dc",
-    ZH: "#fde0ec",
-    ZG: "#f4b8c8",
-    P:  "#fcd8c0",
-    R:  "#f8c090",
-    V:  "#fffde7",
-    T:  "#fff9a0",
-    U:  "#fff4c4",
-    L:  "#f4a8c0",
-    X:  "#e88898",
-    Y:  "#80d0c8",
-    I:  "#d4b080",
-    O:  "#a0b8d8",
-    S:  "#e08080",
-  };
-
-  function getSectorColor(pavilion) {
-    if (!pavilion) return "#ffffff";
-    const pav = String(pavilion).toUpperCase();
-    if (SECTOR_COLORS[pav]) return SECTOR_COLORS[pav];
-    // dopasuj prefix (np. ZF → ZF, ZG → ZG)
-    for (const key of Object.keys(SECTOR_COLORS)) {
-      if (pav.startsWith(key)) return SECTOR_COLORS[key];
-    }
-    return "#ffffff";
-  }
 
   function getSectorBorderColor(pavilion) {
     const color = getSectorColor(pavilion);

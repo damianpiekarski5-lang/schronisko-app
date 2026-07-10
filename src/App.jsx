@@ -29,6 +29,7 @@ import PlannedWalkToday from "./PlannedWalkToday";
 import { recordWalkFs, syncWalkToSheet } from "./lib/walksStore";
 import { db } from "./firebase";
 import { doc as fsDoc, onSnapshot as fsOnSnapshot } from "firebase/firestore";
+import { getSectorColor } from "./lib/sectorColors";
 import { TopBar, AppNav } from "./components/AppShell";
 const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
@@ -573,7 +574,7 @@ const pavilionConfig = {
 
 const infrastructure = [
   {
-    id: "path_1",
+    id: "wybiegi_area",
     type: "area",
     label: "Wybiegi",
     points: [
@@ -583,30 +584,37 @@ const infrastructure = [
       [139, 380],
       [139, 160],
     ],
-    color: "#d4edda",
-    strokeColor: "#475569",
+    color: "#dcfce7",
+    strokeColor: "#86efac",
   },
   {
-    id: "element_2",
+    id: "wybiegi_lewe",
     type: "building",
     label: "Wybiegi",
-    x: 529,
-    y: 188,
-    width: 50,
-    height: 149,
-    color: "#d4edda",
-    strokeColor: "#475569",
+    x: 527, y: 184, width: 50, height: 149,
+    color: "#dcfce7", strokeColor: "#86efac", textColor: "#166534",
   },
   {
-    id: "element_3",
+    id: "szpital",
     type: "building",
-    label: "Szpital",
-    x: 580,
-    y: 239,
-    width: 50,
-    height: 150,
-    color: "#f08f8f",
-    strokeColor: "#475569",
+    label: "Szpital ✚",
+    x: 582, y: 220, width: 50, height: 169,
+    color: "#fee2e2", strokeColor: "#fca5a5", textColor: "#991b1b",
+  },
+  {
+    id: "kwarantanna",
+    type: "building",
+    label: "Kwarantanna",
+    // nad pawilonami ZF/ZG (jak na planie schroniska)
+    x: 283, y: 110, width: 91, height: 32,
+    color: "#fef3c7", strokeColor: "#f59e0b", textColor: "#92400e", dashed: true,
+  },
+  {
+    id: "izolatki",
+    type: "building",
+    label: "Izolatki",
+    x: 530, y: 360, width: 50, height: 30,
+    color: "#fee2e2", strokeColor: "#fca5a5", textColor: "#991b1b", dashed: true,
   },
 ];
 
@@ -955,7 +963,7 @@ const MapView = ({
                     y="0"
                     width="850"
                     height="600"
-                    fill="#eff6ff"
+                    fill="#f9fafb"
                   />
                   {infrastructure.map((item) =>
                     item.type === "building" ? (
@@ -968,8 +976,8 @@ const MapView = ({
                           fill={item.color}
                           stroke={item.strokeColor}
                           strokeWidth="2"
-                          rx="4"
-                          opacity="0.7"
+                          strokeDasharray={item.dashed ? "6 4" : undefined}
+                          rx="8"
                         />
                         <text
                           x={item.x + item.width / 2}
@@ -977,7 +985,7 @@ const MapView = ({
                           textAnchor="middle"
                           fontSize="10"
                           fontWeight="bold"
-                          fill="#374151"
+                          fill={item.textColor || "#374151"}
                         >
                           {item.label}
                         </text>
@@ -987,7 +995,7 @@ const MapView = ({
                         <polygon
                           points={item.points.map((p) => p.join(",")).join(" ")}
                           fill={item.color}
-                          opacity="0.5"
+                          opacity="0.8"
                           stroke={item.strokeColor}
                           strokeWidth="2"
                         />
@@ -997,12 +1005,8 @@ const MapView = ({
                   {Object.entries(pavilionConfig).map(([code, config]) => {
                     if (config.mapHidden) return null;
                     const dogCount = pavilionDogCount[code] || 0;
-                    let fillColor = "#e2e8f0";
-                    if (config.special === "szczeniaki") fillColor = "#fde047";
-                    else if (config.special === "wewnętrzne")
-                      fillColor = "#93c5fd";
-                    else if (config.special === "zewnętrzne")
-                      fillColor = "#c084fc";
+                    // Kolor pawilonu = kolor sektora z tabeli spacerów (spójność)
+                    const fillColor = getSectorColor(code, "#e2e8f0");
                     return (
                       <g key={code}>
                         <rect
@@ -1011,9 +1015,9 @@ const MapView = ({
                           width={config.width}
                           height={config.height}
                           fill={fillColor}
-                          stroke="#64748b"
-                          strokeWidth="3"
-                          rx="4"
+                          stroke="#9ca3af"
+                          strokeWidth="1.5"
+                          rx="8"
                           style={{ cursor: "pointer" }}
                           onClick={() => {
                             setSelectedPavilion(code);
@@ -1033,7 +1037,7 @@ const MapView = ({
                           textAnchor="middle"
                           fontSize="14"
                           fontWeight="bold"
-                          fill="#1e293b"
+                          fill="#111827"
                           style={{ pointerEvents: "none" }}
                         >
                           {code}
@@ -1064,73 +1068,20 @@ const MapView = ({
                   fontSize: "0.75rem",
                 }}
               >
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "1rem",
-                      height: "1rem",
-                      borderRadius: "0.25rem",
-                      backgroundColor: "#c084fc",
-                    }}
-                  ></div>
-                  <span>Zewnętrzne</span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "1rem",
-                      height: "1rem",
-                      borderRadius: "0.25rem",
-                      backgroundColor: "#93c5fd",
-                    }}
-                  ></div>
-                  <span>Wewnętrzne</span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "1rem",
-                      height: "1rem",
-                      borderRadius: "0.25rem",
-                      backgroundColor: "#fde047",
-                    }}
-                  ></div>
-                  <span>Szczeniaki</span>
-                </div>
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "0.5rem",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "1rem",
-                      height: "1rem",
-                      borderRadius: "0.25rem",
-                      backgroundColor: "#86efac",
-                    }}
-                  ></div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ width: "1rem", height: "1rem", borderRadius: "0.25rem", backgroundColor: "#dcfce7", border: "1px solid #86efac" }}></div>
                   <span>Wybiegi</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ width: "1rem", height: "1rem", borderRadius: "0.25rem", backgroundColor: "#fee2e2", border: "1px solid #fca5a5" }}></div>
+                  <span>Szpital / Izolatki</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+                  <div style={{ width: "1rem", height: "1rem", borderRadius: "0.25rem", backgroundColor: "#fef3c7", border: "1px dashed #f59e0b" }}></div>
+                  <span>Kwarantanna</span>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#6b7280" }}>
+                  <span>🎨 Kolor pawilonu = kolor sektora w tabeli</span>
                 </div>
               </div>
             </div>
