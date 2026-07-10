@@ -600,6 +600,7 @@ const infrastructure = [
     label: "Szpital ✚",
     x: 582, y: 220, width: 50, height: 169,
     color: "#fee2e2", strokeColor: "#fca5a5", textColor: "#991b1b",
+    pavilion: "S", // klik pokazuje psy w szpitalu
   },
   {
     id: "kwarantanna",
@@ -608,6 +609,7 @@ const infrastructure = [
     // nad pawilonami ZF/ZG (jak na planie schroniska)
     x: 283, y: 110, width: 91, height: 32,
     color: "#fef3c7", strokeColor: "#f59e0b", textColor: "#92400e", dashed: true,
+    pavilion: "KP", // klik pokazuje psy w kwarantannie
   },
   {
     id: "izolatki",
@@ -615,6 +617,7 @@ const infrastructure = [
     label: "Izolatki",
     x: 530, y: 360, width: 50, height: 30,
     color: "#fee2e2", strokeColor: "#fca5a5", textColor: "#991b1b", dashed: true,
+    pavilion: "IZ", // klik pokazuje psy w izolatkach
   },
 ];
 
@@ -967,29 +970,55 @@ const MapView = ({
                   />
                   {infrastructure.map((item) =>
                     item.type === "building" ? (
-                      <g key={item.id}>
-                        <rect
-                          x={item.x}
-                          y={item.y}
-                          width={item.width}
-                          height={item.height}
-                          fill={item.color}
-                          stroke={item.strokeColor}
-                          strokeWidth="2"
-                          strokeDasharray={item.dashed ? "6 4" : undefined}
-                          rx="8"
-                        />
-                        <text
-                          x={item.x + item.width / 2}
-                          y={item.y + item.height / 2 + 4}
-                          textAnchor="middle"
-                          fontSize="10"
-                          fontWeight="bold"
-                          fill={item.textColor || "#374151"}
-                        >
-                          {item.label}
-                        </text>
-                      </g>
+                      (() => {
+                        const zoneCount = item.pavilion ? (pavilionDogCount[item.pavilion] || 0) : 0;
+                        const clickable = !!item.pavilion;
+                        const openZone = () => {
+                          if (!clickable) return;
+                          setSelectedPavilion(item.pavilion);
+                          setCurrentView("boxes");
+                        };
+                        return (
+                          <g key={item.id}>
+                            <rect
+                              x={item.x}
+                              y={item.y}
+                              width={item.width}
+                              height={item.height}
+                              fill={item.color}
+                              stroke={item.strokeColor}
+                              strokeWidth="2"
+                              strokeDasharray={item.dashed ? "6 4" : undefined}
+                              rx="8"
+                              style={clickable ? { cursor: "pointer" } : undefined}
+                              onClick={openZone}
+                            />
+                            <text
+                              x={item.x + item.width / 2}
+                              y={item.y + item.height / 2 + (clickable && item.height >= 30 ? -2 : 4)}
+                              textAnchor="middle"
+                              fontSize="10"
+                              fontWeight="bold"
+                              fill={item.textColor || "#374151"}
+                              style={{ pointerEvents: "none" }}
+                            >
+                              {item.label}
+                            </text>
+                            {clickable && item.height >= 30 && (
+                              <text
+                                x={item.x + item.width / 2}
+                                y={item.y + item.height / 2 + 12}
+                                textAnchor="middle"
+                                fontSize="9"
+                                fill={item.textColor || "#374151"}
+                                style={{ pointerEvents: "none" }}
+                              >
+                                {zoneCount} 🐕
+                              </text>
+                            )}
+                          </g>
+                        );
+                      })()
                     ) : (
                       <g key={item.id}>
                         <polygon
@@ -1149,9 +1178,18 @@ const BoxesView = ({
     const boxes = [...(pavilionStats[pavilion]?.boxes || [])].sort((a, b) => a - b);
     if (boxes.length === 0) return Array.from({ length: 10 }, (_, i) => i + 1);
     const maxBox = Math.max(...boxes, 10);
-    return Array.from({ length: maxBox }, (_, i) => i + 1);
+    const list = Array.from({ length: maxBox }, (_, i) => i + 1);
+    // niektóre strefy (np. kwarantanna) używają boksu 0
+    if (boxes.includes(0)) list.unshift(0);
+    return list;
   };
   const boxes = getBoxesForPavilion(selectedPavilion);
+
+  // Czytelne nazwy stref specjalnych zamiast "Pawilon KP"
+  const ZONE_TITLES = { S: "Szpital", KP: "Kwarantanna", IZ: "Izolatki", O: "Inne" };
+  const pavilionTitle = ZONE_TITLES[selectedPavilion]
+    ? `${ZONE_TITLES[selectedPavilion]} (${selectedPavilion})`
+    : `Pawilon ${selectedPavilion}`;
 
   return (
     <div style={styles.pageContainer}>
@@ -1170,7 +1208,7 @@ const BoxesView = ({
             <ArrowLeft size={24} style={{ marginRight: "0.5rem" }} />
             Powrót
           </button>
-          <h1 style={styles.title}>Pawilon {selectedPavilion}</h1>
+          <h1 style={styles.title}>{pavilionTitle}</h1>
           <p style={styles.subtitle}>
             Ilość psów: {countDogsInPavilion(selectedPavilion)}
           </p>
