@@ -617,7 +617,7 @@ const infrastructure = [
     label: "Izolatki",
     x: 530, y: 360, width: 50, height: 30,
     color: "#fee2e2", strokeColor: "#fca5a5", textColor: "#991b1b", dashed: true,
-    pavilion: "IZ", // klik pokazuje psy w izolatkach
+    pavilion: "I", // klik pokazuje psy w izolatkach (sektor I)
   },
 ];
 
@@ -1064,12 +1064,20 @@ const MapView = ({
                           x={config.x + config.width / 2}
                           y={config.y + config.height / 2 + 5}
                           textAnchor="middle"
-                          fontSize="14"
+                          fontSize={config.height > 30 ? 14 : 12}
                           fontWeight="bold"
                           fill="#111827"
                           style={{ pointerEvents: "none" }}
+                          transform={
+                            config.rotation
+                              ? `rotate(${config.rotation} ${
+                                  config.x + config.width / 2
+                                } ${config.y + config.height / 2})`
+                              : ""
+                          }
                         >
-                          {code}
+                          {/* wąskie paski: licznik w tej samej linii */}
+                          {config.height > 30 ? code : `${code}${dogCount > 0 ? ` · ${dogCount}` : ""}`}
                         </text>
                         {dogCount > 0 && config.height > 30 && (
                           <text
@@ -1175,9 +1183,11 @@ const BoxesView = ({
   const countDogsInBox = (pavilion, box) =>
     dogs.filter((dog) => dog.pavilion === pavilion && dog.box === box).length;
   const getBoxesForPavilion = (pavilion) => {
+    // Rzeczywista liczba boksów w strefach specjalnych (izolatek jest 5)
+    const ZONE_BOX_LIMITS = { I: 5, S: 12, KP: 6 };
+    const defaultLen = ZONE_BOX_LIMITS[pavilion] || 10;
     const boxes = [...(pavilionStats[pavilion]?.boxes || [])].sort((a, b) => a - b);
-    if (boxes.length === 0) return Array.from({ length: 10 }, (_, i) => i + 1);
-    const maxBox = Math.max(...boxes, 10);
+    const maxBox = boxes.length ? Math.max(...boxes, defaultLen) : defaultLen;
     const list = Array.from({ length: maxBox }, (_, i) => i + 1);
     // niektóre strefy (np. kwarantanna) używają boksu 0
     if (boxes.includes(0)) list.unshift(0);
@@ -1186,7 +1196,7 @@ const BoxesView = ({
   const boxes = getBoxesForPavilion(selectedPavilion);
 
   // Czytelne nazwy stref specjalnych zamiast "Pawilon KP"
-  const ZONE_TITLES = { S: "Szpital", KP: "Kwarantanna", IZ: "Izolatki", O: "Inne" };
+  const ZONE_TITLES = { S: "Szpital", KP: "Kwarantanna", I: "Izolatki", O: "Inne" };
   const pavilionTitle = ZONE_TITLES[selectedPavilion]
     ? `${ZONE_TITLES[selectedPavilion]} (${selectedPavilion})`
     : `Pawilon ${selectedPavilion}`;
