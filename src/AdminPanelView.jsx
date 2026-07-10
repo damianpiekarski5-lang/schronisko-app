@@ -551,13 +551,30 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
           return { pdf: r, app: d };
         })
         .filter(Boolean);
+
+      // Uzupełnienia: istniejące psy z PUSTYMI polami wiek/chip/rasa,
+      // dla których rejestr ma wartość (nie nadpisujemy wypełnionych)
+      const toFill = rows
+        .map((r) => {
+          const d = appById.get(normalizeDogId(r.id));
+          if (!d) return null;
+          const fields = {};
+          if (!String(d.age || "").trim() && r.age) fields.age = r.age;
+          if (!String(d.chip || "").trim() && r.chip) fields.chip = r.chip;
+          if (!String(d.breed || "").trim() && r.breed) fields.breed = r.breed;
+          if (Object.keys(fields).length === 0) return null;
+          return { app: d, fields };
+        })
+        .filter(Boolean);
+
       const unmatchable = (dogs || []).filter((d) => !d.id);
 
-      setDiff({ fileName: file.name, count: rows.length, toAdd, toArchive, toRelocate, unmatchable });
+      setDiff({ fileName: file.name, count: rows.length, toAdd, toArchive, toRelocate, toFill, unmatchable });
       setChecks({
         add: Object.fromEntries(toAdd.map((r) => [r.id, true])),
         relocate: Object.fromEntries(toRelocate.map((r) => [r.pdf.id, true])),
         archive: Object.fromEntries(toArchive.map((d) => [normalizeDogId(d.id), true])),
+        fill: Object.fromEntries(toFill.map((f) => [normalizeDogId(f.app.id), true])),
       });
     } catch (err) {
       console.error("Błąd parsowania PDF:", err);
@@ -574,12 +591,13 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
 
   const execute = async () => {
     if (!diff || !currentUser || running) return;
-    const add = diff.toAdd.filter((r) => checks.add[r.id]).map((r) => ({ id: r.id, name: r.name, pavilion: r.pavilion, box: r.box }));
+    const add = diff.toAdd.filter((r) => checks.add[r.id]).map((r) => ({ id: r.id, name: r.name, pavilion: r.pavilion, box: r.box, age: r.age || "", chip: r.chip || "", breed: r.breed || "" }));
     const relocate = diff.toRelocate.filter((r) => checks.relocate[r.pdf.id]).map((r) => ({ dogId: r.app.id, pavilion: r.pdf.pavilion, box: r.pdf.box }));
     const archive = diff.toArchive.filter((d) => checks.archive[normalizeDogId(d.id)]).map((d) => ({ dogId: d.id }));
-    const total = add.length + relocate.length + archive.length;
+    const fill = (diff.toFill || []).filter((f) => checks.fill[normalizeDogId(f.app.id)]).map((f) => ({ dogId: f.app.id, ...f.fields }));
+    const total = add.length + relocate.length + archive.length + fill.length;
     if (total === 0) { setError("Nie zaznaczono żadnych zmian."); return; }
-    if (!window.confirm(`Wykonać aktualizację bazy?\n\n• nowe psy: ${add.length}\n• przenosiny: ${relocate.length}\n• do archiwum: ${archive.length}\n\nZmiany trafią do arkusza Google.`)) return;
+    if (!window.confirm(`Wykonać aktualizację bazy?\n\n• nowe psy: ${add.length}\n• przenosiny: ${relocate.length}\n• uzupełnienia danych: ${fill.length}\n• do archiwum: ${archive.length}\n\nZmiany trafią do arkusza Google.`)) return;
 
     setRunning(true);
     setError("");
@@ -588,7 +606,7 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
       const res = await fetch("/api/gs", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "bulkUpdateDogs", add, relocate, archive }),
+        body: JSON.stringify({ action: "bulkUpdateDogs", add, relocate, archive, fill }),
       });
       const json = await res.json();
       if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
@@ -631,7 +649,7 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
         <div style={{ ...box, background: "#dcfce7", border: "1px solid #86efac" }}>
           <div style={{ fontWeight: 700, color: "#166534", marginBottom: "0.3rem" }}>✅ Aktualizacja wykonana</div>
           <div style={{ fontSize: "0.85rem", color: "#166534" }}>
-            Dodano: {result.added} · przeniesiono: {result.relocated} · zarchiwizowano: {result.archived}
+            Dodano: {result.added} · przeniesiono: {result.relocated} · uzupełniono: {result.filled ?? 0} · zarchiwizowano: {result.archived}
           </div>
           {result.errors?.length > 0 && (
             <div style={{ fontSize: "0.78rem", color: "#92400e", marginTop: "0.4rem" }}>
@@ -655,6 +673,9 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
               {diff.toAdd.map((r) => (
                 <CheckRow key={r.id} checked={!!checks.add[r.id]} onChange={() => toggle("add", r.id)}>
                   <strong>{r.name || "(bez imienia)"}</strong> · {r.id} · {r.pavilion}{r.box ?? ""}
+                  {(r.age || r.breed || r.chip) && (
+                    <span style={{ color: "#6b7280" }}> · {[r.age, r.breed, r.chip].filter(Boolean).join(" · ")}</span>
+                  )}
                 </CheckRow>
               ))}
             </div>
@@ -666,6 +687,21 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
               {diff.toRelocate.map((r) => (
                 <CheckRow key={r.pdf.id} checked={!!checks.relocate[r.pdf.id]} onChange={() => toggle("relocate", r.pdf.id)}>
                   <strong>{r.app.name}</strong> · {r.pdf.id}: {String(r.app.pavilion || "?")}{r.app.box ?? "?"} → <strong>{r.pdf.pavilion}{r.pdf.box ?? ""}</strong>
+                </CheckRow>
+              ))}
+            </div>
+          )}
+
+          {(diff.toFill || []).length > 0 && (
+            <div style={box}>
+              <div style={secTitle}>📋 Uzupełnienia danych ({selCount("fill", diff.toFill.map((f) => normalizeDogId(f.app.id)))}/{diff.toFill.length})</div>
+              <p style={{ fontSize: "0.75rem", color: "#6b7280", margin: "0 0 0.4rem" }}>
+                Tylko puste pola — wypełnione dane nie będą nadpisywane.
+              </p>
+              {diff.toFill.map((f) => (
+                <CheckRow key={f.app.id} checked={!!checks.fill[normalizeDogId(f.app.id)]} onChange={() => toggle("fill", normalizeDogId(f.app.id))}>
+                  <strong>{f.app.name}</strong> · {f.app.id} →{" "}
+                  {Object.entries(f.fields).map(([k, v]) => `${k === "age" ? "wiek" : k === "chip" ? "chip" : "rasa"}: ${v}`).join(" · ")}
                 </CheckRow>
               ))}
             </div>
@@ -693,7 +729,7 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
             </div>
           )}
 
-          {diff.toAdd.length === 0 && diff.toRelocate.length === 0 && diff.toArchive.length === 0 ? (
+          {diff.toAdd.length === 0 && diff.toRelocate.length === 0 && diff.toArchive.length === 0 && (diff.toFill || []).length === 0 ? (
             <div style={{ ...box, background: "#dcfce7", border: "1px solid #86efac", color: "#166534", fontWeight: 600 }}>
               ✅ Baza jest zgodna z rejestrem — nic do zrobienia.
             </div>

@@ -422,7 +422,7 @@ function bulkUpdateDogs_(payload) {
   const headerRow = values[0];
 
   const errors = [];
-  let relocated = 0, added = 0, archivedCount = 0;
+  let relocated = 0, added = 0, archivedCount = 0, filled = 0;
 
   // 1. Przenosiny
   for (const r of relocate) {
@@ -445,9 +445,39 @@ function bulkUpdateDogs_(payload) {
     row[map[H.NAME]] = name;
     row[map[H.PAVILION]] = sanitizeText_(a?.pavilion, 20);
     row[map[H.KENNEL]] = sanitizeText_(String(a?.box ?? ""), 20);
+    if (map[H.AGE] !== undefined) row[map[H.AGE]] = sanitizeText_(a?.age, 50);
+    if (map[H.CHIP] !== undefined) row[map[H.CHIP]] = sanitizeText_(a?.chip, 50);
+    if (map[H.BREED] !== undefined) row[map[H.BREED]] = sanitizeText_(a?.breed, 100);
     row[map[H.ARCHIVE]] = false;
     sh.appendRow(row);
     added++;
+  }
+
+  // 2b. Uzupełnienia — wpisujemy TYLKO w puste komórki (ochrona
+  //     ręcznie wprowadzonych danych przed nadpisaniem)
+  const fill = Array.isArray(payload?.fill) ? payload.fill : [];
+  if (fill.length > 0) {
+    values = sh.getDataRange().getValues();
+    const fillCols = [
+      { key: "age", col: map[H.AGE], max: 50 },
+      { key: "chip", col: map[H.CHIP], max: 50 },
+      { key: "breed", col: map[H.BREED], max: 100 },
+    ];
+    for (const f of fill) {
+      const dogId = safeStr(f?.dogId);
+      const rowIndex = findDogRow(values, map, dogId);
+      if (rowIndex === -1) { errors.push("uzupełnienie: nie znaleziono " + dogId); continue; }
+      let any = false;
+      for (const fc of fillCols) {
+        if (fc.col === undefined) continue;
+        const incoming = sanitizeText_(f?.[fc.key], fc.max);
+        if (!incoming) continue;
+        if (safeStr(values[rowIndex][fc.col])) continue; // komórka już wypełniona
+        sh.getRange(rowIndex + 1, fc.col + 1).setValue(incoming);
+        any = true;
+      }
+      if (any) filled++;
+    }
   }
 
   // 3. Archiwizacja — świeży odczyt (dodawanie/relokacje zmieniły arkusz),
@@ -481,7 +511,7 @@ function bulkUpdateDogs_(payload) {
     }
   }
 
-  return { success: true, added: added, relocated: relocated, archived: archivedCount, errors: errors };
+  return { success: true, added: added, relocated: relocated, filled: filled, archived: archivedCount, errors: errors };
 }
 
 // ===============================

@@ -53,6 +53,8 @@ export async function parseDogListPdf(file) {
       else if (k === "nazwa" && found.name == null) found.name = it.x;
       else if (k === "id" && found.id == null) found.id = it.x;
       else if (k === "wiek" && found.wiek == null) found.wiek = it.x;
+      else if (k === "chip" && found.chip == null) found.chip = it.x;
+      else if (k === "rasa" && found.rasa == null) found.rasa = it.x;
     }
     if (found.boks != null && found.name != null && found.id != null && found.wiek != null) {
       cols = found;
@@ -74,7 +76,7 @@ export async function parseDogListPdf(file) {
           .filter((i) => i.x >= lo && i.x < hi)
           .sort((a, b) => a.x - b.x)
           .map((i) => i.str)
-          .join("")
+          .join(" ")
           .replace(/\s+/g, " ")
           .trim();
 
@@ -85,12 +87,22 @@ export async function parseDogListPdf(file) {
       const nameStr = inRange(cols.name - 8, cols.id - 8);
       const { pavilion, box } = parseBoks(boksStr);
 
+      // Kolumny opcjonalne (starsze rejestry mogą ich nie mieć)
+      const ageStr = cols.chip != null ? inRange(cols.wiek - 8, cols.chip - 8) : "";
+      const chipStr = cols.chip != null
+        ? inRange(cols.chip - 8, cols.rasa != null ? cols.rasa - 8 : Infinity)
+        : "";
+      const breedStr = cols.rasa != null ? inRange(cols.rasa - 8, Infinity) : "";
+
       rows.push({
         id: formatDogId(idStr),
         name: nameStr,
         pavilion,
         box,
         boksRaw: boksStr,
+        age: ageStr,
+        chip: chipStr.replace(/\s+/g, ""),
+        breed: breedStr,
       });
     }
   }
