@@ -532,16 +532,18 @@ function DatabaseUpdateTab({ dogs, currentUser, onRefreshDogs }) {
         setError("Nie znaleziono psów w tym pliku — upewnij się, że to PDF rejestru zwierząt.");
         return;
       }
+      // Dopasowanie WYŁĄCZNIE po znormalizowanym ID (bez spacji) po OBU
+      // stronach — "P 96/07/23" i "P96/07/23" to ten sam pies
       const appById = new Map(
         (dogs || []).filter((d) => d.id).map((d) => [normalizeDogId(d.id), d])
       );
-      const pdfById = new Map(rows.map((r) => [r.id, r]));
+      const pdfById = new Map(rows.map((r) => [normalizeDogId(r.id), r]));
 
-      const toAdd = rows.filter((r) => !appById.has(r.id));
+      const toAdd = rows.filter((r) => !appById.has(normalizeDogId(r.id)));
       const toArchive = (dogs || []).filter((d) => d.id && !pdfById.has(normalizeDogId(d.id)));
       const toRelocate = rows
         .map((r) => {
-          const d = appById.get(r.id);
+          const d = appById.get(normalizeDogId(r.id));
           if (!d) return null;
           const samePav = String(d.pavilion || "").toUpperCase() === r.pavilion;
           const sameBox = Number(d.box) === Number(r.box);
