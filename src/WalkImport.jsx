@@ -122,9 +122,10 @@ export default function WalkImport({ dogs, currentUser }) {
         📅 Import spacerów z harmonogramu (XLSX)
       </div>
       <p style={{ fontSize: "0.82rem", color: "#6b7280", margin: "0 0 0.75rem" }}>
-        Wgraj plik harmonogramu (zakładka WYJŚCIA). Importowane są tylko jednoznaczne
-        oznaczenia: X przy pojedynczym psie oraz litery imion w boksach z wieloma psami.
-        Samo „X" przy kilku psach jest pomijane i raportowane.
+        Wgraj plik harmonogramu (zakładka WYJŚCIA). Przy pojedynczym psie w boksie
+        każde niepuste oznaczenie (X, litera, cyfra, emoji...) liczy się jako spacer;
+        w boksach z wieloma psami — litery imion. Samo „X" przy kilku psach
+        jest pomijane i raportowane.
       </p>
 
       <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>

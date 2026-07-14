@@ -1,7 +1,7 @@
 // Import historii spacerów z harmonogramu wolontariuszy (XLSX, zakładka
 // WYJŚCIA): kolumna A = boks, kolumna B = opiekun (psy w nawiasach),
 // kolumny z datami zawierają oznaczenia. Zasady (tylko jednoznaczne wpisy):
-// - boks z JEDNYM psem: X/x/Xx = spacer
+// - boks z JEDNYM psem: każde niepuste oznaczenie = spacer
 // - boks z wieloma psami: litery imion ("R", "St", "KM" = K+M, "lary");
 //   samo "X" jest niejednoznaczne i zostaje pominięte z raportem
 
@@ -136,12 +136,10 @@ export function matchWalks(rows, dogs) {
       const letters = mark.replace(LETTERS_RE, "");
 
       if (rowDogs.length === 1) {
-        if (letters && X_RE.test(letters)) {
-          if (rowDogs[0].id) addWalk(rowDogs[0], date);
-          else ambiguous.push({ date, boks: row.boks, mark, reason: `pies nierozpoznany: ${rowDogs[0].name}` });
-        } else {
-          ambiguous.push({ date, boks: row.boks, mark, reason: "oznaczenie inne niż X" });
-        }
+        // Pojedynczy pies w boksie: KAŻDE niepuste oznaczenie
+        // (X, litera, cyfra, emoji, kropka...) traktujemy jako spacer
+        if (rowDogs[0].id) addWalk(rowDogs[0], date);
+        else ambiguous.push({ date, boks: row.boks, mark, reason: `pies nierozpoznany: ${rowDogs[0].name}` });
         continue;
       }
       if (rowDogs.length === 0) {
