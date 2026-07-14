@@ -149,6 +149,10 @@ function doPost(e) {
       return json({ ok: true, data: bulkUpdateDogs_(payload) });
     }
 
+    if (action === "bulkImportWalks") {
+      return json({ ok: true, data: bulkImportWalks_(payload) });
+    }
+
     if (action === "setArchive") {
       const result = setArchive(payload);
       return json({ ok: true, data: result });
@@ -512,6 +516,98 @@ function bulkUpdateDogs_(payload) {
   }
 
   return { success: true, added: added, relocated: relocated, filled: filled, archived: archivedCount, errors: errors };
+}
+
+// Import historii spacerów z harmonogramu wolontariuszy (jednorazowa
+// migracja, tylko admin): dopisuje brakujące wiersze do arkusza Spacery
+// w JEDNYM wsadzie i aktualizuje "Ostatni spacer" jeśli nowszy.
+function bulkImportWalks_(payload) {
+  requireAdmin(payload);
+
+  const walks = Array.isArray(payload?.walks) ? payload.walks : [];
+  if (walks.length === 0) return { success: true, imported: 0, skipped: 0 };
+  if (walks.length > 2000) throw new Error("Za dużo wpisów na raz (max 2000)");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const dogsSheet = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!dogsSheet) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
+  const dogsValues = dogsSheet.getDataRange().getValues();
+  const dMap = headerMap(dogsValues[0]);
+  requireHeaders(dMap, [H.ID, H.NAME, H.LAST_WALK, H.PAVILION, H.KENNEL]);
+
+  const dogRowById = {};
+  for (let i = 1; i < dogsValues.length; i++) {
+    const id = safeStr(dogsValues[i][dMap[H.ID]]);
+    if (id) dogRowById[id] = i;
+  }
+
+  const walksSheet = getOrCreateSheet(ss, WALKS_SHEET_NAME);
+  ensureHeaders(walksSheet, [
+    "Data spaceru", "DogId", "Imię psa", "Pawilon", "Boks", "Wolontariusz", "Uwagi", "Typ",
+  ]);
+  // Istniejące wpisy dogId+dzień — nie duplikujemy
+  const existing = {};
+  const wValues = walksSheet.getDataRange().getValues();
+  const wMap = headerMap(wValues[0]);
+  for (let i = 1; i < wValues.length; i++) {
+    const id = safeStr(wValues[i][wMap["DogId"]]);
+    const key = walkDateKey_(wValues[i][wMap["Data spaceru"]]);
+    if (id && key) existing[id + "|" + key] = true;
+  }
+
+  const newRows = [];
+  const newestPerDog = {};
+  let skipped = 0;
+  const errors = [];
+
+  for (const w of walks) {
+    const dogId = safeStr(w?.dogId);
+    const date = safeStr(w?.date);
+    if (!dogId || !/^\d{4}-\d{2}-\d{2}$/.test(date)) { skipped++; continue; }
+    if (existing[dogId + "|" + date]) { skipped++; continue; }
+    const rowIdx = dogRowById[dogId];
+    if (rowIdx === undefined) { errors.push("nie znaleziono psa " + dogId); skipped++; continue; }
+    existing[dogId + "|" + date] = true;
+
+    const dogRow = dogsValues[rowIdx];
+    const when = date + " 12:00:00";
+    newRows.push([
+      when,
+      dogId,
+      safeStr(dogRow[dMap[H.NAME]]),
+      safeStr(dogRow[dMap[H.PAVILION]]),
+      safeStr(dogRow[dMap[H.KENNEL]]),
+      "Harmonogram (import)",
+      "",
+      "spacer",
+    ]);
+    if (!newestPerDog[dogId] || when > newestPerDog[dogId]) newestPerDog[dogId] = when;
+  }
+
+  if (newRows.length > 0) {
+    walksSheet
+      .getRange(walksSheet.getLastRow() + 1, 1, newRows.length, newRows[0].length)
+      .setValues(newRows);
+  }
+
+  // "Ostatni spacer" — tylko jeśli import jest nowszy niż obecna wartość
+  let lastWalkUpdated = 0;
+  for (const dogId in newestPerDog) {
+    const rowIdx = dogRowById[dogId];
+    const current = safeStr(dogsValues[rowIdx][dMap[H.LAST_WALK]]);
+    if (!current || newestPerDog[dogId] > current) {
+      dogsSheet.getRange(rowIdx + 1, dMap[H.LAST_WALK] + 1).setValue(newestPerDog[dogId]);
+      lastWalkUpdated++;
+    }
+  }
+
+  return {
+    success: true,
+    imported: newRows.length,
+    skipped: skipped,
+    lastWalkUpdated: lastWalkUpdated,
+    errors: errors.slice(0, 20),
+  };
 }
 
 // ===============================

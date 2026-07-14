@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Shield, Home, MapPin, Star, Briefcase, ClipboardList, RefreshCw, ArrowLeft, Users, Database } from "lucide-react";
 import { parseDogListPdf, normalizeDogId } from "./lib/pdfDogList";
+import WalkImport from "./WalkImport";
 import { ROLES, ROLE_LABELS } from "./lib/roles";
 
 const styles = {
@@ -368,7 +369,10 @@ const AdminPanelView = ({
             )}
 
             {activeTab === "database" && (
-              <DatabaseUpdateTab dogs={dogs} currentUser={currentUser} onRefreshDogs={onRefreshDogs} />
+              <>
+                <DatabaseUpdateTab dogs={dogs} currentUser={currentUser} onRefreshDogs={onRefreshDogs} />
+                <WalkImport dogs={dogs} currentUser={currentUser} />
+              </>
             )}
 
             {activeTab === "users" && (

@@ -13,6 +13,7 @@ const ADMIN_ACTIONS = new Set([
   "setUserRole",
   "listUsersForAdmin",
   "bulkUpdateDogs",
+  "bulkImportWalks",
 ]);
 
 // Akcje dostępne tylko dla zalogowanych użytkowników (nie wymagają roli admin)
