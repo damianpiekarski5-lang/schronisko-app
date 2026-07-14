@@ -2,9 +2,9 @@
 // WYJŚCIA): kolumna A = boks, kolumna B = opiekun (psy w nawiasach),
 // kolumny z datami zawierają oznaczenia. Zasady (tylko jednoznaczne wpisy):
 // - boks z JEDNYM psem: każde niepuste oznaczenie = spacer
-// - boks z wieloma psami: X/emoji/godzina = wszystkie psy; litery imion
-//   ("R", "St", "KM") = konkretne psy; litery niepasujące do imion
-//   (inicjał wolontariusza, np. "O" od Oli) = wszystkie psy
+// - boks z wieloma psami: X = wszystkie psy; litery imion ("R", "St",
+//   "KM") = konkretne psy; emoji/godziny/inicjały wolontariuszy nie
+//   mówią który pies wyszedł -> pomijane z raportem
 
 import * as XLSX from "xlsx";
 
@@ -148,28 +148,30 @@ export function matchWalks(rows, dogs) {
         continue;
       }
 
-      // Boks wielopsi:
+      // Boks wielopsi — jednoznaczne są TYLKO:
       // - X/x = WSZYSTKIE psy z boksu były na spacerze
-      // - emoji/cyfry/godzina (bez liter) = wszystkie psy
-      // - litery: najpierw dopasowanie do imion psów; jeśli żaden token
-      //   nie pasuje do imienia — to inicjał wolontariusza = wszystkie psy
-      if (!letters || X_RE.test(letters)) {
+      // - litery pasujące do imion psów = konkretne psy
+      // Emoji, godziny, inicjały wolontariuszy itp. nie mówią,
+      // KTÓRY pies wyszedł -> pomijamy z raportem
+      if (X_RE.test(letters)) {
         resolved.forEach((d) => addWalk(d, date));
         if (resolved.length < rowDogs.length) {
           ambiguous.push({ date, boks: row.boks, mark, reason: "część psów z boksu nierozpoznana w bazie" });
         }
         continue;
       }
+      if (!letters) {
+        ambiguous.push({ date, boks: row.boks, mark, reason: "oznaczenie bez liter w boksie z wieloma psami" });
+        continue;
+      }
       const tokens = mark.split(LETTERS_RE).filter(Boolean);
-      let matchedAny = false;
-      let unmatchedAny = false;
+      let anyAmb = tokens.length === 0;
       for (const t of tokens) {
         const tn = normName(t);
-        if (X_RE.test(tn)) { matchedAny = true; resolved.forEach((d) => addWalk(d, date)); continue; }
+        if (X_RE.test(tn)) { resolved.forEach((d) => addWalk(d, date)); continue; }
         const pref = resolved.filter((d) => normName(d.name).startsWith(tn));
         if (pref.length === 1) {
           addWalk(pref[0], date);
-          matchedAny = true;
           continue;
         }
         // "KM" = K + M — każda litera wskazuje dokładnie jednego psa
@@ -180,19 +182,11 @@ export function matchWalks(rows, dogs) {
           if (lm.length === 1 && !perLetter.includes(lm[0])) perLetter.push(lm[0]);
           else { ok = false; break; }
         }
-        if (ok && perLetter.length > 0) {
-          perLetter.forEach((d) => addWalk(d, date));
-          matchedAny = true;
-        } else {
-          unmatchedAny = true;
-        }
+        if (ok && perLetter.length > 0) perLetter.forEach((d) => addWalk(d, date));
+        else anyAmb = true;
       }
-      // Żaden token nie pasuje do imion psów -> inicjał wolontariusza,
-      // czyli spacer całego boksu
-      if (!matchedAny && unmatchedAny) {
-        resolved.forEach((d) => addWalk(d, date));
-      } else if (unmatchedAny) {
-        ambiguous.push({ date, boks: row.boks, mark, reason: "część oznaczenia bez dopasowania" });
+      if (anyAmb) {
+        ambiguous.push({ date, boks: row.boks, mark, reason: "oznaczenie bez jednoznacznego dopasowania do psa" });
       }
     }
   }
