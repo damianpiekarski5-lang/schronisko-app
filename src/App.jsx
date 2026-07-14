@@ -3779,8 +3779,51 @@ const handleLogin = async () => {
     });
   };
 
-  const myDogs = useMemo(() => dogs.filter((dog) => favoriteDogIds.has(dog.id)), [dogs, favoriteDogIds]);
-  const behaviorystDogs = useMemo(() => dogs.filter((dog) => behaviorystDogIds.has(dog.id)), [dogs, behaviorystDogIds]);
+  // Dzisiejsze spacery z Firestore nakładane na listę psów — Home,
+  // sortowanie po pilności i plakietki "X dni bez spaceru" widzą spacer
+  // natychmiast, bez czekania na odświeżenie arkusza
+  const [todayWalks, setTodayWalks] = useState({});
+  useEffect(() => {
+    if (!db || !currentUser) { setTodayWalks({}); return undefined; }
+    let unsub = null;
+    let currentDay = null;
+    const subscribe = () => {
+      const t = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Warsaw" }).format(new Date());
+      if (t === currentDay) return;
+      currentDay = t;
+      if (unsub) unsub();
+      unsub = fsOnSnapshot(
+        fsDoc(db, "dailyWalks", t),
+        (snap) => setTodayWalks(snap.data()?.walks || {}),
+        () => {}
+      );
+    };
+    subscribe();
+    const interval = setInterval(subscribe, 60000);
+    return () => {
+      clearInterval(interval);
+      if (unsub) unsub();
+    };
+  }, [currentUser]);
+
+  const liveDogs = useMemo(() => {
+    if (!Object.keys(todayWalks).length) return dogs;
+    return dogs.map((d) => {
+      const w = todayWalks[d.id];
+      if (!w?.at) return d;
+      // nowszy wpis z Firestore wygrywa ze starą datą z arkusza
+      if (d.lastWalk && String(d.lastWalk) >= String(w.at)) return d;
+      return {
+        ...d,
+        lastWalk: w.at,
+        lastVolunteer: w.volunteerName || d.lastVolunteer,
+        lastWalkType: w.type || "spacer",
+      };
+    });
+  }, [dogs, todayWalks]);
+
+  const myDogs = useMemo(() => liveDogs.filter((dog) => favoriteDogIds.has(dog.id)), [liveDogs, favoriteDogIds]);
+  const behaviorystDogs = useMemo(() => liveDogs.filter((dog) => behaviorystDogIds.has(dog.id)), [liveDogs, behaviorystDogIds]);
 
   if (isAuthEnabled && !authReady) {
     return (
@@ -3888,7 +3931,7 @@ const handleLogin = async () => {
       )}
       {currentView === "home" && (
         <HomeView
-          dogs={dogs}
+          dogs={liveDogs}
           onDogClick={handleDogClickFromDashboard}
           hoveredCard={hoveredCard}
           setHoveredCard={setHoveredCard}
@@ -3900,7 +3943,7 @@ const handleLogin = async () => {
       {currentView === "walkTable" && (
         <div style={{ padding: "0.5rem 0.75rem 5rem" }}>
           <WalkScheduleView
-            dogs={dogs}
+            dogs={liveDogs}
             currentUser={currentUser}
             isAdmin={isAdminUser}
           />
@@ -3908,7 +3951,7 @@ const handleLogin = async () => {
       )}
       {currentView === "map" && (
         <MapView
-          dogs={dogs}
+          dogs={liveDogs}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
           setSelectedPavilion={setSelectedPavilion}
@@ -3923,7 +3966,7 @@ const handleLogin = async () => {
       )}
       {currentView === "boxes" && (
         <BoxesView
-          dogs={dogs}
+          dogs={liveDogs}
           selectedPavilion={selectedPavilion}
           setCurrentView={navigateToView}
           setSelectedBox={setSelectedBox}
@@ -3935,7 +3978,7 @@ const handleLogin = async () => {
       )}
       {currentView === "dogs" && (
         <DogsListView
-          dogs={dogs}
+          dogs={liveDogs}
           selectedPavilion={selectedPavilion}
           selectedBox={selectedBox}
           setCurrentView={navigateToView}
@@ -3984,7 +4027,7 @@ const handleLogin = async () => {
           <AdminPanelView
             currentUser={currentUser}
             behaviorystDogs={behaviorystDogs}
-            dogs={dogs}
+            dogs={liveDogs}
             setCurrentView={navigateToView}
             setSelectedDog={setSelectedDog}
             setDogCardFrom={setDogCardFrom}
@@ -3998,7 +4041,7 @@ const handleLogin = async () => {
           <BehaviorystPanel
             currentUser={currentUser}
             behaviorystDogs={behaviorystDogs}
-            dogs={dogs}
+            dogs={liveDogs}
             onToggleBehaviorystDog={handleToggleBehaviorystDog}
             setCurrentView={navigateToView}
             onLogout={handleLogout}
@@ -4012,7 +4055,7 @@ const handleLogin = async () => {
           setDogCardFrom={setDogCardFrom}
           currentUser={currentUser}
           isAdmin={isAdminUser}
-          allDogs={dogs}
+          allDogs={liveDogs}
         />
       )}
       {currentView === "schedule" && (
@@ -4025,7 +4068,7 @@ const handleLogin = async () => {
         <IntroWalkView
           currentUser={currentUser}
           isAdmin={isAdminUser}
-          dogs={dogs}
+          dogs={liveDogs}
         />
       )}
       {!["behaviorystPanel", "mapEditor"].includes(currentView) && (!isAuthEnabled || currentUser) && (
