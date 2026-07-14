@@ -371,7 +371,7 @@ const AdminPanelView = ({
             {activeTab === "database" && (
               <>
                 <DatabaseUpdateTab dogs={dogs} currentUser={currentUser} onRefreshDogs={onRefreshDogs} />
-                <WalkImport dogs={dogs} currentUser={currentUser} />
+                <WalkImport dogs={dogs} currentUser={currentUser} onRefreshDogs={onRefreshDogs} />
               </>
             )}
 

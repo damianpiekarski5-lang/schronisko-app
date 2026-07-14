@@ -594,8 +594,9 @@ function bulkImportWalks_(payload) {
   let lastWalkUpdated = 0;
   for (const dogId in newestPerDog) {
     const rowIdx = dogRowById[dogId];
-    const current = safeStr(dogsValues[rowIdx][dMap[H.LAST_WALK]]);
-    if (!current || newestPerDog[dogId] > current) {
+    const current = walkStamp_(dogsValues[rowIdx][dMap[H.LAST_WALK]]);
+    // brak wartości, nieporównywalny format lub starsza data -> aktualizuj
+    if (!current || !/^\d{4}-/.test(current) || newestPerDog[dogId] > current) {
       dogsSheet.getRange(rowIdx + 1, dMap[H.LAST_WALK] + 1).setValue(newestPerDog[dogId]);
       lastWalkUpdated++;
     }
@@ -668,8 +669,8 @@ function recordWalk(payload) {
 
   // Aktualizuj "Ostatni spacer" tylko jeśli nowy wpis jest nowszy
   // (zapis z kolejki offline nie może cofnąć świeższego spaceru)
-  const currentLast = safeStr(dogRow[map[H.LAST_WALK]]);
-  if (!currentLast || now >= currentLast) {
+  const currentLast = walkStamp_(dogRow[map[H.LAST_WALK]]);
+  if (!currentLast || !/^\d{4}-/.test(currentLast) || now >= currentLast) {
     dogsSheet.getRange(rowIndex + 1, map[H.LAST_WALK] + 1).setValue(now);
   }
 }
@@ -706,8 +707,8 @@ function deleteWalk(payload) {
     if (dateKey === date) {
       walksSheet.deleteRow(i + 1);
       deleted++;
-    } else if (safeStr(row[map["Data spaceru"]]) > latestRemaining) {
-      latestRemaining = safeStr(row[map["Data spaceru"]]);
+    } else if (walkStamp_(row[map["Data spaceru"]]) > latestRemaining) {
+      latestRemaining = walkStamp_(row[map["Data spaceru"]]);
     }
   }
 
@@ -723,6 +724,16 @@ function deleteWalk(payload) {
   }
 
   return { success: true, deleted: deleted };
+}
+
+// Pełny znacznik "yyyy-MM-dd HH:mm:ss" z komórki arkusza — komórki bywają
+// obiektami Date (wtedy safeStr daje "Thu Jul 10 2026...", co psuje
+// porównania tekstowe dat)
+function walkStamp_(raw) {
+  if (raw instanceof Date) {
+    return Utilities.formatDate(raw, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
+  }
+  return safeStr(raw);
 }
 
 // Klucz dnia (yyyy-MM-dd) z komórki "Data spaceru" — bez przechodzenia

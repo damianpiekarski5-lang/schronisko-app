@@ -12,7 +12,7 @@ function todayStr() {
 // Import historii spacerów z harmonogramu wolontariuszy (XLSX).
 // Tylko jednoznaczne oznaczenia; podgląd przed zapisem; deduplikacja
 // z arkuszem Spacery i z Firestore.
-export default function WalkImport({ dogs, currentUser }) {
+export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
   const [fromDate, setFromDate] = useState("2026-07-04");
   const [toDate, setToDate] = useState(() => todayStr());
   const [busy, setBusy] = useState(false);
@@ -108,6 +108,7 @@ export default function WalkImport({ dogs, currentUser }) {
 
       setResult({ ...json.data, fsWritten });
       setPreview(null);
+      onRefreshDogs?.();
     } catch (err) {
       console.error("Błąd zapisu importu:", err);
       setError("Import nie powiódł się: " + (err?.message || "nieznany błąd"));
@@ -122,10 +123,10 @@ export default function WalkImport({ dogs, currentUser }) {
         📅 Import spacerów z harmonogramu (XLSX)
       </div>
       <p style={{ fontSize: "0.82rem", color: "#6b7280", margin: "0 0 0.75rem" }}>
-        Wgraj plik harmonogramu (zakładka WYJŚCIA). Przy pojedynczym psie w boksie
-        każde niepuste oznaczenie (X, litera, cyfra, emoji...) liczy się jako spacer;
-        w boksach z wieloma psami — litery imion. Samo „X" przy kilku psach
-        jest pomijane i raportowane.
+        Wgraj plik harmonogramu (zakładka WYJŚCIA). Każde niepuste oznaczenie
+        (X, emoji, godzina, inicjał) liczy się jako spacer. W boksach z wieloma
+        psami: litery pasujące do imion psów = konkretne psy, pozostałe
+        oznaczenia (X, emoji, inicjał wolontariusza) = wszystkie psy z boksu.
       </p>
 
       <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>
