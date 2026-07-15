@@ -13,6 +13,10 @@ import {
   Dumbbell,
 } from "lucide-react";
 import { getLastWalkPresentation } from "./utils/dateTime";
+
+// Sektory z zakazem wyprowadzania (kwarantanna) — psy stamtąd nie trafiają
+// na listę "Potrzebują spaceru" i nie dostają plakietki pilności
+const NO_WALK_PAVILIONS = new Set(["KP", "U"]);
 import { useUserRole } from "./hooks/useUserRole";
 import { canViewSector } from "./lib/roles";
 
@@ -235,6 +239,7 @@ const HomeView = ({
 
   const getDogsNeedingWalk = () => {
     return dogs
+      .filter((dog) => !NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase()))
       .filter((dog) => (getLastWalkPresentation(dog.lastWalk).daysSince ?? 999) >= 5)
       .sort((a, b) => (getLastWalkPresentation(b.lastWalk).daysSince ?? 999) - (getLastWalkPresentation(a.lastWalk).daysSince ?? 999));
   };
@@ -393,6 +398,7 @@ const HomeView = ({
 
 const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
   const walkPresentation = getLastWalkPresentation(dog.lastWalk);
+  const noWalks = NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase());
 
   return (
     <div
@@ -426,7 +432,7 @@ const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
             }}
           >
             {dog.name}
-            {(walkPresentation.daysSince ?? 0) >= 5 && (
+            {!noWalks && (walkPresentation.daysSince ?? 0) >= 5 && (
               <span style={{
                 fontSize: "0.68rem",
                 fontWeight: 700,
@@ -474,21 +480,29 @@ const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
             <Hash size={14} style={{ marginRight: "0.25rem" }} />
             {dog.id}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-            <Clock
-              size={16}
-              color={walkPresentation.color}
-            />
-            <span
-              style={{
-                fontSize: "0.875rem",
-                fontWeight: "600",
-                color: walkPresentation.color,
-              }}
-            >
-              {walkPresentation.label}
-            </span>
-          </div>
+          {noWalks ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <span style={{ fontSize: "0.8rem", fontWeight: 600, color: "#92400e", background: "#fef3c7", border: "1px solid #fde68a", borderRadius: "9999px", padding: "0.15rem 0.6rem" }}>
+                🚫 kwarantanna — nie wyprowadzamy
+              </span>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
+              <Clock
+                size={16}
+                color={walkPresentation.color}
+              />
+              <span
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: "600",
+                  color: walkPresentation.color,
+                }}
+              >
+                {walkPresentation.label}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
