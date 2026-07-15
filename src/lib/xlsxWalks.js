@@ -1,6 +1,8 @@
 // Import historii spacerów z harmonogramu wolontariuszy (XLSX, zakładka
-// WYJŚCIA): kolumna A = boks, kolumna B = opiekun (psy w nawiasach),
-// kolumny z datami zawierają oznaczenia. Zasady (tylko jednoznaczne wpisy):
+// WYJŚCIA): kolumna A = boks ("S 10" albo sam numer "10" — sektor wtedy
+// z ostatniego nagłówka), kolumna B = opiekun (psy w nawiasach) albo
+// wprost lista psów ("Tymianek, Sikosi, Kurek, Lolek"), kolumny z datami
+// zawierają oznaczenia. Zasady (tylko jednoznaczne wpisy):
 // - boks z JEDNYM psem: każde niepuste oznaczenie = spacer
 // - boks z wieloma psami: oznaczenie zawierające "x" ("x", "TLSx", "Ex")
 //   = wszystkie psy (x wstawia się przy zabraniu ostatniego psa z boksu);
@@ -62,13 +64,30 @@ export async function parseWalkSchedule(file, fromDate, toDate) {
   }
 
   const rows = [];
+  let curPav = ""; // sektor "dziedziczony" dla wierszy z samym numerem boksu
   for (let r = 2; r < grid.length; r++) {
     const line = grid[r] || [];
     const boksRaw = String(line[0] ?? "").trim();
     if (!boksRaw) continue;
-    const bm = boksRaw.match(/^([A-Za-złó\s]+?)\s*(\d+)$/i);
-    const pavilion = bm ? bm[1].replace(/\s+/g, "").toUpperCase() : "";
-    const box = bm ? parseInt(bm[2], 10) : null;
+
+    let pavilion = "";
+    let box = null;
+    if (/^\d+$/.test(boksRaw)) {
+      // Sam numer ("10") — sektor z ostatniego nagłówka/wiersza z literą
+      pavilion = curPav;
+      box = parseInt(boksRaw, 10);
+    } else {
+      const bm = boksRaw.match(/^([A-Za-złó\s]+?)\s*(\d+)$/i);
+      if (bm) {
+        pavilion = bm[1].replace(/\s+/g, "").toUpperCase();
+        box = parseInt(bm[2], 10);
+        curPav = pavilion;
+      } else {
+        // Wiersz nagłówka sektora ("S", "SEKTOR KP") — zapamiętaj i pomiń
+        const pv = boksRaw.replace(/sektor|pawilon/gi, "").replace(/[^a-ząćęłńóśźż]/gi, "").toUpperCase();
+        if (pv && pv.length <= 3) { curPav = pv; continue; }
+      }
+    }
 
     const label = String(line[1] ?? "");
     const pm = label.match(/\(([^)]*)\)/);
@@ -83,7 +102,7 @@ export async function parseWalkSchedule(file, fromDate, toDate) {
       if (mark) marks[date] = mark;
     }
     if (Object.keys(marks).length > 0 || names.length > 0) {
-      rows.push({ boks: boksRaw, pavilion, box, names, marks });
+      rows.push({ boks: boksRaw, pavilion, box, names, label, marks });
     }
   }
   return { rows, dates: dateCols.map((d) => d.date) };
@@ -119,18 +138,34 @@ export function matchWalks(rows, dogs) {
     const boxKey = `${row.pavilion}|${row.box}`;
     const boxDogs = byBox.get(boxKey) || [];
 
-    // Psy wiersza: z nawiasów (rozpoznane po imieniu), inaczej z boksu
+    // Imię -> pies: dokładnie, a gdy dopisek ("Kora kw.", "Sanczo krótki
+    // spacer") — po pierwszym słowie; tylko jednoznaczne trafienia
+    const findByName = (n) => {
+      const nk = normName(n);
+      const exact = byName.get(nk) || [];
+      if (exact.length === 1) return exact[0];
+      const first = byName.get(nk.split(" ")[0]) || [];
+      return first.length === 1 ? first[0] : null;
+    };
+
+    // Psy wiersza: z nawiasów (rozpoznane po imieniu), inaczej z boksu,
+    // a gdy boks nie wskazał psów — kolumna B bywa wprost listą imion
+    // ("Tymianek, Sikosi, Kurek, Lolek")
     let rowDogs = [];
     if (row.names.length > 0) {
       for (const n of row.names) {
         const nk = normName(n);
         const inBox = boxDogs.filter((d) => normName(d.name) === nk);
-        const global = byName.get(nk) || [];
-        const cand = inBox.length === 1 ? inBox : global;
-        rowDogs.push(cand.length === 1 ? cand[0] : { name: n, id: null });
+        const cand = inBox.length === 1 ? inBox[0] : findByName(n);
+        rowDogs.push(cand || { name: n, id: null });
       }
-    } else {
+    } else if (boxDogs.length > 0) {
       rowDogs = boxDogs;
+    } else {
+      const plain = String(row.label || "").split(",").map(cleanDogName).filter(Boolean);
+      for (const n of plain) {
+        rowDogs.push(findByName(n) || { name: n, id: null });
+      }
     }
     const resolved = rowDogs.filter((d) => d.id);
 
