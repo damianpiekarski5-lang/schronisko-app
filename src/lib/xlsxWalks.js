@@ -83,17 +83,23 @@ export async function parseWalkSchedule(file, fromDate, toDate) {
         box = parseInt(bm[2], 10);
         curPav = pavilion;
       } else {
-        // Wiersz nagłówka sektora ("S", "SEKTOR KP") — zapamiętaj i pomiń
+        // Wiersz nagłówka sektora — zapamiętaj i pomiń. Strefy specjalne
+        // mają opisowe nagłówki ("SZPITAL duże X rano...") -> sektor S/I
+        const nb = normName(boksRaw);
+        if (nb.includes("szpital")) { curPav = "S"; continue; }
+        if (nb.includes("izolat")) { curPav = "I"; continue; }
         const pv = boksRaw.replace(/sektor|pawilon/gi, "").replace(/[^a-ząćęłńóśźż]/gi, "").toUpperCase();
         if (pv && pv.length <= 3) { curPav = pv; continue; }
       }
     }
 
+    // Psy mogą być w KILKU nawiasach: "(Izydor) Załubska (Bombek)"
     const label = String(line[1] ?? "");
-    const pm = label.match(/\(([^)]*)\)/);
+    const pm = [...label.matchAll(/\(([^)]*)\)/g)];
     const names = pm
-      ? pm[1].split(",").map(cleanDogName).filter(Boolean)
-      : [];
+      .flatMap((m) => m[1].split(","))
+      .map(cleanDogName)
+      .filter(Boolean);
 
     const marks = {};
     for (const { idx, date } of dateCols) {
@@ -148,9 +154,20 @@ export function matchWalks(rows, dogs) {
       return first.length === 1 ? first[0] : null;
     };
 
-    // Psy wiersza: z nawiasów (rozpoznane po imieniu), inaczej z boksu,
-    // a gdy boks nie wskazał psów — kolumna B bywa wprost listą imion
-    // ("Tymianek, Sikosi, Kurek, Lolek")
+    // Lista imion z tekstu ("Tymianek, Sikosi, Kurek, Lolek") — użyteczna
+    // tylko gdy choć jedno imię wskazuje psa z bazy
+    const fromPlainList = (text) => {
+      const list = String(text || "").split(",").map(cleanDogName).filter(Boolean);
+      const dogs = list.map((n) => findByName(n) || { name: n, id: null });
+      return dogs.some((d) => d.id) ? dogs : null;
+    };
+
+    // Psy wiersza — drabinka:
+    // - nawiasy (wszystkie grupy) = imiona psów; gdy żadne się nie
+    //   rozpoznało (notatki typu "(szelki)"), psy są przed nawiasem
+    //   albo w boksie
+    // - bez nawiasów: kolumna B bywa wprost listą imion (szpital),
+    //   dopiero potem psy z boksu — sektor dziedziczony bywa zawodny
     let rowDogs = [];
     if (row.names.length > 0) {
       for (const n of row.names) {
@@ -159,13 +176,12 @@ export function matchWalks(rows, dogs) {
         const cand = inBox.length === 1 ? inBox[0] : findByName(n);
         rowDogs.push(cand || { name: n, id: null });
       }
-    } else if (boxDogs.length > 0) {
-      rowDogs = boxDogs;
-    } else {
-      const plain = String(row.label || "").split(",").map(cleanDogName).filter(Boolean);
-      for (const n of plain) {
-        rowDogs.push(findByName(n) || { name: n, id: null });
+      if (!rowDogs.some((d) => d.id)) {
+        const outside = String(row.label || "").replace(/\([^)]*\)/g, "");
+        rowDogs = boxDogs.length > 0 ? boxDogs : (fromPlainList(outside) || rowDogs);
       }
+    } else {
+      rowDogs = fromPlainList(row.label) || boxDogs;
     }
     const resolved = rowDogs.filter((d) => d.id);
 
