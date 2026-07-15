@@ -153,8 +153,9 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
       <p style={{ fontSize: "0.82rem", color: "#6b7280", margin: "0 0 0.75rem" }}>
         Wgraj plik harmonogramu (zakładka WYJŚCIA). Boks z jednym psem: każde
         niepuste oznaczenie (X, emoji, godzina, inicjał) = spacer. Boks z wieloma
-        psami: X = wszystkie psy, litery imion = konkretne psy; inne oznaczenia
-        są pomijane, bo nie wiadomo, którego psa dotyczą.
+        psami: oznaczenie zawierające „x" (np. x, TLSx) = wszystkie psy, litery
+        imion bez x = konkretne psy; inne oznaczenia są pomijane, bo nie
+        wiadomo, którego psa dotyczą.
       </p>
 
       <div style={{ display: "flex", gap: "0.6rem", marginBottom: "0.6rem", flexWrap: "wrap" }}>

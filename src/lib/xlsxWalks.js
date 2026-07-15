@@ -2,9 +2,10 @@
 // WYJŚCIA): kolumna A = boks, kolumna B = opiekun (psy w nawiasach),
 // kolumny z datami zawierają oznaczenia. Zasady (tylko jednoznaczne wpisy):
 // - boks z JEDNYM psem: każde niepuste oznaczenie = spacer
-// - boks z wieloma psami: X = wszystkie psy; litery imion ("R", "St",
-//   "KM") = konkretne psy; emoji/godziny/inicjały wolontariuszy nie
-//   mówią który pies wyszedł -> pomijane z raportem
+// - boks z wieloma psami: oznaczenie zawierające "x" ("x", "TLSx", "Ex")
+//   = wszystkie psy (x wstawia się przy zabraniu ostatniego psa z boksu);
+//   litery imion bez x ("R", "St", "KM") = konkretne psy; emoji/godziny/
+//   inicjały wolontariuszy nie mówią który pies wyszedł -> pomijane z raportem
 
 import * as XLSX from "xlsx";
 
@@ -19,7 +20,7 @@ export function normName(s) {
     .trim();
 }
 
-const X_RE = /^x+$/i;
+const HAS_X_RE = /x/i;
 const LETTERS_RE = /[^A-Za-zżźćńółęąśŻŹĆŃÓŁĘĄŚ]/g;
 
 function cleanDogName(raw) {
@@ -149,11 +150,12 @@ export function matchWalks(rows, dogs) {
       }
 
       // Boks wielopsi — jednoznaczne są TYLKO:
-      // - X/x = WSZYSTKIE psy z boksu były na spacerze
+      // - oznaczenie zawierające x ("x", "TLSx", "Ex") = WSZYSTKIE psy
+      //   z boksu (x wstawiane przy zabraniu ostatniego psa)
       // - litery pasujące do imion psów = konkretne psy
       // Emoji, godziny, inicjały wolontariuszy itp. nie mówią,
       // KTÓRY pies wyszedł -> pomijamy z raportem
-      if (X_RE.test(letters)) {
+      if (HAS_X_RE.test(letters)) {
         resolved.forEach((d) => addWalk(d, date));
         if (resolved.length < rowDogs.length) {
           ambiguous.push({ date, boks: row.boks, mark, reason: "część psów z boksu nierozpoznana w bazie" });
@@ -168,7 +170,6 @@ export function matchWalks(rows, dogs) {
       let anyAmb = tokens.length === 0;
       for (const t of tokens) {
         const tn = normName(t);
-        if (X_RE.test(tn)) { resolved.forEach((d) => addWalk(d, date)); continue; }
         const pref = resolved.filter((d) => normName(d.name).startsWith(tn));
         if (pref.length === 1) {
           addWalk(pref[0], date);
