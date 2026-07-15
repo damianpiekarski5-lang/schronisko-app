@@ -20,6 +20,8 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [showAmbiguous, setShowAmbiguous] = useState(false);
+  const [recomputing, setRecomputing] = useState(false);
+  const [recomputeMsg, setRecomputeMsg] = useState("");
 
   const box = { background: "white", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", marginBottom: "0.75rem" };
 
@@ -117,6 +119,32 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
     }
   };
 
+  // Naprawa danych: przelicza "Ostatni spacer" wszystkich psów z pełnej
+  // historii arkusza (np. po imporcie sprzed poprawki porównania dat)
+  const recompute = async () => {
+    if (!currentUser || recomputing) return;
+    if (!window.confirm("Przeliczyć pole „Ostatni spacer\u201d wszystkich psów na podstawie pełnej historii arkusza Spacery?")) return;
+    setRecomputing(true);
+    setRecomputeMsg("");
+    try {
+      const token = await currentUser.getIdToken();
+      const res = await fetch("/api/gs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action: "recomputeLastWalks" }),
+      });
+      const json = await res.json();
+      if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+      setRecomputeMsg(`✅ Zaktualizowano „Ostatni spacer" u ${json.data.updated} psów (sprawdzono ${json.data.dogs}).`);
+      onRefreshDogs?.();
+    } catch (err) {
+      console.error("Błąd przeliczania:", err);
+      setRecomputeMsg("⚠️ Nie udało się przeliczyć: " + (err?.message || "nieznany błąd"));
+    } finally {
+      setRecomputing(false);
+    }
+  };
+
   return (
     <div style={box}>
       <div style={{ fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.5rem", color: "#111827" }}>
@@ -146,6 +174,15 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
         {busy ? "Przetwarzam..." : "Wybierz plik XLSX"}
         <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={handleFile} disabled={busy} style={{ display: "none" }} />
       </label>
+
+      <button
+        onClick={recompute}
+        disabled={recomputing}
+        style={{ marginLeft: "0.6rem", padding: "0.65rem 1rem", borderRadius: "0.5rem", border: "1px solid #d1d5db", background: "white", color: "#374151", fontWeight: 600, fontSize: "0.85rem", cursor: recomputing ? "wait" : "pointer" }}
+      >
+        {recomputing ? "Przeliczam..." : "🔄 Przelicz „Ostatni spacer\u201d z historii"}
+      </button>
+      {recomputeMsg && <p style={{ marginTop: "0.6rem", fontSize: "0.85rem", fontWeight: 600, color: recomputeMsg.startsWith("✅") ? "#166534" : "#991b1b" }}>{recomputeMsg}</p>}
 
       {error && <p style={{ marginTop: "0.6rem", color: "#991b1b", fontSize: "0.85rem", fontWeight: 600 }}>⚠️ {error}</p>}
 

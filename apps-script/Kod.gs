@@ -153,6 +153,10 @@ function doPost(e) {
       return json({ ok: true, data: bulkImportWalks_(payload) });
     }
 
+    if (action === "recomputeLastWalks") {
+      return json({ ok: true, data: recomputeLastWalks_(payload) });
+    }
+
     if (action === "setArchive") {
       const result = setArchive(payload);
       return json({ ok: true, data: result });
@@ -609,6 +613,52 @@ function bulkImportWalks_(payload) {
     lastWalkUpdated: lastWalkUpdated,
     errors: errors.slice(0, 20),
   };
+}
+
+// Przelicza "Ostatni spacer" WSZYSTKICH psów z pełnej historii arkusza
+// Spacery (naprawa danych po imporcie wykonanym przed poprawką dat).
+// Tylko admin.
+function recomputeLastWalks_(payload) {
+  requireAdmin(payload);
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const walksSheet = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!walksSheet || walksSheet.getLastRow() < 2) {
+    return { success: true, updated: 0, dogs: 0 };
+  }
+
+  // Najnowszy spacer per pies (porównanie po znormalizowanym znaczniku)
+  const wValues = walksSheet.getDataRange().getValues();
+  const wMap = headerMap(wValues[0]);
+  requireHeaders(wMap, ["Data spaceru", "DogId"]);
+  const newest = {};
+  for (let i = 1; i < wValues.length; i++) {
+    const dogId = safeStr(wValues[i][wMap["DogId"]]);
+    if (!dogId) continue;
+    const stamp = walkStamp_(wValues[i][wMap["Data spaceru"]]);
+    if (!/^\d{4}-/.test(stamp)) continue;
+    if (!newest[dogId] || stamp > newest[dogId]) newest[dogId] = stamp;
+  }
+
+  const dogsSheet = ss.getSheetByName(DOGS_SHEET_NAME);
+  if (!dogsSheet) throw new Error("Brak zakładki: " + DOGS_SHEET_NAME);
+  const dValues = dogsSheet.getDataRange().getValues();
+  const dMap = headerMap(dValues[0]);
+  requireHeaders(dMap, [H.ID, H.LAST_WALK]);
+
+  let updated = 0;
+  let dogsSeen = 0;
+  for (let i = 1; i < dValues.length; i++) {
+    const dogId = safeStr(dValues[i][dMap[H.ID]]);
+    if (!dogId || !newest[dogId]) continue;
+    dogsSeen++;
+    const current = walkStamp_(dValues[i][dMap[H.LAST_WALK]]);
+    if (current === newest[dogId]) continue;
+    dogsSheet.getRange(i + 1, dMap[H.LAST_WALK] + 1).setValue(newest[dogId]);
+    updated++;
+  }
+
+  return { success: true, updated: updated, dogs: dogsSeen };
 }
 
 // ===============================
