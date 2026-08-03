@@ -52,10 +52,13 @@ export async function parseWalkSchedule(file, fromDate, toDate) {
   const ws = wb.Sheets[sheetName];
   const grid = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
 
-  // Kolumny z datami w zakresie (wiersz 1)
+  // Kolumny z datami w zakresie (wiersz 1). Kolumny A i B to boks i
+  // opiekunowie — w nagłówku B bywa data (data utworzenia arkusza), więc
+  // przy szerszym zakresie imiona psów zostałyby wzięte za oznaczenia
   const header = grid[0] || [];
   const dateCols = [];
   header.forEach((v, idx) => {
+    if (idx < 2) return;
     const ds = excelDateToStr(v);
     if (ds && ds >= fromDate && ds <= toDate) dateCols.push({ idx, date: ds });
   });

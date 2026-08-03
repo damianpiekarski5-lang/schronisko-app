@@ -1,12 +1,40 @@
 import React, { useState } from "react";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, setDoc } from "firebase/firestore";
 import { db } from "./firebase";
 import { parseWalkSchedule, matchWalks } from "./lib/xlsxWalks";
+import { fetchDailyWalksRange } from "./lib/walksStore";
 
 const POLAND_TZ = "Europe/Warsaw";
 
+// Backend przyjmuje max 2000 wpisów na raz, a duże wsady i tak kończą się
+// timeoutem (odpowiedź nie jest wtedy JSON-em) — wysyłamy partiami.
+const CHUNK = 400;
+
 function todayStr() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: POLAND_TZ }).format(new Date());
+}
+
+// Odpowiedź /api/gs bywa stroną błędu (timeout), nie JSON-em — czytamy
+// tekst i zamieniamy na zrozumiały komunikat zamiast wyjątku parsera
+async function postGs(body, token) {
+  const res = await fetch("/api/gs", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const text = await res.text();
+  let json = null;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(
+      res.status === 504 || res.status === 502
+        ? "serwer nie odpowiedział na czas (spróbuj węższego zakresu dat)"
+        : `serwer zwrócił niepoprawną odpowiedź (HTTP ${res.status})`
+    );
+  }
+  if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
+  return json.data || {};
 }
 
 // Import historii spacerów z harmonogramu wolontariuszy (XLSX).
@@ -22,6 +50,7 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
   const [showAmbiguous, setShowAmbiguous] = useState(false);
   const [recomputing, setRecomputing] = useState(false);
   const [recomputeMsg, setRecomputeMsg] = useState("");
+  const [progress, setProgress] = useState(null);
 
   const box = { background: "white", border: "1px solid #e5e7eb", borderRadius: "0.75rem", padding: "1rem", marginBottom: "0.75rem" };
 
@@ -37,22 +66,55 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
       const { rows } = await parseWalkSchedule(file, fromDate, toDate);
       const { walks, ambiguous } = matchWalks(rows, dogs || []);
 
-      // Deduplikacja z istniejącą historią w arkuszu
-      let existing = {};
+      // Dwa NIEZALEŻNE magazyny: arkusz (archiwum) i Firestore (to, co
+      // widać w aplikacji). Spacer bywa w jednym, a brakuje go w drugim —
+      // wspólna deduplikacja gubiła wtedy zapis do aplikacji na zawsze.
+      let inSheet = {};
+      let sheetDedupFailed = false;
       try {
         const res = await fetch(`/api/gs?action=getWalksByDateRange&startDate=${fromDate}&endDate=${toDate}`);
         const json = await res.json();
-        if (json?.ok && json.data) existing = json.data;
+        if (json?.ok && json.data) inSheet = json.data;
+        else sheetDedupFailed = true;
       } catch {
-        // brak historii = zaimportujemy, backend i tak deduplikuje
+        sheetDedupFailed = true;
       }
-      const fresh = walks.filter((w) => !(existing[w.dogId] || []).includes(w.date));
-      const already = walks.length - fresh.length;
+
+      let inApp = {};
+      let appDedupFailed = false;
+      try {
+        inApp = await fetchDailyWalksRange(fromDate, toDate);
+      } catch (e) {
+        console.warn("Nie udało się odczytać spacerów z aplikacji:", e?.message);
+        appDedupFailed = true;
+      }
+
+      const toSheet = walks.filter((w) => !(inSheet[w.dogId] || []).includes(w.date));
+      const toApp = walks.filter((w) => !(inApp[w.date] || {})[w.dogId]);
+
+      // Do zrobienia = brakuje w arkuszu LUB w aplikacji
+      const todoKeys = new Set([
+        ...toSheet.map((w) => `${w.dogId}|${w.date}`),
+        ...toApp.map((w) => `${w.dogId}|${w.date}`),
+      ]);
+      const already = walks.length - todoKeys.size;
 
       const perDate = {};
-      fresh.forEach((w) => { perDate[w.date] = (perDate[w.date] || 0) + 1; });
+      todoKeys.forEach((k) => {
+        const d = k.split("|")[1];
+        perDate[d] = (perDate[d] || 0) + 1;
+      });
 
-      setPreview({ fileName: file.name, walks: fresh, already, ambiguous, perDate });
+      setPreview({
+        fileName: file.name,
+        toSheet,
+        toApp,
+        todo: todoKeys.size,
+        already,
+        ambiguous,
+        perDate,
+        dedupFailed: sheetDedupFailed || appDedupFailed,
+      });
     } catch (err) {
       console.error("Błąd importu harmonogramu:", err);
       setError(err?.message || "Nie udało się odczytać pliku");
@@ -63,59 +125,74 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
 
   const execute = async () => {
     if (!preview || !currentUser || busy) return;
-    if (!window.confirm(`Zaimportować ${preview.walks.length} spacerów (${fromDate} – ${toDate})?\n\nWpisy trafią do arkusza Spacery i do aplikacji.`)) return;
+    if (!window.confirm(`Zaimportować ${preview.todo} spacerów (${fromDate} – ${toDate})?\n\nDo arkusza: ${preview.toSheet.length}, do aplikacji: ${preview.toApp.length}.`)) return;
     setBusy(true);
     setError("");
-    try {
-      // 1. Arkusz (jeden wsad, backend deduplikuje i aktualizuje Ostatni spacer)
-      const token = await currentUser.getIdToken();
-      const res = await fetch("/api/gs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ action: "bulkImportWalks", walks: preview.walks }),
-      });
-      const json = await res.json();
-      if (!res.ok || !json?.ok) throw new Error(json?.error || `HTTP ${res.status}`);
 
-      // 2. Firestore (dokumenty dzienne — tabela widzi wpisy na żywo);
-      //    nie nadpisujemy istniejących wpisów
-      const byDate = {};
-      preview.walks.forEach((w) => {
-        if (!byDate[w.date]) byDate[w.date] = [];
-        byDate[w.date].push(w);
-      });
-      let fsWritten = 0;
-      for (const [date, list] of Object.entries(byDate)) {
-        const ref = doc(db, "dailyWalks", date);
-        let existingWalks = {};
+    const totalSteps = Math.ceil(preview.toSheet.length / CHUNK) + Object.keys(
+      preview.toApp.reduce((acc, w) => ({ ...acc, [w.date]: 1 }), {})
+    ).length;
+    let step = 0;
+    const bump = () => setProgress({ done: ++step, total: totalSteps });
+    setProgress({ done: 0, total: totalSteps });
+
+    const summary = { imported: 0, skipped: 0, lastWalkUpdated: 0, fsWritten: 0, errors: [] };
+    let failure = "";
+
+    try {
+      const token = await currentUser.getIdToken();
+
+      // 1. Arkusz — partiami; każda partia to osobne, krótkie wywołanie
+      for (let i = 0; i < preview.toSheet.length; i += CHUNK) {
+        const batch = preview.toSheet.slice(i, i + CHUNK);
         try {
-          const snap = await getDoc(ref);
-          existingWalks = snap.data()?.walks || {};
-        } catch {}
+          const data = await postGs({ action: "bulkImportWalks", walks: batch }, token);
+          summary.imported += data.imported || 0;
+          summary.skipped += data.skipped || 0;
+          summary.lastWalkUpdated += data.lastWalkUpdated || 0;
+          if (data.errors?.length) summary.errors.push(...data.errors);
+        } catch (e) {
+          failure = `arkusz: ${e?.message || "nieznany błąd"}`;
+          break; // reszta partii i tak padnie — nie mnóżmy timeoutów
+        }
+        bump();
+      }
+
+      // 2. Aplikacja (Firestore) — NIEZALEŻNIE od arkusza. Spacer obecny
+      //    w arkuszu, ale nieodhaczony w aplikacji, też musi tu trafić.
+      const byDate = {};
+      preview.toApp.forEach((w) => {
+        (byDate[w.date] ||= []).push(w);
+      });
+      for (const [date, list] of Object.entries(byDate)) {
         const updates = {};
         for (const w of list) {
-          if (existingWalks[w.dogId]) continue;
           updates[w.dogId] = {
             volunteerId: currentUser.uid,
             volunteerName: "Harmonogram (import)",
             type: "spacer",
             at: `${date} 12:00:00`,
           };
-          fsWritten++;
         }
-        if (Object.keys(updates).length > 0) {
-          await setDoc(ref, { walks: updates }, { merge: true });
+        try {
+          await setDoc(doc(db, "dailyWalks", date), { walks: updates }, { merge: true });
+          summary.fsWritten += Object.keys(updates).length;
+        } catch (e) {
+          summary.errors.push(`aplikacja ${date}: ${e?.message || "błąd zapisu"}`);
         }
+        bump();
       }
 
-      setResult({ ...json.data, fsWritten });
-      setPreview(null);
+      setResult(summary);
+      if (failure) setError(`Część wpisów nie trafiła do arkusza — ${failure}. Wgraj plik ponownie, żeby dokończyć.`);
+      else setPreview(null);
       onRefreshDogs?.();
     } catch (err) {
       console.error("Błąd zapisu importu:", err);
       setError("Import nie powiódł się: " + (err?.message || "nieznany błąd"));
     } finally {
       setBusy(false);
+      setProgress(null);
     }
   };
 
@@ -190,7 +267,7 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
       {result && (
         <div style={{ marginTop: "0.75rem", padding: "0.75rem", borderRadius: "0.5rem", background: "#dcfce7", border: "1px solid #86efac", color: "#166534", fontSize: "0.85rem" }}>
           <strong>✅ Import wykonany.</strong> Do arkusza: {result.imported} (pominięte duplikaty: {result.skipped}),
-          zaktualizowany „Ostatni spacer": {result.lastWalkUpdated} psów, do aplikacji: {result.fsWritten} wpisów.
+          zaktualizowany „Ostatni spacer": {result.lastWalkUpdated} psów, odhaczone w aplikacji: {result.fsWritten} wpisów.
           {result.errors?.length > 0 && <div style={{ color: "#92400e", marginTop: "0.3rem" }}>Uwagi: {result.errors.join("; ")}</div>}
         </div>
       )}
@@ -198,9 +275,15 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
       {preview && (
         <div style={{ marginTop: "0.75rem" }}>
           <div style={{ padding: "0.6rem 0.75rem", borderRadius: "0.5rem", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1e40af", fontSize: "0.85rem", marginBottom: "0.6rem" }}>
-            <strong>{preview.fileName}</strong>: do importu <strong>{preview.walks.length}</strong> spacerów
-            {preview.already > 0 && <> · już w bazie: {preview.already}</>}
+            <strong>{preview.fileName}</strong>: do importu <strong>{preview.todo}</strong> spacerów
+            {" "}(do arkusza: {preview.toSheet.length}, do aplikacji: {preview.toApp.length})
+            {preview.already > 0 && <> · już wszędzie: {preview.already}</>}
             {" "}· pominięte (niejednoznaczne): {preview.ambiguous.length}
+            {preview.dedupFailed && (
+              <div style={{ color: "#92400e", marginTop: "0.3rem" }}>
+                ⚠️ Nie udało się sprawdzić części istniejących spacerów — możliwe powtórki na liście.
+              </div>
+            )}
           </div>
 
           <div style={{ fontSize: "0.78rem", color: "#374151", marginBottom: "0.6rem" }}>
@@ -227,10 +310,14 @@ export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
             </div>
           )}
 
-          {preview.walks.length > 0 ? (
+          {preview.todo > 0 ? (
             <button onClick={execute} disabled={busy}
               style={{ width: "100%", padding: "0.9rem", borderRadius: "0.75rem", border: "none", background: busy ? "#9ca3af" : "#16a34a", color: "white", fontWeight: 700, fontSize: "1rem", cursor: busy ? "not-allowed" : "pointer" }}>
-              {busy ? "Importuję..." : `✅ Importuj ${preview.walks.length} spacerów`}
+              {busy
+                ? progress
+                  ? `Importuję... ${progress.done}/${progress.total}`
+                  : "Importuję..."
+                : `✅ Importuj ${preview.todo} spacerów`}
             </button>
           ) : (
             <div style={{ padding: "0.6rem", borderRadius: "0.5rem", background: "#dcfce7", border: "1px solid #86efac", color: "#166534", fontSize: "0.85rem", fontWeight: 600 }}>

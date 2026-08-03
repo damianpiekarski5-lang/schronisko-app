@@ -6,6 +6,7 @@ import {
   collection,
   doc,
   documentId,
+  getDocs,
   onSnapshot,
   query,
   where,
@@ -58,6 +59,23 @@ export function subscribeDailyWalks(startDate, endDate, cb, errCb) {
       if (errCb) errCb(error);
     }
   );
+}
+
+// Jednorazowy odczyt dokumentów dziennych z zakresu (bez subskrypcji) —
+// import musi wiedzieć, które spacery są już widoczne w aplikacji.
+// Zwraca { "YYYY-MM-DD": { dogId: {...} } }
+export async function fetchDailyWalksRange(startDate, endDate) {
+  const q = query(
+    collection(db, "dailyWalks"),
+    where(documentId(), ">=", startDate),
+    where(documentId(), "<=", endDate)
+  );
+  const snap = await getDocs(q);
+  const result = {};
+  snap.forEach((d) => {
+    result[d.id] = d.data()?.walks || {};
+  });
+  return result;
 }
 
 export async function recordWalkFs(dateStr, dog, currentUser, typ = "spacer") {
