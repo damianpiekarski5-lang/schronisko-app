@@ -3794,6 +3794,54 @@ const handleLogin = async () => {
           <button onClick={handleLogin} style={{ ...styles.walkButton, marginBottom: 0 }}>
             Zaloguj przez Google
           </button>
+
+          <details style={{ marginTop: "1rem", textAlign: "left" }}>
+            <summary
+              style={{
+                cursor: "pointer",
+                fontSize: "0.75rem",
+                color: "#6b7280",
+                textAlign: "center",
+                listStyle: "none",
+              }}
+            >
+              Logując się akceptujesz{" "}
+              <span style={{ textDecoration: "underline", color: "#2563eb" }}>
+                zasady przetwarzania danych
+              </span>
+            </summary>
+            <div
+              style={{
+                marginTop: "0.75rem",
+                padding: "0.75rem",
+                borderRadius: "0.5rem",
+                backgroundColor: "#f9fafb",
+                fontSize: "0.7rem",
+                lineHeight: 1.5,
+                color: "#4b5563",
+                maxHeight: "220px",
+                overflowY: "auto",
+              }}
+            >
+              <strong style={{ display: "block", marginBottom: "0.4rem", color: "#374151" }}>
+                Informacja o przetwarzaniu danych osobowych
+              </strong>
+              Administratorem Twoich danych osobowych jest KTOZ im. Jadwigi Osuchowej – Schronisko
+              dla Bezdomnych Zwierząt w Krakowie, ul. Rybna 3, 30-254 Kraków. Dane (adres e-mail,
+              imię i nazwisko) są przetwarzane w celu umożliwienia korzystania z aplikacji do
+              zarządzania opieką nad zwierzętami, na podstawie prawnie uzasadnionego interesu
+              administratora (art. 6 ust. 1 lit. f RODO). Dane przechowywane są do czasu zakończenia
+              współpracy ze schroniskiem lub do zgłoszenia sprzeciwu. Dane nie są udostępniane
+              podmiotom trzecim, za wyjątkiem dostawców infrastruktury technicznej (Google). Masz
+              prawo dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania oraz
+              wniesienia sprzeciwu. W razie pytań lub żądania usunięcia danych skontaktuj się z nami
+              pod adresem{" "}
+              <a href="mailto:aplikacja@schronisko.krakow.pl" style={{ color: "#2563eb" }}>
+                aplikacja@schronisko.krakow.pl
+              </a>
+              . Przysługuje Ci prawo wniesienia skargi do Prezesa Urzędu Ochrony Danych Osobowych.
+            </div>
+          </details>
         </div>
       </div>
     );
