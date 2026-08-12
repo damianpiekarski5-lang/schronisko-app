@@ -140,6 +140,26 @@ async function fsDeleteProgram(id) {
   return deleteDoc(doc(db, "programs", id));
 }
 
+// Ćwiczenia przypisane bezpośrednio do psa — nie wymagają programu.
+// Kolekcja: dogTraining/{dogId}/exercises/{autoId}
+// Pole libraryId (opcjonalne) wskazuje ćwiczenie skopiowane z globalnej biblioteki.
+
+async function fsGetDogExercises(dogId) {
+  const snap = await getDocs(collection(db, "dogTraining", dogId, "exercises"));
+  return snap.docs.map(d => ({ id: d.id, ...d.data(), _own: true }));
+}
+
+async function fsAddDogExercise(dogId, data) {
+  return addDoc(collection(db, "dogTraining", dogId, "exercises"), {
+    ...data,
+    createdAt: serverTimestamp(),
+  });
+}
+
+async function fsDeleteDogExercise(dogId, id) {
+  return deleteDoc(doc(db, "dogTraining", dogId, "exercises", id));
+}
+
 // ─── Sub-components ──────────────────────────────────────────────────────────
 
 function StageDots({ stage, onChange }) {
@@ -158,7 +178,7 @@ function StageDots({ stage, onChange }) {
   );
 }
 
-function ProgressCard({ exercise, progress, onUpdate }) {
+function ProgressCard({ exercise, progress, onUpdate, onDelete }) {
   const p = progress || { stage: 1, successRate: 0, notes: "" };
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -184,7 +204,10 @@ function ProgressCard({ exercise, progress, onUpdate }) {
       <div style={{ ...S.row, justifyContent: "space-between" }} onClick={() => setOpen(o => !o)}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: "600", fontSize: "0.95rem", color: "#111827" }}>{exercise.name}</div>
-          <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>{exercise.category} · {exercise.difficulty}</div>
+          <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>
+            {exercise.category} · {exercise.difficulty}
+            {!exercise._own && <span style={{ color: "#7c3aed" }}> · z programu</span>}
+          </div>
           <div style={{ ...S.row, marginTop: "0.4rem", gap: "1rem" }}>
             <StageDots stage={local.stage} onChange={() => {}} />
             <span style={{ fontSize: "0.8rem", fontWeight: "700", color: successColor }}>{local.successRate}%</span>
@@ -208,22 +231,28 @@ function ProgressCard({ exercise, progress, onUpdate }) {
             <textarea value={local.notes} onChange={e => setLocal(l => ({ ...l, notes: e.target.value }))}
               style={S.textarea} placeholder="Uwagi do ćwiczenia..." />
           </div>
+          {exercise.description && (
+            <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem", fontStyle: "italic" }}>
+              {exercise.description}
+            </div>
+          )}
           <button onClick={handleSave} disabled={saving}
             style={{ ...S.btn, ...S.btnPrimary, marginTop: "0.5rem", width: "100%", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Zapisuję..." : "Zapisz postęp"}
           </button>
+          {onDelete && (
+            <button onClick={onDelete}
+              style={{ ...S.btn, ...S.btnDanger, ...S.btnSmall, marginTop: "0.4rem", width: "100%" }}>
+              Usuń ćwiczenie z psa
+            </button>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
-  const programExs = program?.exercises || [];
-  const exList = programExs
-    .map(pe => exercises.find(e => e.id === pe.exerciseId))
-    .filter(Boolean);
-
+function AddSessionModal({ dog, exList, onClose, onSave }) {
   const [results, setResults] = useState(() =>
     exList.map(e => ({ exerciseId: e.id, exerciseName: e.name, result: "", notes: "" }))
   );
@@ -255,7 +284,7 @@ function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
         </div>
 
         {exList.length === 0 ? (
-          <p style={{ color: "#6b7280", textAlign: "center", padding: "1rem" }}>Brak ćwiczeń w programie. Dodaj ćwiczenia do programu w Bibliotece.</p>
+          <p style={{ color: "#6b7280", textAlign: "center", padding: "1rem" }}>Brak ćwiczeń dla tego psa. Zamknij okno i dodaj ćwiczenie w zakładce Postępy.</p>
         ) : (
           exList.map((ex, idx) => (
             <div key={ex.id} style={{ ...S.card, marginBottom: "0.75rem" }}>
@@ -288,12 +317,121 @@ function AddSessionModal({ dog, program, exercises, onClose, onSave }) {
   );
 }
 
+// ─── Dodawanie ćwiczenia z karty psa ─────────────────────────────────────────
+// Dwie drogi: nowe ćwiczenie "szyte" pod psa albo szybkie wzięcie z biblioteki.
+// W obu przypadkach powstaje dokument w dogTraining/{dogId}/exercises — program
+// nie jest potrzebny.
+
+function AddDogExerciseForm({ library, usedLibraryIds, onAdd, onClose }) {
+  const [mode, setMode] = useState("new");
+  const [form, setForm] = useState({ name: "", category: CATEGORIES[0], difficulty: DIFFICULTIES[0], description: "" });
+  const [libId, setLibId] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const available = library.filter(e => !usedLibraryIds.has(e.id));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      if (mode === "new") {
+        if (!form.name.trim()) return;
+        await onAdd({
+          name: form.name.trim(),
+          category: form.category,
+          difficulty: form.difficulty,
+          description: form.description.trim(),
+        });
+      } else {
+        const src = library.find(e => e.id === libId);
+        if (!src) return;
+        await onAdd({
+          name: src.name,
+          category: src.category || CATEGORIES[0],
+          difficulty: src.difficulty || DIFFICULTIES[0],
+          description: src.description || "",
+          libraryId: src.id,
+        });
+      }
+      onClose();
+    } catch (e) {
+      console.error("Błąd dodawania ćwiczenia:", e);
+      alert("Nie udało się dodać ćwiczenia — sprawdź połączenie i spróbuj ponownie.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const canSave = mode === "new" ? !!form.name.trim() : !!libId;
+
+  return (
+    <div style={{ ...S.card, borderColor: "#c4b5fd", backgroundColor: "#faf5ff" }}>
+      <div style={{ ...S.row, justifyContent: "space-between", marginBottom: "0.75rem" }}>
+        <strong style={{ fontSize: "0.95rem" }}>Nowe ćwiczenie dla tego psa</strong>
+        <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.1rem", color: "#6b7280" }}>✕</button>
+      </div>
+
+      <div style={{ ...S.tabRow, marginBottom: "0.75rem" }}>
+        {[["new", "Nowe"], ["library", `Z biblioteki (${available.length})`]].map(([k, l]) => (
+          <button key={k} onClick={() => setMode(k)} style={{ ...S.tab, ...(mode === k ? S.tabActive : {}) }}>{l}</button>
+        ))}
+      </div>
+
+      {mode === "new" ? (
+        <>
+          <label style={S.label}>Nazwa ćwiczenia</label>
+          <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+            style={S.input} placeholder="np. Chodzenie przy nodze bez szarpania" autoFocus />
+          <div style={{ ...S.row, gap: "0.5rem", marginTop: "0.6rem" }}>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Kategoria</label>
+              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={S.select}>
+                {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </div>
+            <div style={{ flex: 1 }}>
+              <label style={S.label}>Poziom</label>
+              <select value={form.difficulty} onChange={e => setForm(f => ({ ...f, difficulty: e.target.value }))} style={S.select}>
+                {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginTop: "0.6rem" }}>
+            <label style={S.label}>Opis / sposób pracy (opcjonalnie)</label>
+            <textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              style={{ ...S.textarea, minHeight: 70 }} placeholder="Na co zwracać uwagę u tego psa..." />
+          </div>
+        </>
+      ) : available.length === 0 ? (
+        <p style={{ color: "#6b7280", fontSize: "0.85rem", textAlign: "center", padding: "0.75rem" }}>
+          Wszystkie ćwiczenia z biblioteki są już przypisane temu psu.
+        </p>
+      ) : (
+        <>
+          <label style={S.label}>Wybierz z biblioteki</label>
+          <select value={libId} onChange={e => setLibId(e.target.value)} style={S.select}>
+            <option value="">— wybierz ćwiczenie —</option>
+            {available.map(e => (
+              <option key={e.id} value={e.id}>{e.name} ({e.category})</option>
+            ))}
+          </select>
+        </>
+      )}
+
+      <button onClick={handleSave} disabled={saving || !canSave}
+        style={{ ...S.btn, ...S.btnPrimary, width: "100%", marginTop: "0.75rem", opacity: saving || !canSave ? 0.5 : 1 }}>
+        {saving ? "Dodaję..." : "Dodaj ćwiczenie"}
+      </button>
+    </div>
+  );
+}
+
 // ─── Dog Training View ────────────────────────────────────────────────────────
 
 function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate, onLogout }) {
   const [training, setTraining] = useState(null);
   const [progress, setProgress] = useState([]);
   const [sessions, setSessions] = useState([]);
+  const [dogExercises, setDogExercises] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [tab, setTab] = useState("progress");
@@ -302,6 +440,8 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [showNote, setShowNote] = useState(false);
   const [noteText, setNoteText] = useState("");
   const [savingNote, setSavingNote] = useState(false);
+  const [showAddEx, setShowAddEx] = useState(false);
+  const [showProgramPicker, setShowProgramPicker] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -310,6 +450,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       fsGetDogTraining(dog.id),
       fsGetDogProgress(dog.id),
       fsGetDogSessions(dog.id),
+      fsGetDogExercises(dog.id),
     ]);
     try {
       let result;
@@ -320,10 +461,11 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
         await new Promise(r => setTimeout(r, 1500));
         result = await doFetch();
       }
-      const [t, pr, ss] = result;
+      const [t, pr, ss, dex] = result;
       setTraining(t);
       setProgress(pr);
       setSessions(ss);
+      setDogExercises(dex);
     } catch (e) {
       console.error("Błąd ładowania danych psa:", e);
       setLoadError(e?.code || e?.message || "Nieznany błąd");
@@ -339,6 +481,41 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
     .map(pe => ({ ...exercises.find(e => e.id === pe.exerciseId), _order: pe.order }))
     .filter(e => e?.id)
     .sort((a, b) => a._order - b._order);
+
+  // Ćwiczenia psa + ćwiczenia z programu (jeśli przypisany). Pomijamy duplikat,
+  // gdy to samo ćwiczenie z biblioteki weszło już przez program.
+  const programIds = new Set(programExercises.map(e => e.id));
+  const ownExercises = dogExercises.filter(e => !(e.libraryId && programIds.has(e.libraryId)));
+  const allExercises = [...ownExercises, ...programExercises];
+
+  // Blokuje ponowne wzięcie z biblioteki tego, co pies już ma.
+  const usedLibraryIds = new Set([
+    ...programIds,
+    ...dogExercises.map(e => e.libraryId).filter(Boolean),
+  ]);
+
+  const handleAddDogExercise = async (data) => {
+    // Dokument dogTraining musi istnieć, żeby pies trafiał do raportów.
+    await fsSaveDogTraining(dog.id, {
+      behavioristId: currentUser.uid,
+      dogName: dog.name,
+      status: training?.status || "in_progress",
+      ...(training?.startedAt ? {} : { startedAt: serverTimestamp() }),
+    });
+    await fsAddDogExercise(dog.id, { ...data, createdBy: currentUser.uid });
+    await load();
+  };
+
+  const handleDeleteDogExercise = async (exId, exName) => {
+    if (!window.confirm(`Usunąć ćwiczenie "${exName}" z tego psa?\n\nHistoria sesji zostanie zachowana.`)) return;
+    try {
+      await fsDeleteDogExercise(dog.id, exId);
+      await load();
+    } catch (e) {
+      console.error("Błąd usuwania ćwiczenia:", e);
+      alert("Nie udało się usunąć ćwiczenia.");
+    }
+  };
 
   const handleAssignProgram = async (programId) => {
     setSavingProgram(true);
@@ -420,18 +597,9 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       </div>
 
       <div style={S.content}>
-        {/* Program assignment */}
+        {/* Plan sesji + notatka */}
         <div style={S.card}>
-          <label style={S.label}>Program treningowy</label>
-          <select value={training?.assignedProgramId || ""} onChange={e => handleAssignProgram(e.target.value)}
-            style={S.select} disabled={savingProgram}>
-            <option value="">— brak przypisanego programu —</option>
-            {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
-          {assignedProgram && (
-            <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.4rem" }}>{assignedProgram.description}</div>
-          )}
-          <div style={{ ...S.row, marginTop: "0.75rem", gap: "0.75rem", flexWrap: "wrap" }}>
+          <div style={{ ...S.row, gap: "0.75rem", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
               <label style={S.label}>Następna sesja (plan)</label>
               <input
@@ -462,6 +630,28 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
               ⚠️ Zaplanowana sesja zaległa ({formatDate(training.nextSessionDate)})
             </div>
           )}
+
+          {/* Program jest opcjonalny — schowany, żeby nie sugerował, że trzeba go tworzyć */}
+          <div style={{ marginTop: "0.75rem", borderTop: "1px solid #f3f4f6", paddingTop: "0.6rem" }}>
+            {!showProgramPicker && !assignedProgram ? (
+              <button onClick={() => setShowProgramPicker(true)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.8rem", color: "#7c3aed", fontWeight: 600 }}>
+                Użyj gotowego programu (opcjonalnie)
+              </button>
+            ) : (
+              <>
+                <label style={S.label}>Program treningowy (opcjonalnie)</label>
+                <select value={training?.assignedProgramId || ""} onChange={e => handleAssignProgram(e.target.value)}
+                  style={S.select} disabled={savingProgram}>
+                  <option value="">— bez programu —</option>
+                  {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                {assignedProgram?.description && (
+                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.4rem" }}>{assignedProgram.description}</div>
+                )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Tabs */}
@@ -483,16 +673,34 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           </div>
         ) : tab === "progress" ? (
           <>
-            {programExercises.length === 0 ? (
+            {showAddEx ? (
+              <AddDogExerciseForm
+                library={exercises}
+                usedLibraryIds={usedLibraryIds}
+                onAdd={handleAddDogExercise}
+                onClose={() => setShowAddEx(false)}
+              />
+            ) : (
+              <button onClick={() => setShowAddEx(true)}
+                style={{ ...S.btn, ...S.btnPrimary, width: "100%", marginBottom: "0.75rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
+                <Plus size={16} /> Dodaj ćwiczenie
+              </button>
+            )}
+
+            {allExercises.length === 0 ? (
               <div style={S.emptyState}>
                 <BookOpen size={32} style={{ margin: "0 auto 0.5rem", display: "block", opacity: 0.4 }} />
-                <div>Przypisz program żeby zobaczyć ćwiczenia</div>
+                <div>Brak ćwiczeń dla tego psa</div>
+                <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>
+                  Dodaj pierwsze ćwiczenie przyciskiem powyżej
+                </div>
               </div>
             ) : (
-              programExercises.map(ex => (
+              allExercises.map(ex => (
                 <ProgressCard key={ex.id} exercise={ex}
                   progress={progress.find(p => p.id === ex.id)}
-                  onUpdate={handleUpdateProgress} />
+                  onUpdate={handleUpdateProgress}
+                  onDelete={ex._own ? () => handleDeleteDogExercise(ex.id, ex.name) : null} />
               ))
             )}
           </>
@@ -529,8 +737,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       {showSession && (
         <AddSessionModal
           dog={dog}
-          program={assignedProgram}
-          exercises={exercises}
+          exList={allExercises}
           onClose={() => setShowSession(false)}
           onSave={handleSaveSession}
         />
@@ -916,6 +1123,7 @@ function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
 function TodayTab({ dogs, trainings, onSelectDog }) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
+  const todayStr = today.toISOString().slice(0, 10);
 
   const dueDogs = dogs.filter(dog => {
     const t = trainings[dog.id];
@@ -923,6 +1131,14 @@ function TodayTab({ dogs, trainings, onSelectDog }) {
     const last = t.lastSessionDate instanceof Timestamp ? t.lastSessionDate.toDate() : new Date(t.lastSessionDate);
     return last < today;
   });
+
+  // Psy z zaplanowaną sesją (na dziś lub zaległą) idą na górę listy.
+  const planRank = (dog) => {
+    const plan = trainings[dog.id]?.nextSessionDate;
+    if (!plan) return 2;
+    return plan <= todayStr ? 0 : 1;
+  };
+  dueDogs.sort((a, b) => planRank(a) - planRank(b));
 
   if (dueDogs.length === 0) {
     return (
@@ -941,12 +1157,19 @@ function TodayTab({ dogs, trainings, onSelectDog }) {
       {dueDogs.map(dog => {
         const t = trainings[dog.id];
         const days = t?.lastSessionDate ? daysSince(t.lastSessionDate) : null;
+        const plan = t?.nextSessionDate;
+        const planDue = plan && plan <= todayStr;
         return (
-          <div key={dog.id} style={{ ...S.card, ...S.cardClickable }} onClick={() => onSelectDog(dog)}>
+          <div key={dog.id} style={{ ...S.card, ...S.cardClickable, ...(planDue ? { borderLeft: "4px solid #7c3aed" } : {}) }} onClick={() => onSelectDog(dog)}>
             <div style={{ ...S.row, justifyContent: "space-between" }}>
               <div>
                 <div style={S.dogName}>{dog.name}</div>
                 <div style={S.dogSub}>{dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"}</div>
+                {plan && (
+                  <div style={{ fontSize: "0.78rem", marginTop: "0.2rem", fontWeight: 600, color: planDue ? "#7c3aed" : "#6b7280" }}>
+                    📅 {plan === todayStr ? "Zaplanowano na dziś" : planDue ? `Zaległa sesja (${formatDate(plan)})` : `Plan: ${formatDate(plan)}`}
+                  </div>
+                )}
               </div>
               <div>
                 {days === null ? (
