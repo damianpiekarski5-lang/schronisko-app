@@ -37,7 +37,7 @@ const MapEditor = lazy(() => import("./MapEditor"));
 const WalkReportView = lazy(() => import("./WalkReportView"));
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus, canViewWalkReport } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -3392,7 +3392,6 @@ const [behaviorystActionState, setBehaviorystActionState] = useState({
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
 const isBehaviorystUser = String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
-const { role: shellRole, loading: shellRoleLoading } = useUserRole();
 
 // Przywrócony widok wymagający uprawnień, których użytkownik nie ma,
 // renderowałby pustą stronę bez nawigacji (np. po zmianie konta)
@@ -3400,8 +3399,7 @@ useEffect(() => {
   if (!authReady) return;
   if (currentView === "panel" && !isAdminUser) setCurrentView("home");
   if (currentView === "behaviorystPanel" && !isBehaviorystUser) setCurrentView("home");
-  if (currentView === "walkReport" && !shellRoleLoading && !canViewWalkReport(shellRole)) setCurrentView("home");
-}, [authReady, currentView, isAdminUser, isBehaviorystUser, shellRole, shellRoleLoading]);
+}, [authReady, currentView, isAdminUser, isBehaviorystUser]);
 
 const navRef = useRef({ currentView: "home", dogCardFrom: "home" });
 useEffect(() => {

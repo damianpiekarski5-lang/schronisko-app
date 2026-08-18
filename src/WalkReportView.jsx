@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ArrowLeft } from "lucide-react";
 import { postGs } from "./api/behawiorystaApi";
+import { useUserRole } from "./hooks/useUserRole";
+import { canViewWalkReport } from "./lib/roles";
 
 // Miesięczny raport spacerów — kto i kiedy wyprowadzał danego psa.
 // Dane pochodzą wyłącznie z arkusza "Spacery", w którym imię psa i wolontariusz
@@ -58,6 +60,17 @@ export default function WalkReportView({ currentUser, onBack }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Widok może zostać przywrócony z sessionStorage po zmianie konta —
+  // rola bez uprawnień wraca na start. Serwer i tak weryfikuje niezależnie.
+  const { role, loading: roleLoading } = useUserRole();
+  const allowed = canViewWalkReport(role);
+
+  useEffect(() => {
+    if (!roleLoading && !allowed && onBack) onBack();
+  }, [roleLoading, allowed, onBack]);
+
+  if (!roleLoading && !allowed) return null;
 
   const generate = async () => {
     setLoading(true);
