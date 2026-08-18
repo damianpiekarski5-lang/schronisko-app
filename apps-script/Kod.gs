@@ -243,6 +243,10 @@ function doPost(e) {
       return json({ ok: true, data: getMedicalReports_(payload) });
     }
 
+    if (action === "getWalksReport") {
+      return json({ ok: true, data: getWalksReport_(payload) });
+    }
+
     if (action === "updateMedicalReportStatus") {
       return json({ ok: true, data: updateMedicalReportStatus_(payload) });
     }
@@ -1258,6 +1262,51 @@ function getDogWalkHistory_(dogId) {
     });
   }
   return entries.reverse();
+}
+
+// Miesięczny raport spacerów — wszystkie wpisy z danego miesiąca.
+// Czytamy wyłącznie arkusz "Spacery": imię psa, pawilon, boks i wolontariusz
+// są w nim zapisane w chwili spaceru, więc raport obejmuje także psy, które
+// od tego czasu opuściły schronisko i nie ma ich już w "Bazie psów".
+function getWalksReport_(payload) {
+  const userEmail = safeStr(payload?.user?.email);
+  const role = getUserRole_(userEmail);
+  if (!["staff", "ambulatorium", "admin"].includes(role)) {
+    throw new Error("Brak uprawnień do raportu spacerów");
+  }
+
+  const month = safeStr(payload?.month);
+  if (!/^\d{4}-\d{2}$/.test(month)) throw new Error("Nieprawidłowy miesiąc (oczekiwano RRRR-MM)");
+
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(WALKS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return { month: month, entries: [] };
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const entries = [];
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    const rawDate = row[map["Data spaceru"]];
+    const dateStr = rawDate instanceof Date
+      ? Utilities.formatDate(rawDate, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss")
+      : safeStr(rawDate);
+    if (dateStr.slice(0, 7) !== month) continue;
+
+    entries.push({
+      date: dateStr,
+      dogId: safeStr(row[map["DogId"]]),
+      dogName: safeStr(row[map["Imię psa"]]),
+      pavilion: safeStr(row[map["Pawilon"]]),
+      box: safeStr(row[map["Boks"]]),
+      volunteer: safeStr(row[map["Wolontariusz"]]),
+      typ: safeStr(row[map["Typ"]]) || "spacer",
+    });
+  }
+
+  entries.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+  return { month: month, entries: entries };
 }
 
 // ===============================
