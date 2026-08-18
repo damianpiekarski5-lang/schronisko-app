@@ -783,6 +783,28 @@ function deleteWalk(payload) {
 // Pełny znacznik "yyyy-MM-dd HH:mm:ss" z komórki arkusza — komórki bywają
 // obiektami Date (wtedy safeStr daje "Thu Jul 10 2026...", co psuje
 // porównania tekstowe dat)
+// Komórka "Data spaceru" bywa zwracana jako obiekt Date. Arkusze parsują
+// zapisany przez nas tekst "yyyy-MM-dd HH:mm:ss" na wartość czasową
+// interpretowaną w strefie ARKUSZA — nie w strefie polskiej. Formatowanie
+// takiej wartości w Europe/Warsaw przesuwa godzinę o różnicę stref
+// (poranny spacer wychodził w raporcie jako popołudniowy).
+// Formatujemy w strefie arkusza, więc wynik zgadza się z tym, co widać
+// w samym arkuszu. Gdy arkusz ma strefę polską, zachowanie się nie zmienia.
+function sheetTz_(ss) {
+  try {
+    return ss.getSpreadsheetTimeZone() || POLAND_TIMEZONE;
+  } catch (e) {
+    return POLAND_TIMEZONE;
+  }
+}
+
+function cellStamp_(raw, tz) {
+  if (raw instanceof Date) {
+    return Utilities.formatDate(raw, tz, "yyyy-MM-dd HH:mm:ss");
+  }
+  return safeStr(raw);
+}
+
 function walkStamp_(raw) {
   if (raw instanceof Date) {
     return Utilities.formatDate(raw, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss");
@@ -1244,16 +1266,14 @@ function getDogWalkHistory_(dogId) {
   const sh = ss.getSheetByName(WALKS_SHEET_NAME);
   if (!sh || sh.getLastRow() < 2) return [];
 
+  const tz = sheetTz_(ss);
   const values = sh.getDataRange().getValues();
   const map = headerMap(values[0]);
   const entries = [];
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
     if (safeStr(row[map["DogId"]]) !== safeStr(dogId)) continue;
-    const rawDate = row[map["Data spaceru"]];
-    const dateStr = rawDate instanceof Date
-      ? Utilities.formatDate(rawDate, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss")
-      : safeStr(rawDate);
+    const dateStr = cellStamp_(row[map["Data spaceru"]], tz);
     entries.push({
       date: dateStr,
       volunteer: safeStr(row[map["Wolontariusz"]]),
@@ -1282,16 +1302,14 @@ function getWalksReport_(payload) {
   const sh = ss.getSheetByName(WALKS_SHEET_NAME);
   if (!sh || sh.getLastRow() < 2) return { month: month, entries: [] };
 
+  const tz = sheetTz_(ss);
   const values = sh.getDataRange().getValues();
   const map = headerMap(values[0]);
   const entries = [];
 
   for (let i = 1; i < values.length; i++) {
     const row = values[i];
-    const rawDate = row[map["Data spaceru"]];
-    const dateStr = rawDate instanceof Date
-      ? Utilities.formatDate(rawDate, POLAND_TIMEZONE, "yyyy-MM-dd HH:mm:ss")
-      : safeStr(rawDate);
+    const dateStr = cellStamp_(row[map["Data spaceru"]], tz);
     if (dateStr.slice(0, 7) !== month) continue;
 
     entries.push({
