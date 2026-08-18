@@ -5,10 +5,10 @@
 import React, { useState } from "react";
 import {
   Home, Table, CalendarDays, Star, Menu, MapPin, LogOut,
-  Building2, Shield, Dumbbell, PawPrint, X,
+  Building2, Shield, Dumbbell, PawPrint, X, FileText,
 } from "lucide-react";
 import { useUserRole } from "../hooks/useUserRole";
-import { canViewSector } from "../lib/roles";
+import { canViewSector, canViewWalkReport } from "../lib/roles";
 import { color, font, radius, shadow } from "../theme";
 
 // Tytuły widoków w górnym pasku — użytkownik zawsze wie, gdzie jest
@@ -93,6 +93,7 @@ export function AppNav({ currentView, onNavigate, isAdmin, isBehavioryst }) {
     { view: "map", label: "Mapa schroniska", Icon: MapPin },
     { view: "introWalk", label: "Spacery zapoznawcze", Icon: PawPrint },
     ...(canViewSector(role) ? [{ view: "sector", label: "Sektor", Icon: Building2 }] : []),
+    ...(canViewWalkReport(role) ? [{ view: "walkReport", label: "Raport spacerów", Icon: FileText }] : []),
     ...(isAdmin ? [{ view: "panel", label: "Panel admina", Icon: Shield }] : []),
     ...(isBehavioryst ? [{ view: "behaviorystPanel", label: "Trening", Icon: Dumbbell }] : []),
   ];
