@@ -4096,6 +4096,14 @@ const handleLogin = async () => {
             onLogout={handleLogout}
           />
         )}
+        {/* WalkReportView ładowany przez lazy() — musi zostać w tym bloku,
+            bez Suspense nad sobą rzuca wyjątek i wywraca render */}
+        {currentView === "walkReport" && (
+          <WalkReportView
+            currentUser={currentUser}
+            onBack={() => navigateToView("home")}
+          />
+        )}
       </Suspense>
       {currentView === "sector" && (
         <SectorView
@@ -4111,12 +4119,6 @@ const handleLogin = async () => {
         <ScheduleView
           currentUser={currentUser}
           isAdmin={isAdminUser}
-        />
-      )}
-      {currentView === "walkReport" && (
-        <WalkReportView
-          currentUser={currentUser}
-          onBack={() => navigateToView("home")}
         />
       )}
       {currentView === "introWalk" && (
