@@ -200,6 +200,11 @@ export default function WalkReportView({ currentUser, onBack }) {
                 <div key={dog.dogId || dog.dogName} className="wr-dog" style={{ marginBottom: "1.25rem" }}>
                   <div style={{ fontWeight: 700, fontSize: "1rem", color: "#111827", marginBottom: "0.1rem" }}>
                     {dog.dogName || "(bez nazwy)"}
+                    {dog.dogId && (
+                      <span style={{ fontWeight: 400, fontSize: "0.85rem", color: "#6b7280", marginLeft: "0.4rem" }}>
+                        ({dog.dogId})
+                      </span>
+                    )}
                   </div>
                   <div style={{ fontSize: "0.78rem", color: "#6b7280", marginBottom: "0.4rem" }}>
                     {dog.pavilion ? `Pawilon ${dog.pavilion}` : ""}
