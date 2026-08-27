@@ -35,6 +35,7 @@ const AdminPanelView = lazy(() => import("./AdminPanelView"));
 const BehaviorystPanel = lazy(() => import("./BehaviorystPanel"));
 const MapEditor = lazy(() => import("./MapEditor"));
 const WalkReportView = lazy(() => import("./WalkReportView"));
+const MyHoursView = lazy(() => import("./MyHoursView"));
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
 import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
@@ -3987,6 +3988,7 @@ const handleLogin = async () => {
           setCurrentView={navigateToView}
           isAdmin={isAdminUser}
           isBehavioryst={isBehaviorystUser}
+          currentUser={currentUser}
         />
       )}
       {currentView === "walkTable" && (
@@ -4100,6 +4102,12 @@ const handleLogin = async () => {
             bez Suspense nad sobą rzuca wyjątek i wywraca render */}
         {currentView === "walkReport" && (
           <WalkReportView
+            currentUser={currentUser}
+            onBack={() => navigateToView("home")}
+          />
+        )}
+        {currentView === "myHours" && (
+          <MyHoursView
             currentUser={currentUser}
             onBack={() => navigateToView("home")}
           />

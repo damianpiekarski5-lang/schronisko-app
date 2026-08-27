@@ -64,6 +64,22 @@ service cloud.firestore {
       allow delete: if ownsResource() || isAdmin();
     }
 
+    // Obecność wolontariusza w schronisku ("jestem" / "kończę").
+    // Każdy widzi i modyfikuje wyłącznie własne wpisy — zapytania zawsze
+    // filtrują po volunteerId == uid.
+    match /attendance/{docId} {
+      allow read: if ownsResource() || isAdmin();
+      allow create: if createsAsSelf()
+        && request.resource.data.date is string
+        && request.resource.data.month is string
+        && request.resource.data.endAt == null;
+      // Zamknięcie wizyty; nie wolno podmienić właściciela ani czasu wejścia.
+      allow update: if ownsResource()
+        && request.resource.data.volunteerId == resource.data.volunteerId
+        && request.resource.data.startAt == resource.data.startAt;
+      allow delete: if ownsResource() || isAdmin();
+    }
+
     // Spacery zapoznawcze (adopcje)
     match /introWalks/{docId} {
       allow read: if isSignedIn();
