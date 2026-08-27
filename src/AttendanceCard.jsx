@@ -35,6 +35,24 @@ const S = {
   },
 };
 
+// Rozróżnienie przyczyn — "sprawdź połączenie" przy odmowie uprawnień
+// wysyłało w złą stronę. permission-denied oznacza zwykle niewdrożone
+// reguły Firestore dla kolekcji attendance.
+function describeError(e, co) {
+  const code = e?.code || "";
+  if (code === "permission-denied") {
+    return `Baza odrzuciła zapis ${co} (brak uprawnień). Reguły Firestore dla obecności `
+      + "nie zostały jeszcze wdrożone — zgłoś to administratorowi aplikacji.";
+  }
+  if (code === "unavailable" || code === "failed-precondition") {
+    return `Brak połączenia z bazą — nie udało się zapisać ${co}. Spróbuj ponownie za chwilę.`;
+  }
+  if (code === "unauthenticated") {
+    return "Sesja wygasła. Wyloguj się i zaloguj ponownie.";
+  }
+  return `Nie udało się zapisać ${co}.` + (code ? ` (kod: ${code})` : "");
+}
+
 export default function AttendanceCard({ currentUser, onShowHours }) {
   const [openVisit, setOpenVisit] = useState(null);
   const [monthVisits, setMonthVisits] = useState([]);
@@ -75,7 +93,7 @@ export default function AttendanceCard({ currentUser, onShowHours }) {
       await startVisit(currentUser);
     } catch (e) {
       console.error("Błąd rozpoczęcia obecności:", e);
-      setError("Nie udało się zapisać wejścia. Sprawdź połączenie.");
+      setError(describeError(e, "wejścia"));
     } finally {
       setBusy(false);
     }
@@ -96,7 +114,7 @@ export default function AttendanceCard({ currentUser, onShowHours }) {
       await endVisit(openVisit.id);
     } catch (e) {
       console.error("Błąd zakończenia obecności:", e);
-      setError("Nie udało się zapisać wyjścia. Sprawdź połączenie.");
+      setError(describeError(e, "wyjścia"));
     } finally {
       setBusy(false);
     }
