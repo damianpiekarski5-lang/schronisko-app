@@ -19,6 +19,7 @@ import { getLastWalkPresentation } from "./utils/dateTime";
 const NO_WALK_PAVILIONS = new Set(["KP", "U"]);
 import { useUserRole } from "./hooks/useUserRole";
 import { canViewSector } from "./lib/roles";
+import AttendanceCard from "./AttendanceCard";
 
 const styles = {
   pageContainer: {
@@ -205,6 +206,7 @@ const HomeView = ({
   setCurrentView,
   isAdmin,
   isBehavioryst,
+  currentUser,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { role: userRole } = useUserRole();
@@ -292,6 +294,10 @@ const HomeView = ({
       </div>
 
       <div style={styles.content}>
+        <AttendanceCard
+          currentUser={currentUser}
+          onShowHours={() => setCurrentView("myHours")}
+        />
         {searchTerm ? (
           <div style={styles.section}>
             <h2

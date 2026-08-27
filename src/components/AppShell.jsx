@@ -5,7 +5,7 @@
 import React, { useState } from "react";
 import {
   Home, Table, CalendarDays, Star, Menu, MapPin, LogOut,
-  Building2, Shield, Dumbbell, PawPrint, X, FileText,
+  Building2, Shield, Dumbbell, PawPrint, X, FileText, Clock,
 } from "lucide-react";
 import { useUserRole } from "../hooks/useUserRole";
 import { canViewSector, canViewWalkReport } from "../lib/roles";
@@ -17,6 +17,8 @@ const VIEW_TITLES = {
   walkTable: "Tabela spacerów",
   schedule: "Grafik obecności",
   introWalk: "Spacery zapoznawcze",
+  myHours: "Moje godziny",
+  walkReport: "Raport spacerów",
   map: "Mapa schroniska",
   boxes: "Boksy",
   dogs: "Lista psów",
@@ -92,6 +94,7 @@ export function AppNav({ currentView, onNavigate, isAdmin, isBehavioryst }) {
   const moreItems = [
     { view: "map", label: "Mapa schroniska", Icon: MapPin },
     { view: "introWalk", label: "Spacery zapoznawcze", Icon: PawPrint },
+    { view: "myHours", label: "Moje godziny", Icon: Clock },
     ...(canViewSector(role) ? [{ view: "sector", label: "Sektor", Icon: Building2 }] : []),
     ...(canViewWalkReport(role) ? [{ view: "walkReport", label: "Raport spacerów", Icon: FileText }] : []),
     ...(isAdmin ? [{ view: "panel", label: "Panel admina", Icon: Shield }] : []),
