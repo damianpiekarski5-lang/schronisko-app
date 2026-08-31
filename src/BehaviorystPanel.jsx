@@ -5,6 +5,11 @@ import {
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
 } from "firebase/firestore";
 import { db } from "./firebase";
+import ExerciseContent from "./components/ExerciseContent";
+import {
+  activeStage, fsSetCurrentStage, fsUpdateDogExercise,
+  importLibrarySeed, fsCopyLibraryExerciseToDog, LIBRARY_SIZE,
+} from "./lib/trainingStore";
 
 const S = {
   page: { minHeight: "100vh", backgroundColor: "#f9fafb", paddingBottom: "80px" },
@@ -43,7 +48,7 @@ const S = {
   resultBtn: { flex: 1, padding: "0.5rem", borderRadius: "0.5rem", border: "2px solid #e5e7eb", cursor: "pointer", fontSize: "0.8rem", fontWeight: "600", background: "white", transition: "all 0.15s" },
 };
 
-const CATEGORIES = ["Komunikacja", "Spacer", "Przywołanie", "Relaks", "Samokontrola", "Socjalizacja", "Handling", "Węchowanie"];
+const CATEGORIES = ["Komunikacja", "Spacer", "Przywołanie", "Relaks", "Samokontrola", "Socjalizacja", "Handling", "Węchowanie", "Szczeniak"];
 const DIFFICULTIES = ["podstawowy", "średni", "zaawansowany"];
 const RESULTS = [
   { key: "sukces", label: "✅ Sukces", color: "#dcfce7", border: "#16a34a" },
@@ -178,7 +183,7 @@ function StageDots({ stage, onChange }) {
   );
 }
 
-function ProgressCard({ exercise, progress, onUpdate, onDelete }) {
+function ProgressCard({ exercise, progress, onUpdate, onDelete, onChangeStage, onEdit }) {
   const p = progress || { stage: 1, successRate: 0, notes: "" };
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -209,7 +214,13 @@ function ProgressCard({ exercise, progress, onUpdate, onDelete }) {
             {!exercise._own && <span style={{ color: "#7c3aed" }}> · z programu</span>}
           </div>
           <div style={{ ...S.row, marginTop: "0.4rem", gap: "1rem" }}>
-            <StageDots stage={local.stage} onChange={() => {}} />
+            {exercise?.stages?.length ? (
+              <span style={{ fontSize: "0.78rem", fontWeight: 700, color: "#7c3aed" }}>
+                Poziom {Math.min((progress?.currentStage || 0) + 1, exercise.stages.length)}/{exercise.stages.length}
+              </span>
+            ) : (
+              <StageDots stage={local.stage} onChange={() => {}} />
+            )}
             <span style={{ fontSize: "0.8rem", fontWeight: "700", color: successColor }}>{local.successRate}%</span>
           </div>
         </div>
@@ -218,8 +229,12 @@ function ProgressCard({ exercise, progress, onUpdate, onDelete }) {
 
       {open && (
         <div style={{ marginTop: "0.75rem", borderTop: "1px solid #f3f4f6", paddingTop: "0.75rem" }}>
-          <label style={S.label}>Etap</label>
-          <StageDots stage={local.stage} onChange={s => setLocal(l => ({ ...l, stage: s }))} />
+          {!exercise?.stages?.length && (
+            <>
+              <label style={S.label}>Etap</label>
+              <StageDots stage={local.stage} onChange={s => setLocal(l => ({ ...l, stage: s }))} />
+            </>
+          )}
           <div style={{ marginTop: "0.75rem" }}>
             <label style={S.label}>Skuteczność: {local.successRate}%</label>
             <input type="range" min="0" max="100" step="5" value={local.successRate}
@@ -231,21 +246,32 @@ function ProgressCard({ exercise, progress, onUpdate, onDelete }) {
             <textarea value={local.notes} onChange={e => setLocal(l => ({ ...l, notes: e.target.value }))}
               style={S.textarea} placeholder="Uwagi do ćwiczenia..." />
           </div>
-          {exercise.description && (
-            <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.5rem", fontStyle: "italic" }}>
-              {exercise.description}
-            </div>
-          )}
+          <div style={{ marginBottom: "0.75rem" }}>
+            <ExerciseContent
+              exercise={exercise}
+              stage={activeStage(exercise, progress)}
+              onChangeStage={onChangeStage}
+              savingStage={saving}
+            />
+          </div>
           <button onClick={handleSave} disabled={saving}
             style={{ ...S.btn, ...S.btnPrimary, marginTop: "0.5rem", width: "100%", opacity: saving ? 0.6 : 1 }}>
             {saving ? "Zapisuję..." : "Zapisz postęp"}
           </button>
-          {onDelete && (
-            <button onClick={onDelete}
-              style={{ ...S.btn, ...S.btnDanger, ...S.btnSmall, marginTop: "0.4rem", width: "100%" }}>
-              Usuń ćwiczenie z psa
-            </button>
-          )}
+          <div style={{ ...S.row, marginTop: "0.4rem" }}>
+            {onEdit && (
+              <button onClick={onEdit}
+                style={{ ...S.btn, ...S.btnSecondary, ...S.btnSmall, flex: 1 }}>
+                Edytuj pod tego psa
+              </button>
+            )}
+            {onDelete && (
+              <button onClick={onDelete}
+                style={{ ...S.btn, ...S.btnDanger, ...S.btnSmall, flex: 1 }}>
+                Usuń z psa
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -344,11 +370,13 @@ function AddDogExerciseForm({ library, usedLibraryIds, onAdd, onClose }) {
       } else {
         const src = library.find(e => e.id === libId);
         if (!src) return;
+        // Kopiujemy pełną treść, żeby dało się ją potem zmienić pod tego psa
+        // bez ruszania biblioteki.
+        const { id, createdAt, createdBy, ...content } = src;
         await onAdd({
-          name: src.name,
+          ...content,
           category: src.category || CATEGORIES[0],
           difficulty: src.difficulty || DIFFICULTIES[0],
-          description: src.description || "",
           libraryId: src.id,
         });
       }
@@ -425,6 +453,131 @@ function AddDogExerciseForm({ library, usedLibraryIds, onAdd, onClose }) {
   );
 }
 
+// Edytor ćwiczenia przypisanego do psa — zmiany dotyczą wyłącznie tego psa,
+// biblioteka zostaje nietknięta. Listy (kroki, błędy, tagi) edytowane są jako
+// tekst po jednej pozycji w wierszu, co jest znośne na telefonie.
+
+function LinesField({ label, hint, value, onChange, rows }) {
+  return (
+    <div style={{ marginTop: "0.6rem" }}>
+      <label style={S.label}>{label}</label>
+      {hint && <div style={{ fontSize: "0.72rem", color: "#9ca3af", marginBottom: "0.25rem" }}>{hint}</div>}
+      <textarea
+        value={(value || []).join("\n")}
+        onChange={(e) => onChange(e.target.value.split("\n"))}
+        style={{ ...S.textarea, minHeight: rows || 80 }}
+      />
+    </div>
+  );
+}
+
+function EditDogExerciseModal({ exercise, onClose, onSave }) {
+  const [form, setForm] = useState(() => ({
+    name: exercise.name || "",
+    category: exercise.category || CATEGORIES[0],
+    difficulty: exercise.difficulty || DIFFICULTIES[0],
+    description: exercise.description || "",
+    durationMinutes: exercise.durationMinutes || 0,
+    instructions: exercise.instructions || [],
+    successCriteria: exercise.successCriteria || "",
+    commonMistakes: exercise.commonMistakes || [],
+    tags: exercise.tags || [],
+    vimeoId: exercise.vimeoId || "",
+    stages: exercise.stages || [],
+  }));
+  const [saving, setSaving] = useState(false);
+  const set = (patch) => setForm((f) => ({ ...f, ...patch }));
+
+  const handleSave = async () => {
+    if (!form.name.trim()) return;
+    setSaving(true);
+    try {
+      await onSave(form);
+    } catch (e) {
+      console.error("Błąd zapisu ćwiczenia:", e);
+      alert("Nie udało się zapisać ćwiczenia.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 220, display: "flex", alignItems: "flex-end" }}>
+      <div style={{ backgroundColor: "white", borderRadius: "1rem 1rem 0 0", width: "100%", maxHeight: "92vh", overflowY: "auto", padding: "1.25rem" }}>
+        <div style={{ ...S.row, justifyContent: "space-between", marginBottom: "0.75rem" }}>
+          <h3 style={{ fontWeight: 700, fontSize: "1.05rem", margin: 0 }}>Edytuj pod tego psa</h3>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#6b7280" }}>✕</button>
+        </div>
+        <div style={{ fontSize: "0.78rem", color: "#6b7280", marginBottom: "0.75rem" }}>
+          Zmiany zobaczysz tylko przy tym psie. Biblioteka zostaje bez zmian.
+        </div>
+
+        <label style={S.label}>Nazwa</label>
+        <input value={form.name} onChange={(e) => set({ name: e.target.value })} style={S.input} />
+
+        <div style={{ ...S.row, gap: "0.5rem", marginTop: "0.6rem" }}>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Kategoria</label>
+            <select value={form.category} onChange={(e) => set({ category: e.target.value })} style={S.select}>
+              {CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={S.label}>Poziom</label>
+            <select value={form.difficulty} onChange={(e) => set({ difficulty: e.target.value })} style={S.select}>
+              {DIFFICULTIES.map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+          <div style={{ width: 90 }}>
+            <label style={S.label}>Minuty</label>
+            <input type="number" min="0" value={form.durationMinutes}
+              onChange={(e) => set({ durationMinutes: Number(e.target.value) || 0 })} style={S.input} />
+          </div>
+        </div>
+
+        <div style={{ marginTop: "0.6rem" }}>
+          <label style={S.label}>Opis</label>
+          <textarea value={form.description} onChange={(e) => set({ description: e.target.value })}
+            style={{ ...S.textarea, minHeight: 70 }} placeholder="Po co to ćwiczenie i na co zwracać uwagę u tego psa" />
+        </div>
+
+        <LinesField label="Instrukcje — krok po kroku" hint="Jeden krok w wierszu"
+          value={form.instructions} onChange={(v) => set({ instructions: v })} rows={110} />
+
+        <div style={{ marginTop: "0.6rem" }}>
+          <label style={S.label}>Kryterium sukcesu</label>
+          <input value={form.successCriteria} onChange={(e) => set({ successCriteria: e.target.value })}
+            style={S.input} placeholder="Po czym poznasz, że etap jest opanowany" />
+        </div>
+
+        <LinesField label="Częste błędy" hint="Jeden błąd w wierszu"
+          value={form.commonMistakes} onChange={(v) => set({ commonMistakes: v })} />
+
+        <div style={{ marginTop: "0.6rem" }}>
+          <label style={S.label}>Wideo (Vimeo)</label>
+          <input value={form.vimeoId} onChange={(e) => set({ vimeoId: e.target.value })}
+            style={S.input} placeholder="Numer filmu albo pełny link vimeo.com/..." />
+        </div>
+
+        <LinesField label="Tagi" hint="Jeden tag w wierszu"
+          value={form.tags} onChange={(v) => set({ tags: v })} rows={60} />
+
+        {form.stages?.length > 0 && (
+          <div style={{ marginTop: "0.75rem", fontSize: "0.78rem", color: "#6b7280" }}>
+            To ćwiczenie ma {form.stages.length} poziomów. Ich treść edytujemy w kolejnym kroku —
+            na razie zmiany powyżej dotyczą opisu ogólnego.
+          </div>
+        )}
+
+        <button onClick={handleSave} disabled={saving || !form.name.trim()}
+          style={{ ...S.btn, ...S.btnPrimary, width: "100%", marginTop: "1rem", opacity: saving || !form.name.trim() ? 0.5 : 1 }}>
+          {saving ? "Zapisuję..." : "Zapisz zmiany"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // ─── Dog Training View ────────────────────────────────────────────────────────
 
 function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate, onLogout }) {
@@ -442,6 +595,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [savingNote, setSavingNote] = useState(false);
   const [showAddEx, setShowAddEx] = useState(false);
   const [showProgramPicker, setShowProgramPicker] = useState(false);
+  const [editingExercise, setEditingExercise] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -503,6 +657,22 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       ...(training?.startedAt ? {} : { startedAt: serverTimestamp() }),
     });
     await fsAddDogExercise(dog.id, { ...data, createdBy: currentUser.uid });
+    await load();
+  };
+
+  const handleChangeStage = async (exId, exName, stageIndex) => {
+    try {
+      await fsSetCurrentStage(dog.id, exId, stageIndex, exName);
+      await load();
+    } catch (e) {
+      console.error("Błąd zmiany poziomu:", e);
+      alert("Nie udało się zmienić poziomu.");
+    }
+  };
+
+  const handleSaveEditedExercise = async (exId, data) => {
+    await fsUpdateDogExercise(dog.id, exId, data);
+    setEditingExercise(null);
     await load();
   };
 
@@ -700,6 +870,10 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
                 <ProgressCard key={ex.id} exercise={ex}
                   progress={progress.find(p => p.id === ex.id)}
                   onUpdate={handleUpdateProgress}
+                  onChangeStage={ex.stages?.length
+                    ? (idx) => handleChangeStage(ex.id, ex.name, idx)
+                    : null}
+                  onEdit={ex._own ? () => setEditingExercise(ex) : null}
                   onDelete={ex._own ? () => handleDeleteDogExercise(ex.id, ex.name) : null} />
               ))
             )}
@@ -733,6 +907,14 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
           </>
         )}
       </div>
+
+      {editingExercise && (
+        <EditDogExerciseModal
+          exercise={editingExercise}
+          onClose={() => setEditingExercise(null)}
+          onSave={(data) => handleSaveEditedExercise(editingExercise.id, data)}
+        />
+      )}
 
       {showSession && (
         <AddSessionModal
@@ -805,6 +987,8 @@ function LibraryView({ exercises, programs, onExerciseAdded, onProgramAdded, cur
   const [editEx, setEditEx] = useState(null);
   const [editProg, setEditProg] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState("");
 
   // Exercise form state
   const emptyEx = { name: "", description: "", category: CATEGORIES[0], difficulty: DIFFICULTIES[0] };
@@ -876,6 +1060,43 @@ function LibraryView({ exercises, programs, onExerciseAdded, onProgramAdded, cur
             style={{ ...S.btn, ...S.btnPrimary, width: "100%", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.4rem" }}>
             <Plus size={18} /> Dodaj ćwiczenie
           </button>
+
+          {exercises.length === 0 && !importMsg && (
+            <div style={{ ...S.card, backgroundColor: "#faf5ff", borderColor: "#c4b5fd", marginBottom: "1rem" }}>
+              <strong style={{ fontSize: "0.9rem" }}>Biblioteka jest pusta</strong>
+              <div style={{ fontSize: "0.82rem", color: "#6b7280", margin: "0.35rem 0 0.6rem" }}>
+                Możesz wgrać gotowy zestaw {LIBRARY_SIZE} ćwiczeń z instrukcjami krok po kroku,
+                kryteriami sukcesu i częstymi błędami. Ćwiczenia o istniejących nazwach są pomijane,
+                więc import można powtórzyć bez tworzenia duplikatów.
+              </div>
+              <button
+                onClick={async () => {
+                  setImporting(true);
+                  setImportMsg("");
+                  try {
+                    const r = await importLibrarySeed(currentUser);
+                    setImportMsg(`Dodano ${r.added} ćwiczeń` + (r.skipped ? `, pominięto ${r.skipped} już istniejących.` : "."));
+                    await onExerciseAdded();
+                  } catch (e) {
+                    console.error("Błąd importu biblioteki:", e);
+                    setImportMsg("Nie udało się zaimportować biblioteki: " + (e?.code || e?.message || "nieznany błąd"));
+                  } finally {
+                    setImporting(false);
+                  }
+                }}
+                disabled={importing}
+                style={{ ...S.btn, ...S.btnPrimary, width: "100%", opacity: importing ? 0.6 : 1 }}
+              >
+                {importing ? "Importuję..." : `Wgraj ${LIBRARY_SIZE} gotowych ćwiczeń`}
+              </button>
+            </div>
+          )}
+
+          {importMsg && (
+            <div style={{ ...S.card, backgroundColor: "#f0fdf4", borderColor: "#86efac", marginBottom: "1rem", fontSize: "0.85rem" }}>
+              {importMsg}
+            </div>
+          )}
 
           {showExForm && (
             <div style={{ ...S.card, border: "2px solid #7c3aed", marginBottom: "1rem" }}>

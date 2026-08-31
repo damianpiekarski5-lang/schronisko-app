@@ -1,0 +1,1390 @@
+[
+ {
+  "name": "Kontakt wzrokowy",
+  "category": "Komunikacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies uczy się nawiązywać i utrzymywać kontakt wzrokowy z właścicielem na sygnał. To fundamentalne ćwiczenie budujące więź i uwagę psa.",
+  "instructions": [
+   "Stań przed psem trzymając smakołyk przy swojej twarzy",
+   "Poczekaj aż pies spojrzy Ci w oczy",
+   "W momencie kontaktu wzrokowego kliknij lub powiedz 'tak' i daj nagrodę",
+   "Stopniowo wydłużaj czas utrzymania kontaktu wzrokowego",
+   "Dodaj sygnał słowny 'patrz' lub 'focus' tuż przed momentem gdy pies patrzy"
+  ],
+  "successCriteria": "Pies utrzymuje kontakt wzrokowy przez 3 sekundy na sygnał słowny",
+  "commonMistakes": [
+   "Nagradzanie zanim pies spojrzy w oczy",
+   "Zbyt długie sesje treningowe",
+   "Brak wyraźnego markera (klik/słowo)"
+  ],
+  "tags": [
+   "uwaga",
+   "fokus",
+   "podstawy",
+   "więź"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Imię psa",
+  "category": "Komunikacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies reaguje na swoje imię natychmiastowym zwróceniem uwagi na właściciela. Fundament całej komunikacji.",
+  "instructions": [
+   "Wywołaj imię psa spokojnym, przyjaznym tonem",
+   "Gdy pies odwróci głowę w Twoją stronę — natychmiast nagradzaj",
+   "Ćwicz w różnych miejscach i przy różnych poziomach rozproszenia",
+   "Nigdy nie powtarzaj imienia jeśli pies nie reaguje — odejdź i spróbuj w spokojniejszym miejscu",
+   "Stopniowo wydłużaj dystans i dodawaj rozproszenia"
+  ],
+  "successCriteria": "Pies reaguje na imię w 9 na 10 próbach, odwracając głowę w stronę właściciela",
+  "commonMistakes": [
+   "Używanie imienia gdy pies jest karany lub w stresie",
+   "Wielokrotne powtarzanie imienia bez reakcji",
+   "Zbyt szybkie przechodzenie do trudniejszych warunków"
+  ],
+  "tags": [
+   "imię",
+   "uwaga",
+   "podstawy",
+   "komunikacja"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Podążanie za ręką",
+  "category": "Komunikacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies uczy się podążać nosem za ręką właściciela — podstawa prowadzenia psa bez smyczy i ustawiania go w różnych pozycjach.",
+  "instructions": [
+   "Weź smakołyk między kciuk a palec wskazujący, pokaż psu zamkniętą pięść",
+   "Prowadź rękę powoli — pies powinien podążać nosem za ręką",
+   "Nagradzaj gdy pies podąży za ręką na odcinku ok. 30 cm",
+   "Stopniowo prowadź rękę w różnych kierunkach: w bok, w górę, w dół, w kółko",
+   "Kiedy pies rozumie zasadę, zacznij prowadzić rękę bez smakołyku"
+  ],
+  "successCriteria": "Pies podąża za pustą ręką przez 1 metr w dowolnym kierunku",
+  "commonMistakes": [
+   "Poruszanie ręką zbyt szybko",
+   "Nagradzanie gdy pies skacze lub gryzie rękę",
+   "Zbyt długie odcinki na początku"
+  ],
+  "tags": [
+   "prowadzenie",
+   "podstawy",
+   "luring",
+   "pozycje"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Siad",
+  "category": "Samokontrola",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Klasyczna komenda siadu. Pies siada na sygnał słowny lub gestyczny i utrzymuje pozycję do zwolnienia.",
+  "instructions": [
+   "Stań przed psem, trzymaj smakołyk nad jego nosem",
+   "Powoli przesuń rękę do tyłu nad głową psa — pupil powinien naturalnie usiąść",
+   "W momencie gdy tyłek dotyka ziemi — kliknij/nagródź",
+   "Dodaj słowo 'siad' tuż przed gestem",
+   "Stopniowo wycofuj gest, zostawiając tylko sygnał słowny"
+  ],
+  "successCriteria": "Pies siada na samo słowo 'siad' bez gestu, w ciągu 3 sekund",
+  "commonMistakes": [
+   "Naciskanie na zad psa",
+   "Podawanie smakołyku zanim pies w pełni usiądzie",
+   "Zbyt długie utrzymywanie siadu na początku nauki"
+  ],
+  "tags": [
+   "siad",
+   "podstawy",
+   "posłuszeństwo",
+   "pozycje"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Waruj",
+  "category": "Samokontrola",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies kładzie się na komendę i pozostaje w pozycji leżącej do sygnału zwolnienia.",
+  "instructions": [
+   "Poproś psa o siad, stań lub kucnij przed nim",
+   "Trzymaj smakołyk przy nosie psa i prowadź rękę powoli w dół i do przodu",
+   "Gdy łokcie psa dotykają ziemi — kliknij i nagradzaj",
+   "Dodaj słowo 'waruj' gdy pies już rozumie ruch",
+   "Stopniowo wydłużaj czas utrzymania pozycji"
+  ],
+  "successCriteria": "Pies kładzie się na komendę 'waruj' i pozostaje przez 5 sekund",
+  "commonMistakes": [
+   "Próba ułożenia psa siłą",
+   "Nagradzanie gdy pies wstaje zamiast leżeć",
+   "Zbyt szybkie dodawanie komend na odległość"
+  ],
+  "tags": [
+   "waruj",
+   "leżeć",
+   "posłuszeństwo",
+   "pozycje"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Zostań",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 8,
+  "description": "Pies pozostaje w wybranej pozycji (siad/waruj) mimo odejścia właściciela, rozproszenia i upływu czasu.",
+  "instructions": [
+   "Poproś psa o siad lub waruj",
+   "Zrób jeden krok w tył, wróć i natychmiast nagradzaj",
+   "Stopniowo zwiększaj dystans: 1 krok → 2 kroki → 5 kroków",
+   "Dodaj sygnał 'zostań' gestem otwartej dłoni skierowanej ku psu",
+   "Trenuj osobno: dystans, czas, rozproszenia — nie wszystko naraz"
+  ],
+  "successCriteria": "Pies pozostaje w pozycji gdy właściciel oddala się na 5 metrów przez 10 sekund",
+  "commonMistakes": [
+   "Zbyt szybkie zwiększanie dystansu i czasu jednocześnie",
+   "Wracanie do psa gdy ten wstaje — pies uczy się że wstawanie przyciąga właściciela",
+   "Brak sygnału zwolnienia (np. 'wolno')"
+  ],
+  "tags": [
+   "zostań",
+   "dystans",
+   "samokontrola",
+   "posłuszeństwo"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Przy nodze — wstęp",
+  "category": "Spacer",
+  "difficulty": "podstawowy",
+  "durationMinutes": 8,
+  "description": "Pies uczy się chodzić przy lewej nodze właściciela z głową na wysokości biodra, bez ciągnięcia smyczy.",
+  "instructions": [
+   "Stań, pies po lewej stronie. Smakołyk trzymaj przy lewym biodrze",
+   "Zrób 2-3 kroki, pies podąża — nagradzaj natychmiast",
+   "Stopniowo wydłużaj odcinki chodzenia przy nodze",
+   "Nagradzaj częściej gdy pies patrzy na Ciebie podczas chodzenia",
+   "Ćwicz zmiany kierunku: w lewo, w prawo, obrót"
+  ],
+  "successCriteria": "Pies idzie przy nodze przez 10 kroków bez napiętej smyczy",
+  "commonMistakes": [
+   "Szarpanie smyczą gdy pies wyprzedza",
+   "Zbyt długie odcinki bez nagradzania",
+   "Ignorowanie momentów gdy pies sam wraca do pozycji"
+  ],
+  "tags": [
+   "noga",
+   "spacer",
+   "smycz",
+   "chodzenie"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Luźna smycz",
+  "category": "Spacer",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Pies chodzi na smyczy bez ciągnięcia. Smycz tworzy literę J — jest luźna, miękka, bez napięcia.",
+  "instructions": [
+   "Gdy pies zaczyna naciągać smycz — zatrzymaj się kompletnie",
+   "Poczekaj aż pies wróci do Ciebie lub smycz zelżeje",
+   "Rusz do przodu i nagradzaj za chodzenie z luźną smyczą",
+   "Alternatywnie: gdy czujesz napięcie smyczy — zmień kierunek",
+   "Nagradzaj każde spojrzenie psa na Ciebie podczas spaceru"
+  ],
+  "successCriteria": "Pies chodzi 50 metrów bez napiętej smyczy w spokojnym otoczeniu",
+  "commonMistakes": [
+   "Kontynuowanie marszu gdy smycz jest naciągnięta",
+   "Szarpanie smyczą zamiast zatrzymania",
+   "Oczekiwanie efektów bez ćwiczenia w spokojnym miejscu"
+  ],
+  "tags": [
+   "smycz",
+   "ciągnięcie",
+   "spacer",
+   "chodzenie"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Check-in",
+  "category": "Spacer",
+  "difficulty": "podstawowy",
+  "durationMinutes": 8,
+  "description": "Pies regularnie sam z siebie sprawdza gdzie jest właściciel i nawiązuje kontakt wzrokowy podczas spaceru.",
+  "instructions": [
+   "Podczas spaceru — gdy pies sam spojrzy na Ciebie, natychmiast nagradzaj",
+   "Nie wołaj psa — czekaj na spontaniczny kontakt",
+   "Możesz utrudnić: stań za drzewem, zmień kierunek cicho",
+   "Nagradzaj bardziej wartościową nagrodą niż normalnie",
+   "Z czasem pies będzie zaglądać do Ciebie co kilka sekund"
+  ],
+  "successCriteria": "Pies nawiązuje kontakt wzrokowy co najmniej raz na minutę podczas spaceru",
+  "commonMistakes": [
+   "Niecierpliwe wołanie psa zamiast czekania",
+   "Zbyt słabe nagrody — check-in musi być bardzo opłacalny",
+   "Brak nagrody gdy pies sam zaglądnie"
+  ],
+  "tags": [
+   "check-in",
+   "spacer",
+   "uwaga",
+   "więź"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Zmiana kierunku",
+  "category": "Spacer",
+  "difficulty": "średni",
+  "durationMinutes": 8,
+  "description": "Pies reaguje na zmiany kierunku chodzenia właściciela bez naciągania smyczy, śledząc jego ruchy.",
+  "instructions": [
+   "Idź z psem, co kilka kroków zmień kierunek o 90 lub 180 stopni",
+   "Nie ostrzegaj psa — po prostu skręć",
+   "Nagradzaj gdy pies podąży za Tobą bez naciągania smyczy",
+   "Ćwicz obroty w lewo, prawo, pełny obrót",
+   "Stopniowo przyspieszaj i zwiększaj częstotliwość zmian"
+  ],
+  "successCriteria": "Pies podąża za właścicielem przy 5 kolejnych zmianach kierunku bez napiętej smyczy",
+  "commonMistakes": [
+   "Zapowiadanie zmian kierunku głosem",
+   "Szarpanie smyczą przy zmianie kierunku",
+   "Ćwiczenie tylko w jednym kierunku"
+  ],
+  "tags": [
+   "kierunek",
+   "spacer",
+   "smycz",
+   "uwaga"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Przywołanie — wstęp",
+  "category": "Przywołanie",
+  "difficulty": "podstawowy",
+  "durationMinutes": 8,
+  "description": "Pies przybiega do właściciela na sygnał z bliskiej odległości. Fundament niezawodnego przywołania.",
+  "instructions": [
+   "Przykucnij, rozłóż ramiona, zawołaj psa radosnym głosem 'chodź!'",
+   "Gdy pies dotrze do Ciebie — uczta! Duża nagroda, pochwała, zabawa",
+   "Ćwicz tylko gdy masz 100% pewności że pies przyjdzie",
+   "Nigdy nie karz psa który przyszedł — nawet jeśli przyszedł późno",
+   "Nagradzaj za przyjście lepiej niż za cokolwiek innego"
+  ],
+  "successCriteria": "Pies przybiega na sygnał z odległości 5 metrów w spokojnym miejscu",
+  "commonMistakes": [
+   "Wołanie psa gdy jest coś ciekawszego w pobliżu i pies może nie przyjść",
+   "Karanie psa który w końcu przyszedł",
+   "Zbyt szybkie wprowadzanie trudnych warunków"
+  ],
+  "tags": [
+   "przywołanie",
+   "chodź",
+   "podstawy",
+   "wolny bieg"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Przywołanie — długa linka",
+  "category": "Przywołanie",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Pies przybiega na przywołanie z dużej odległości, podczas eksploracji otoczenia, na długiej lince treningowej.",
+  "instructions": [
+   "Wypuść psa na długiej lince (10-15 m) — pozwól eksplorować",
+   "Poczekaj aż pies jest lekko rozproszony, zawołaj radosnym głosem",
+   "Gdy pies ruszy w Twoją stronę — dodaj zachętę ruchem, przykucnij",
+   "Przyjście nagradzaj bardzo hojnie: smakołyki + pochwała + zabawa",
+   "Stopniowo zwiększaj poziom rozproszenia otoczenia"
+  ],
+  "successCriteria": "Pies przybiega z odległości 10 metrów przy umiarkowanym rozproszeniu",
+  "commonMistakes": [
+   "Łapanie linki i przyciąganie psa siłą",
+   "Wołanie wielokrotnie gdy pies nie reaguje",
+   "Przywołanie tylko gdy chcemy zakończyć zabawę"
+  ],
+  "tags": [
+   "przywołanie",
+   "linka",
+   "dystans",
+   "wolny bieg"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Zostaw to",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 8,
+  "description": "Pies uczy się odchodzić od interesującego obiektu na sygnał 'zostaw'. Kluczowe dla bezpieczeństwa.",
+  "instructions": [
+   "Połóż smakołyk na ziemi, przykryj stopą gdy pies się zbliży",
+   "Gdy pies odciągnie nos od stopy — kliknij i daj inny smakołyk z ręki",
+   "Stopniowo odkrywaj smakołyk: najpierw widoczny ale chroniony ręką",
+   "Dodaj sygnał 'zostaw' w momencie gdy pies odciąga nos",
+   "Ćwicz z różnymi obiektami: jedzenie na spacerze, śmieci, odchody"
+  ],
+  "successCriteria": "Pies odchodzi od leżącego jedzenia na sygnał 'zostaw' bez fizycznej ingerencji",
+  "commonMistakes": [
+   "Dawanie psu zostawionego smakołyku jako nagrody",
+   "Zbyt szybkie odkrywanie przedmiotu",
+   "Używanie komendy zbyt późno gdy pies już je"
+  ],
+  "tags": [
+   "zostaw",
+   "samokontrola",
+   "bezpieczeństwo",
+   "impulsy"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Czekaj przy misce",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 5,
+  "description": "Pies czeka spokojnie przy postawionej misce z jedzeniem do sygnału zezwolenia. Buduje kontrolę impulsów.",
+  "instructions": [
+   "Pokaż psu miskę, gdy zacznie wchodzić — unieś ją",
+   "Gdy pies cofnie się lub usiądzie — postaw miskę niżej",
+   "Stopniowo stawiaj miskę coraz niżej, nagradzając spokój",
+   "Gdy miska stoi na podłodze i pies czeka — daj sygnał 'możesz'",
+   "Wydłużaj czas oczekiwania od 1 do 30 sekund"
+  ],
+  "successCriteria": "Pies czeka przy misce 10 sekund i rusza dopiero po sygnale 'możesz'",
+  "commonMistakes": [
+   "Pozwalanie psu podejść do miski gdy krzyczymy 'nie'",
+   "Zbyt długie oczekiwanie na początku",
+   "Brak wyraźnego sygnału zezwolenia"
+  ],
+  "tags": [
+   "miska",
+   "czekaj",
+   "samokontrola",
+   "impulsy"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Spokojne powitanie",
+  "category": "Socjalizacja",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Pies wita gości i nowych ludzi spokojnie — bez skakania, szczekania i nadmiernego pobudzenia.",
+  "instructions": [
+   "Przed wejściem gościa poproś psa o siad lub waruj",
+   "Gość wchodzi spokojnie, ignoruje psa dopóki ten się nie uspokoi",
+   "Gdy pies siedzi spokojnie przez 3 sekundy — gość może psa powitać",
+   "Jeśli pies zrywa się — gość odwraca się plecami",
+   "Ćwicz wielokrotnie z różnymi osobami"
+  ],
+  "successCriteria": "Pies pozostaje w siadzie lub na miejscu gdy gość wchodzi do domu",
+  "commonMistakes": [
+   "Krzyczenie 'nie skacz' gdy pies skacze — to nagroda uwagą",
+   "Gość który reaguje na skakającego psa",
+   "Brak przygotowania psa przed wejściem gościa"
+  ],
+  "tags": [
+   "powitanie",
+   "skakanie",
+   "socjalizacja",
+   "goście"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Miejsce",
+  "category": "Relaks",
+  "difficulty": "średni",
+  "durationMinutes": 8,
+  "description": "Pies idzie na wskazane miejsce (mata, legowisko) i pozostaje tam spokojnie do zwolnienia.",
+  "instructions": [
+   "Wskaż matę gestem i słowem 'miejsce', zachęć psa by na nią wszedł",
+   "Gdy pies wejdzie na matę — nagradzaj hojnie",
+   "Stopniowo ucz psa kłaść się na macie i pozostawać",
+   "Wydłużaj czas od 5 sekund do kilku minut",
+   "Ćwicz gdy pies jest spokojny — nie gdy jest pobudzone"
+  ],
+  "successCriteria": "Pies idzie na matę na sygnał i pozostaje przez 2 minuty",
+  "commonMistakes": [
+   "Używanie miejsca jako kary",
+   "Zbyt rzadkie nagradzanie gdy pies jest na miejscu",
+   "Brak zwolnienia — pies wstaje sam kiedy chce"
+  ],
+  "tags": [
+   "miejsce",
+   "mata",
+   "relaks",
+   "spokój"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Relaks na macie",
+  "category": "Relaks",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Pies uczy się świadomie się relaksować i odprężać na macie — kluczowe dla psów z nadpobudliwością.",
+  "instructions": [
+   "Połóż matę w spokojnym miejscu, poczekaj aż pies sam na nią wejdzie",
+   "Nagradzaj każde zachowanie relaksacyjne: kładzenie, westchnienie, rozluźnione mięśnie",
+   "Mów spokojnym, cichym głosem: 'dobrze, spokojnie'",
+   "Stopniowo wydłużaj sesje relaksu",
+   "Ćwicz przy delikatnych dystraktorach: ciche dźwięki, powolne ruchy"
+  ],
+  "successCriteria": "Pies leży rozluźniony na macie przez 5 minut bez wstawania",
+  "commonMistakes": [
+   "Ćwiczenie gdy pies jest zbyt pobudzone",
+   "Głośne nagradzanie które pobudza zamiast wyciszać",
+   "Brak cierpliwości — relaks wymaga czasu"
+  ],
+  "tags": [
+   "relaks",
+   "wyciszenie",
+   "mata",
+   "spokój"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Dotykanie łap",
+  "category": "Handling",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies akceptuje dotykanie łap przez właściciela. Fundament pielęgnacji i wizyt weterynaryjnych.",
+  "instructions": [
+   "Delikatnie dotknij łapę przez 1 sekundę, natychmiast nagradzaj",
+   "Stopniowo wydłużaj dotyk: 1s → 3s → 5s",
+   "Przejdź do trzymania łapy, potem do delikatnego masowania",
+   "Ćwicz wszystkie cztery łapy osobno",
+   "Dodaj imitację obcinania pazurów — dotykaj nożyczkami (bez cięcia)"
+  ],
+  "successCriteria": "Pies spokojnie akceptuje trzymanie każdej łapy przez 10 sekund",
+  "commonMistakes": [
+   "Zbyt mocny chwyt na początku",
+   "Nagradzanie gdy pies wyrywa łapę",
+   "Ignorowanie sygnałów stresu psa"
+  ],
+  "tags": [
+   "łapy",
+   "handling",
+   "pielęgnacja",
+   "weterynarz"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Otwieranie pyska",
+  "category": "Handling",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies spokojnie akceptuje sprawdzanie jamy ustnej i podawanie leków. Niezbędne podczas wizyt u weterynarza.",
+  "instructions": [
+   "Dotknij pyska psa z zewnątrz, nagradzaj",
+   "Delikatnie unieś wargę i obejrzyj zęby — nagradzaj",
+   "Powoli otwórz pysk na 1 sekundę — natychmiast nagradzaj",
+   "Ćwicz wkładanie smakołyku do pyska od strony policzka",
+   "Symuluj podawanie tabletek: włóż i natychmiast nagradzaj"
+  ],
+  "successCriteria": "Pies spokojnie otwiera pysk i utrzymuje przez 3 sekundy",
+  "commonMistakes": [
+   "Gwałtowne otwieranie pyska",
+   "Zbyt długie trzymanie otwartego pyska na początku",
+   "Nagradzanie po wyrywie — pies uczy się że wyrwanie kończy ćwiczenie"
+  ],
+  "tags": [
+   "pysk",
+   "handling",
+   "weterynarz",
+   "leki"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Szczotkowanie",
+  "category": "Handling",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies spokojnie akceptuje szczotkowanie całego ciała. Ważne dla pielęgnacji i budowania tolerancji dotyku.",
+  "instructions": [
+   "Pokaż szczotkę psu, nagradzaj samo zbliżenie szczotki",
+   "Dotknij grzbiet jednym ruchem szczotki — nagradzaj",
+   "Stopniowo zwiększaj obszar szczotkowania i liczbę ruchów",
+   "Ćwicz szczególnie wrażliwe miejsca: brzuch, łapy, ogon",
+   "Rób przerwy zanim pies zacznie się niecierpliwić"
+  ],
+  "successCriteria": "Pies spokojnie akceptuje szczotkowanie całego grzbietu przez 2 minuty",
+  "commonMistakes": [
+   "Zbyt długie sesje szczotkowania od razu",
+   "Kontynuowanie gdy pies wyraźnie się wierci",
+   "Brak nagradzania w trakcie — tylko na końcu"
+  ],
+  "tags": [
+   "szczotkowanie",
+   "handling",
+   "pielęgnacja",
+   "dotyk"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Swobodne obwąchiwanie",
+  "category": "Relaks",
+  "difficulty": "podstawowy",
+  "durationMinutes": 15,
+  "description": "Pies ma czas na swobodne eksplorowanie otoczenia nosem bez żadnych komend. Kluczowe dla dobrostanu i wyciszenia.",
+  "instructions": [
+   "Wyjdź z psem w spokojne miejsce (park, las, łąka)",
+   "Daj psu długą smycz lub wypuść luzem w bezpiecznym miejscu",
+   "Pozwól psu samodzielnie wybierać co obwąchuje i ile czasu",
+   "Nie poganiaj, nie kieruj nosem — idź za psem",
+   "Czas trwania: minimum 15 minut ciągłego obwąchiwania"
+  ],
+  "successCriteria": "Pies swobodnie eksploruje otoczenie nosem przez 15 minut w spokojnym tempie",
+  "commonMistakes": [
+   "Szarpanie smyczy gdy pies chce dłużej obwąchać",
+   "Przerywanie obwąchiwania komendami",
+   "Zbyt krótki czas — mniej niż 10 minut nie daje efektu wyciszenia"
+  ],
+  "tags": [
+   "nos",
+   "obwąchiwanie",
+   "relaks",
+   "dobrostan",
+   "sniffing"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Nosework — szukanie smakołyku",
+  "category": "Węchowanie",
+  "difficulty": "podstawowy",
+  "durationMinutes": 10,
+  "description": "Pies używa węchu do znajdowania ukrytych smakołyków. Aktywność mentalna, która wyczerpuje bardziej niż bieganie.",
+  "instructions": [
+   "Pokaż psu smakołyk, połóż na podłodze — pies go je",
+   "Następnie zakryj smakołyk kubkiem — pies niech szuka",
+   "Gdy pies dotknie nosem właściwego kubka — odkryj i nagradzaj",
+   "Stopniowo zwiększaj liczbę kubków: 2 → 3 → 5",
+   "Przejdź do chowania smakołyków w różnych miejscach pokoju"
+  ],
+  "successCriteria": "Pies znajduje ukryty smakołyk spośród 5 kubków przy 80% skuteczności",
+  "commonMistakes": [
+   "Podpowiadanie gdzie jest smakołyk",
+   "Nagradzanie gdy pies trafi przez przypadek bez pracy nosem",
+   "Zbyt trudne chowanie na początku"
+  ],
+  "tags": [
+   "nosework",
+   "węch",
+   "szukanie",
+   "aktywność mentalna"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Nosework — oznaczanie zapachu",
+  "category": "Węchowanie",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Pies uczy się oznaczać konkretny zapach (np. lawendy) siedząc lub kładąc się przy pojemniku z tym zapachem.",
+  "instructions": [
+   "Umieść smakołyk w pojemniku z wentylacją (np. pudełko z dziurkami) — zapach lawendy",
+   "Pies niech powącha, nagradzaj zainteresowanie pojemnikiem",
+   "Stopniowo nagradzaj tylko dłuższe wąchanie (2s, 3s, 5s)",
+   "Naucz oznaczanie: pies siada lub kładzie się przy zapachowym pojemniku",
+   "Wprowadź pojemniki bez zapachu — pies ma wskazać tylko właściwy"
+  ],
+  "successCriteria": "Pies siada przy pojemniku z zapachem lawendy wśród 3 pustych pojemników",
+  "commonMistakes": [
+   "Nagradzanie każdego kontaktu z pojemnikiem",
+   "Zbyt szybkie dodawanie pustych pojemników",
+   "Nieczyste próbki zapachowe"
+  ],
+  "tags": [
+   "nosework",
+   "zapach",
+   "oznaczanie",
+   "sport"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Socjalizacja z psami — obserwacja",
+  "category": "Socjalizacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 15,
+  "description": "Pies uczy się spokojnie obserwować inne psy z bezpiecznego dystansu bez barku, szarpania i nadmiernego pobudzenia.",
+  "instructions": [
+   "Stań w odległości gdzie pies widzi innego psa ale jest spokojny",
+   "Gdy pies patrzy na psa spokojnie — nagradzaj bardzo hojnie",
+   "Jeśli pies szczeka lub szarpie — jesteś za blisko, odejdź dalej",
+   "Stopniowo skracaj dystans gdy pies jest konsekwentnie spokojny",
+   "Nie zmuszaj do podejścia — daj psu kontrolę"
+  ],
+  "successCriteria": "Pies obserwuje innego psa z 10 metrów przez 30 sekund bez barku i szarpania",
+  "commonMistakes": [
+   "Zbyt bliski dystans na początku",
+   "Napinanie smyczy gdy pies patrzy na psa — komunikuje stres",
+   "Forsowanie spotkania gdy pies nie jest gotowy"
+  ],
+  "tags": [
+   "psy",
+   "socjalizacja",
+   "reaktywność",
+   "dystans"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Wchodzenie do klatki/kojca",
+  "category": "Relaks",
+  "difficulty": "podstawowy",
+  "durationMinutes": 8,
+  "description": "Pies dobrowolnie wchodzi do klatki transportowej i czuje się w niej bezpiecznie. Fundament podróży i relaksu.",
+  "instructions": [
+   "Postaw klatkę z otwartymi drzwiami w pokoju, rzuć smakołyk przy wejściu",
+   "Stopniowo rzucaj smakołyki coraz głębiej wewnątrz",
+   "Gdy pies wchodzi swobodnie — nagradzaj w środku",
+   "Zacznij zamykać drzwi na 1 sekundę, potem 5 sekund — nagradzaj",
+   "Wydłużaj czas zamknięcia stopniowo"
+  ],
+  "successCriteria": "Pies wchodzi do klatki na sygnał i spokojnie leży przy zamkniętych drzwiach przez 5 minut",
+  "commonMistakes": [
+   "Zamykanie klatki gdy pies jest pobudzony",
+   "Używanie klatki jako kary",
+   "Zbyt szybkie zamykanie bez przyzwyczajenia"
+  ],
+  "tags": [
+   "klatka",
+   "kojec",
+   "relaks",
+   "transport",
+   "bezpieczeństwo"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Podstawy węchu — szczeniak",
+  "category": "Szczeniak",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pierwsze zabawy węchowe dla szczeniąt. Aktywuje naturalny instynkt węchu i tworzy pozytywne skojarzenia z nauką.",
+  "instructions": [
+   "Weź smakołyk, pokaż szczeniakowi i schowaj w zaciśniętej dłoni",
+   "Daj psu powąchać rękę — poczekaj na samodzielne otwarcie (pawing/lizanie)",
+   "Gdy pies obwąchuje rękę — po 2 sekundach otwórz i daj smakołyk",
+   "Przejdź do szukania smakołyku pod jednym z 2 kubków",
+   "Sesje max 5 minut — szczeniaki szybko się męczą"
+  ],
+  "successCriteria": "Szczeniak wskazuje nosem zamkniętą rękę ze smakołykiem przez 3 sekundy",
+  "commonMistakes": [
+   "Zbyt długie sesje dla szczeniaka",
+   "Frustrowanie szczeniaka trudnymi zadaniami",
+   "Brak entuzjazmu w nagradzaniu"
+  ],
+  "tags": [
+   "szczeniak",
+   "węch",
+   "zabawa",
+   "pierwsze kroki"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Imię i kontakt — szczeniak",
+  "category": "Szczeniak",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pierwsze nauki imienia i kontaktu wzrokowego dla szczeniąt w domu. Fundament całej przyszłej edukacji.",
+  "instructions": [
+   "Wywołaj imię szczeniaka spokojnym, radosnym głosem",
+   "Gdy spojrzy — nagródź natychmiast smakołykiem lub pochwałą",
+   "Powtarzaj 5-10 razy, potem przerwa",
+   "Ćwicz w różnych miejscach domu",
+   "Połącz z kontaktem wzrokowym: czekaj aż szczeniak spojrzy w oczy"
+  ],
+  "successCriteria": "Szczeniak reaguje na imię w 8 na 10 wywołań w domu",
+  "commonMistakes": [
+   "Wielokrotne powtarzanie imienia bez reakcji",
+   "Nagradzanie zanim szczeniak dobrze zareaguje",
+   "Zbyt długie sesje — szczeniak 8 tygodni potrzebuje max 3 minuty"
+  ],
+  "tags": [
+   "szczeniak",
+   "imię",
+   "kontakt",
+   "pierwsze kroki"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Gryzienie — przekierowanie",
+  "category": "Szczeniak",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Szczeniak uczy się gryźć swoje zabawki zamiast rąk i ubrań. Zarządzanie naturalną potrzebą gryzienia.",
+  "instructions": [
+   "Gdy szczeniak gryzie rękę — wydaj krótki dźwięk 'au' i zamrój ruch",
+   "Odsuń rękę spokojnie, od razu zaproponuj właściwą zabawkę",
+   "Chwal i baw się gdy szczeniak gryzie zabawkę",
+   "Jeśli szczeniak jest bardzo pobudzony — przerwa: czas na odpoczynek",
+   "Ćwicz konsekwentnie z wszystkimi domownikami"
+  ],
+  "successCriteria": "Szczeniak w 80% sytuacji sięga po zabawkę zamiast ręki",
+  "commonMistakes": [
+   "Kara fizyczna za gryzienie — nasila problem",
+   "Bawienie się rękami z szczeniakiem — zachęca do gryzienia",
+   "Brak konsekwencji — jedna osoba pozwala, inna karze"
+  ],
+  "tags": [
+   "gryzienie",
+   "szczeniak",
+   "hamowanie",
+   "zabawki"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Warunkowanie mostka (Bridge Conditioning)",
+  "category": "Komunikacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Uczenie psa, że specyficzny sygnał (słowo 'Dobry' lub kliker) zapowiada nagrodę. Jest to fundament komunikacji, pozwalający na precyzyjne zaznaczanie pożądanych zachowań.",
+  "instructions": [
+   "Przygotuj małe, atrakcyjne smakołyki w saszetce na prawym boku.",
+   "Pozwól psu powąchać i spróbować smakołyk z zamkniętej dłoni (priming).",
+   "Wypowiedz słowo 'Dobry' wysokim, radosnym tonem (lub kliknij) tuż przed otwarciem dłoni.",
+   "Powtórz sekwencję 10-15 razy, aż pies zacznie wykazywać reakcję wyczekiwania na dźwięk.",
+   "Zacznij poruszać ręką w różnych kierunkach, wydając sygnał mostka w momencie, gdy pies dotknie dłoni nosem."
+  ],
+  "successCriteria": "Pies wykazuje jasną reakcję orientacyjną i oczekiwanie na nagrodę natychmiast po usłyszeniu sygnału mostka.",
+  "commonMistakes": [
+   "Wydawanie nagrody i sygnału jednocześnie (powinny być sekwencyjne)",
+   "Zbyt długa przerwa między sygnałem a podaniem smakołyka",
+   "Używanie monotonnego, nudnego głosu przy słowie 'Dobry'"
+  ],
+  "tags": [
+   "fundamenty",
+   "kynopraksja",
+   "mostek"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Reakcja orientacyjna (Orienting Response)",
+  "category": "Komunikacja",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Ćwiczenie uczy psa przerywania aktualnej czynności i odwracania głowy w stronę przewodnika na sygnał. Jest to pierwszy krok do budowania uwagi i kontroli impulsów.",
+  "instructions": [
+   "Stań przed psem w miejscu o małej liczbie rozproszeń.",
+   "Wypowiedz imię psa lub użyj dźwięku (np. cmoknięcie), gdy pies patrzy w inną stronę.",
+   "W momencie, gdy pies wykona ruch głową w Twoją stronę (łuk celowania), natychmiast kliknij lub powiedz 'Dobry'.",
+   "Wydaj nagrodę z dłoni odchylonej lekko w bok, aby pies musiał podejść.",
+   "Zwolnij psa sygnałem 'OK' i klaśnięciem, zachęcając go do powrotu do eksploracji przed kolejną próbą."
+  ],
+  "successCriteria": "Pies natychmiast odwraca głowę w stronę przewodnika po usłyszeniu pojedynczego sygnału dźwiękowego.",
+  "commonMistakes": [
+   "Wielokrotne powtarzanie imienia, gdy pies nie reaguje",
+   "Nagradzanie zbyt późno, gdy pies zdążył już ponownie odwrócić wzrok",
+   "Praca w zbyt trudnym środowisku na początku treningu"
+  ],
+  "tags": [
+   "skupienie",
+   "uwaga",
+   "szczeniak"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Relaksacja wspomagana postawą (PFR)",
+  "category": "Relaks",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Ustrukturyzowany masaż połączony z kontrolą pozycji ciała, który indukuje głęboką relaksację przywspółczulną. Pomaga psu radzić sobie ze stresem i buduje zaufanie do dotyku.",
+  "instructions": [
+   "Zacznij od kontroli obroży i delikatnego masażu mięśni żuchwy kciukami, utrzymując łagodny kontakt wzrokowy.",
+   "Ustaw psa w pozycji stojącej i wykonuj rytmiczne masaże karku i łopatek (jeden ruch na 1,5 sekundy).",
+   "Naprowadź psa do siadu, a następnie do pozycji waruj, cały czas masując mięśnie wzdłuż kręgosłupa.",
+   "Połóż psa na boku (lateral roll) i kontynuuj masaż lewej strony ciała (wpływa to na prawą półkulę mózgu).",
+   "Wprowadź sygnaturę zapachową (np. lawenda) w fazie najgłębszego rozluźnienia i zakończ sesję spokojnym głaskaniem."
+  ],
+  "successCriteria": "Pies leży rozluźniony na boku, jego oddech jest wolny i rytmiczny, a częstotliwość mrugania oczami drastycznie spada.",
+  "commonMistakes": [
+   "Zbyt szybkie, nerwowe tempo masażu",
+   "Siłowe unieruchamianie psa, które wywołuje odruch wolności (freedom reflex)",
+   "Brak spokoju i miarowego oddechu u samego przewodnika"
+  ],
+  "tags": [
+   "relaks",
+   "handling",
+   "stres",
+   "oxytocyna"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Trening łuku celowania (TAT)",
+  "category": "Samokontrola",
+  "difficulty": "zaawansowany",
+  "durationMinutes": 5,
+  "description": "Precyzyjne nagradzanie mikroruchu orientacji na przewodnika w momencie pojawienia się bodźca. Pozwala 'zrestartować' uwagę psa uciekającego w reaktywność.",
+  "instructions": [
+   "Wprowadź psa w środowisko z kontrolowanym bodźcem (np. inny pies w dużej odległości).",
+   "Użyj sygnału orientacyjnego (piszczałka lub cmoknięcie) w ułamku sekundy, gdy pies zauważy bodziec.",
+   "Natychmiast po 'drgnięciu' głowy w Twoją stronę (łuk celowania), kliknij i wykonaj rzut dłonią (flick) w przeciwnym kierunku.",
+   "Podaj nagrodę o wysokiej wartości, stosując 'dodatni błąd przewidywania' (lepsza nagroda niż zwykle).",
+   "Powtarzaj, skracając czas między zauważeniem bodźca a reakcją orientacyjną na przewodnika."
+  ],
+  "successCriteria": "Pies automatycznie i bez napięcia przekierowuje uwagę na przewodnika po zauważeniu rozpraszającego bodźca.",
+  "commonMistakes": [
+   "Czekanie z sygnałem, aż pies zacznie szczekać lub się zfiksuje",
+   "Używanie zbyt słabych nagród (brak efektu niespodzianki/dopaminy)",
+   "Brak precyzji w zaznaczaniu momentu orientacji (TAT musi być błyskawiczny)"
+  ],
+  "tags": [
+   "reaktywność",
+   "agresja",
+   "skupienie",
+   "TAT"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Program Siad-Zostań",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 15,
+  "description": "Trening oparty na błędach zerowych, uczący psa pozostawania w pozycji mimo oddalania się przewodnika. Buduje cierpliwość i umiejętność odraczania gratyfikacji.",
+  "instructions": [
+   "Poproś psa o 'siad' w miejscu bez rozproszeń i nagródź go za sam kontakt wzrokowy.",
+   "Wprowadź komendę 'Zostań' z gestem otwartej dłoni (stay flag) i cofnij się o pół kroku.",
+   "Wróć natychmiast do psa i wydaj nagrodę, zanim pies zdąży się poruszyć.",
+   "Stopniowo zwiększaj kryterium czasu (duration) i dystansu (distance) w osobnych sesjach.",
+   "Zawsze kończ ćwiczenie sygnałem zwolnienia 'OK' i radosną, krótką zabawą (ludic incentive)."
+  ],
+  "successCriteria": "Pies pozostaje w pozycji przez 60 sekund mimo poruszania się przewodnika w odległości 2-3 metrów.",
+  "commonMistakes": [
+   "Zbyt szybkie zwiększanie dystansu prowadzące do błędów",
+   "Brak sygnału zwolnienia (pies uczy się sam kończyć ćwiczenie)",
+   "Powtarzanie komendy 'Zostań' wielokrotnie podczas jednej próby"
+  ],
+  "tags": [
+   "zostań",
+   "samokontrola",
+   "podstawy"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Sakkada (impuls hamujący)",
+  "category": "Komunikacja",
+  "difficulty": "zaawansowany",
+  "durationMinutes": 5,
+  "description": "Technika natychmiastowego przerwania niepożądanego impulsu za pomocą precyzyjnego ruchu na smyczy. Uczy psa reakcji 'all-stop' w sytuacjach ekstremalnego pobudzenia.",
+  "instructions": [
+   "Upewnij się, że pies jest na obroży limited-slip i smycz ma odpowiedni luz (life in the leash).",
+   "W momencie startu niepożądanego zachowania, gwałtownie zwolnij pętlę smyczy w dłoni (slack).",
+   "Wykonaj krok w tył i zakotwicz dłonie ze smyczą przed brzuchem (środek ciężkości).",
+   "Gdy pies osiągnie koniec smyczy, wykonaj krótki, suchy impuls (nie szarpnięcie!), który go zatrzyma.",
+   "Natychmiast po zatrzymaniu uspokój psa głosem ('sweet talk') i wprowadź masaż wyciszający (nastrojenie autonomiczne)."
+  ],
+  "successCriteria": "Pies natychmiast przerywa pogoń lub atak i przenosi uwagę na przewodnika po wykonaniu impulsu.",
+  "commonMistakes": [
+   "Praca na napiętej smyczy (dead leash) - sakkada wymaga wcześniejszego poluzowania",
+   "Brak fazy wyciszenia i masażu po wykonaniu korekty",
+   "Używanie zbyt małej siły przy psach o silnym napędzie (brak efektu all-stop)"
+  ],
+  "tags": [
+   "korekta",
+   "hamowanie",
+   "bezpieczeństwo",
+   "agresja"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Wymiana i Oddawanie (Trade and Release)",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Ćwiczenie zapobiegające obronie zasobów. Uczy psa, że oddanie przedmiotu przewodnika prowadzi do uzyskania czegoś lepszego i często do odzyskania zabawki.",
+  "instructions": [
+   "Zaproponuj psu zabawkę o średniej wartości ('Bierz').",
+   "Zaprezentuj psu smakołyk o wysokiej wartości w zamkniętej dłoni, mówiąc 'Daj'.",
+   "Gdy pies wypuści zabawkę, zaznacz to ('Dobry') i wydaj smakołyk.",
+   "Po zjedzeniu smakołyka, natychmiast oddaj psu zabawkę i zachęć do dalszej zabawy.",
+   "Stopniowo wprowadzaj trudniejsze przedmioty, stosując pomocniczą linkę kontrolną (object line) dla bezpieczeństwa."
+  ],
+  "successCriteria": "Pies puszcza trzymany przedmiot natychmiast po usłyszeniu komendy, bez oznak sztywnienia czy warczenia.",
+  "commonMistakes": [
+   "Zabieranie przedmiotu na siłę bez wymiany (buduje konflikt)",
+   "Zabieranie zabawki na stałe po każdej wymianie (pies uczy się, że oddanie kończy zabawę)",
+   "Ściganie psa, który ucieka z przedmiotem (nagroda za ucieczkę)"
+  ],
+  "tags": [
+   "obrona zasobów",
+   "wymiana",
+   "zaufanie"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Ćwiczenie startowe / Do nogi",
+  "category": "Spacer",
+  "difficulty": "średni",
+  "durationMinutes": 5,
+  "description": "Uczy psa sprawnego zajmowania pozycji przy lewej nodze przewodnika. Buduje orientację na przewodnika i stanowi bazę do spacerów kontrolowanych.",
+  "instructions": [
+   "Stań prosto z psem przed sobą. Klepnij się w lewe udo i zrób krok w tył lewą nogą.",
+   "Naprowadź psa smakołykiem po łuku za swoje plecy lub z boku.",
+   "Gdy głowa psa znajdzie się za Twoją lewą nogą, zrób krok w przód, prostując psa równolegle do nogi.",
+   "Zasugeruj 'siad' ruchem ręki nad głową psa i nagródź go w tej pozycji.",
+   "Powtarzaj, stopniowo minimalizując ruchy ciała i dłoni, aż pies będzie reagował na komendę 'Noga' lub 'Heel'."
+  ],
+  "successCriteria": "Pies płynnie okrąża przewodnika lub wchodzi na pozycję przy lewej nodze i automatycznie siada.",
+  "commonMistakes": [
+   "Popychanie zadu psa dłonią (zamiast naprowadzania smakołykiem)",
+   "Brak zrobienia kroku w przód, co skutkuje krzywym siadaniem psa",
+   "Nagradzanie, gdy pies siedzi zbyt daleko od nogi"
+  ],
+  "tags": [
+   "spacer",
+   "noga",
+   "posłuszeństwo"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Spacer na luźnej smyczy",
+  "category": "Spacer",
+  "difficulty": "podstawowy",
+  "durationMinutes": 15,
+  "description": "Ustalenie granicy, w której pies może swobodnie eksplorować otoczenie pod warunkiem, że nie napina smyczy. Buduje nawyk podążania za przewodnikiem bez walki o kontrolę.",
+  "instructions": [
+   "Trzymaj smycz techniką 'Bight and Pinch' (pętla i zapas luzu w dłoni).",
+   "Pozwól psu iść przodem, w bok lub tyłem, dopóki smycz jest luźna.",
+   "Gdy smycz zaczyna się napinać, natychmiast wypuść zapas luzu z dłoni i wykonaj zwrot o 180 stopni.",
+   "W momencie, gdy pies zawróci i poluzuje smycz, kliknij i nagródź go przy swojej nodze.",
+   "Stosuj sygnały 'Łatwo' (Easy) przed osiągnięciem końca smyczy, by dać psu szansę na samodzielną korektę."
+  ],
+  "successCriteria": "Pies porusza się w zasięgu smyczy bez ani jednego silnego szarpnięcia przez 5 minut spaceru.",
+  "commonMistakes": [
+   "Pozwalanie psu na stałe ciągnięcie (dead leash)",
+   "Szarpanie psa smyczą zamiast robienia zwrotów i nagradzania luzu",
+   "Brak uwagi przewodnika (telefon, rozmowa) w momentach napinania smyczy"
+  ],
+  "tags": [
+   "spacer",
+   "smycz",
+   "lider-follower"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Odeślij na miejsce (Go-lie-down)",
+  "category": "Samokontrola",
+  "difficulty": "średni",
+  "durationMinutes": 10,
+  "description": "Kształtowanie zachowania odchodzenia od przewodnika na wyznaczone miejsce (np. legowisko). Kluczowe w zarządzaniu psem przy gościach lub posiłkach.",
+  "instructions": [
+   "Wybierz legowisko lub kocyk jako cel. Kliknij i nagródź psa za każde spojrzenie w stronę koca.",
+   "Nagradzaj podejście do koca, a następnie postawienie na nim łap (shaping).",
+   "Gdy pies wejdzie na koc, wprowadź komendę 'Miejsce' i naprowadź go do pozycji 'Waruj'.",
+   "Wydawaj smakołyki w seriach, gdy pies pozostaje na miejscu, stopniowo zwiększając dystans, z którego go odsyłasz.",
+   "Ćwicz z rozproszeniami, np. rzucając zabawkę w drugą stronę, wymagając pozostania na kocu."
+  ],
+  "successCriteria": "Pies na komendę biegnie do legowiska z odległości 3 metrów i kładzie się na nim, czekając na zwolnienie.",
+  "commonMistakes": [
+   "Zbyt szybkie kończenie sesji (pies uczy się schodzić zaraz po zjedzeniu smakołyka)",
+   "Używanie legowiska jako miejsca kary/izolacji",
+   "Brak precyzyjnego zaznaczenia momentu wejścia na koc"
+  ],
+  "tags": [
+   "legowisko",
+   "samokontrola",
+   "shaping"
+  ],
+  "vimeoId": ""
+ },
+ {
+  "name": "Chodzenie przy nodze — komenda \"Idziemy\"",
+  "category": "Spacer",
+  "difficulty": "podstawowy",
+  "durationMinutes": 5,
+  "description": "Pies uczy się chodzić przy lewej nodze przewodnika na luźnej smyczy. Program 13-poziomowy — od pierwszej nagrody przy nodze do pewnego chodzenia w środowiskach z rozproszeniami.",
+  "instructions": [
+   "Weź kliker w prawą rękę, smakołyki w lewą",
+   "Stań z psem — pies może być po dowolnej stronie",
+   "Poczekaj spokojnie. Gdy pies zbliża się do Twojej lewej nogi i spojrzy na Ciebie — kliknij natychmiast",
+   "Podaj smakołyk PRZY LEWEJ NODZE — nisko, tuż przy udzie",
+   "Zrób 1-2 kroki i powtórz",
+   "Nagradzaj tylko gdy pies jest dokładnie przy lewej nodze — nie przed Tobą, nie za Tobą",
+   "Po 3 powtórzeniach powiedz 'dziękuję' i zrób przerwę"
+  ],
+  "successCriteria": "Pies 3 razy z rzędu wraca do pozycji przy lewej nodze i patrzy na Ciebie bez zachęty z Twojej strony",
+  "commonMistakes": [
+   "Podawanie smakołyka zbyt daleko od nogi",
+   "Klikanie gdy pies jest za daleko",
+   "Za długie sesje — po 5 min pies traci skupienie"
+  ],
+  "tags": [
+   "spacer",
+   "noga",
+   "smycz",
+   "idziemy",
+   "kliker"
+  ],
+  "vimeoId": "",
+  "stages": [
+   {
+    "order": 0,
+    "name": "Pierwsza nagroda przy nodze",
+    "description": "Kliker + pozycja. To jest fundament — jeśli pies nie rozumie gdzie jest dobra pozycja, kolejne poziomy nie będą działać. Poświęć tyle czasu ile potrzeba.",
+    "instructions": [
+     "Weź kliker w prawą rękę, smakołyki w lewą",
+     "Stań z psem — pies może być po dowolnej stronie",
+     "Poczekaj spokojnie. Gdy pies zbliża się do Twojej lewej nogi i spojrzy na Ciebie — kliknij natychmiast",
+     "Podaj smakołyk PRZY LEWEJ NODZE — nisko, tuż przy udzie",
+     "Zrób 1-2 kroki i powtórz",
+     "Nagradzaj tylko gdy pies jest dokładnie przy lewej nodze — nie przed Tobą, nie za Tobą",
+     "Po 3 powtórzeniach powiedz 'dziękuję' i zrób przerwę"
+    ],
+    "successCriteria": "Pies 3 razy z rzędu wraca do pozycji przy lewej nodze i patrzy na Ciebie bez zachęty z Twojej strony",
+    "commonMistakes": [
+     "Podawanie smakołyka zbyt daleko od nogi",
+     "Klikanie gdy pies jest za daleko",
+     "Za długie sesje — po 5 min pies traci skupienie"
+    ],
+    "durationMinutes": 5,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 1,
+    "name": "Kilka kroków przy nodze",
+    "description": "Kliker + ruch. Luźna smycz w kształcie U to jedyna miara sukcesu. Napiętą smycz = cofnij się do poziomu 1. Nagradzaj losowo — raz po 3 krokach, raz po 7, raz po 5.",
+    "instructions": [
+     "Zacznij jak na poziomie 1 — pies przy lewej nodze",
+     "Zrób 2-3 kroki do przodu trzymając kliker",
+     "Gdy pies idzie przy nodze i patrzy na Ciebie — kliknij i podaj smakołyk przy nodze W RUCHU (nie zatrzymuj się)",
+     "Stopniowo wydłużaj do 5, potem 10 kroków",
+     "Nagradzaj często — co 3-5 kroków na początku",
+     "Jeśli pies odejdzie od pozycji — nie reaguj, zatrzymaj się i poczekaj aż wróci",
+     "Gdy wróci — ruszaj od nowa i kliknij po kilku dobrych krokach"
+    ],
+    "successCriteria": "Pies idzie przy nodze przez 15 kroków bez odchodzenia 3 razy z rzędu. Smycz przez cały czas w kształcie litery U.",
+    "commonMistakes": [
+     "Przyspieszanie gdy pies zaczyna odchodzić",
+     "Napinanie smyczy zamiast zatrzymywania się",
+     "Nagradzanie zbyt rzadko"
+    ],
+    "durationMinutes": 7,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 2,
+    "name": "Zmiana kierunku",
+    "description": "Luz smyczy + zmiana kierunku. Zmiana kierunku musi być natychmiastowa i energiczna. Pies powinien czuć, że opłaca się patrzeć na przewodnika.",
+    "instructions": [
+     "Idź z psem na smyczy trzymanej luźno",
+     "Gdy pies zaczyna Cię wyprzedzać — NIE napinaj smyczy",
+     "Wydaj cały luz smyczy (ok. 2 metry) i natychmiast zmień kierunek na PRZECIWNY",
+     "Idź w nowym kierunku energicznym krokiem",
+     "Cmokij lub powiedz imię psa, by zachęcić go do podążania",
+     "Gdy pies dobiegnie do Twojej lewej nogi — kliknij i podaj smakołyk",
+     "Powtarzaj: gdy pies wyprzedza → luz smyczy → zmiana kierunku → kliker gdy wróci"
+    ],
+    "successCriteria": "Pies przestaje Cię wyprzedzać i zaczyna obserwować Twoje ruchy. Sygnał sukcesu: pies sam zwalnia zanim Cię wyprzedzi.",
+    "commonMistakes": [
+     "Napinanie smyczy zamiast luzowania jej",
+     "Zbyt wolna zmiana kierunku",
+     "Brak energicznego kroku"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 3,
+    "name": "Kliker + zmiana kierunku razem",
+    "description": "Połączenie technik z poziomów 2 i 3. Zasada: kliker tylko za DOBRĄ pozycję, nigdy za powrót po korekcie. Proporcje: 80% nagród, 20% korekt.",
+    "instructions": [
+     "Połącz techniki z poziomu 2 i 3",
+     "Nagradzaj kliker za dobrą pozycję przy nodze co kilka kroków",
+     "Gdy pies wyprzedza — luz smyczy + zmiana kierunku (BEZ klikera)",
+     "Gdy pies wróci do pozycji przy nodze — kliknij i nagrodź",
+     "Buduj sesje: 15-30 sekund chodzenia, potem przerwa i zabawa",
+     "Stopniowo wydłużaj czas dobrego chodzenia do 30-45 sekund bez korekty"
+    ],
+    "successCriteria": "Pies chodzi przy nodze przez 30 sekund bez wyprzedzania z luźną smyczą. Możesz zacząć wydłużać przerwy między kliknięciami.",
+    "commonMistakes": [
+     "Klikanie gdy pies prawie jest przy nodze",
+     "Za długie sesje bez przerwy",
+     "Pomijanie zabawy po sesji"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 4,
+    "name": "Zmiana tempa — wolne i szybkie",
+    "description": "Reakcja na tempo przewodnika. NAJPIERW ćwicz pracę nóg BEZ PSA przez 3-5 minut, aż ruchy będą automatyczne. Kliknij TYLKO gdy głowa psa jest równolegle do ziemi lub wyżej — opuszczona głowa to sygnał utraty skupienia.",
+    "instructions": [
+     "TEMPO WOLNE: Idź z psem przy nodze w normalnym tempie przez 4-5 kroków",
+     "Zwolnij PŁYNNIE w dwóch krokach i jednocześnie WYDŁUŻ krok o 1/4 długości — NIE skracaj kroku",
+     "Gdy pies utrzymuje pozycję przy nodze w pierwszym kroku wolnego tempa — kliknij i nagrodź DO TYŁU przy swoim biodrze",
+     "TEMPO SZYBKIE: Idź normalnie, potem wykonaj krok lewą nogą WYŻEJ i SZYBCIEJ niż zwykle",
+     "Drugi krok prawą nogą — DŁUŻSZY niż normalny",
+     "Utrzymuj szybkie tempo przez 15-20 kroków",
+     "Kliknij gdy pies przyspiesza razem z Tobą przy pierwszym kroku"
+    ],
+    "successCriteria": "Pies utrzymuje pozycję przy nodze podczas wyraźnego zwolnienia i przyspieszenia bez wyprzedzania i bez siadania przy zwalnianiu. 3 płynne przejścia z każdego tempa z rzędu.",
+    "commonMistakes": [
+     "Skracanie kroku przy zwalnianiu zamiast wydłużania — pies siada",
+     "Zbyt krótki szybki odcinek (3-4 kroki)",
+     "Angażowanie psa zanim praca nóg przewodnika jest automatyczna"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 5,
+    "name": "Automatyczny siad przy zatrzymaniu",
+    "description": "Siad bez komendy gdy się zatrzymujesz. Ruszanie z LEWEJ nogi = idziemy razem. Ruszanie z PRAWEJ nogi = Ty idziesz, pies zostaje. Używaj konsekwentnie od początku.",
+    "instructions": [
+     "Chodź z psem przy nodze jak na poziomie 4",
+     "Zatrzymaj się nagle — bez komendy, bez sygnału",
+     "Poczekaj spokojnie. Gdy pies usiada przy Twojej nodze — kliknij i nagrodź",
+     "Jeśli pies nie siada — powiedz spokojnie 'siad' i poczekaj",
+     "Gdy siada — kliknij i nagrodź PRZY NODZE",
+     "Ruszaj z LEWEJ nogi (sygnał, że idziecie dalej)",
+     "Stopniowo wycofuj komendę słowną — pies ma siadać automatycznie"
+    ],
+    "successCriteria": "Pies siada automatycznie przy lewej nodze za każdym razem gdy się zatrzymujesz — bez komendy słownej. 3 razy z rzędu w różnych miejscach.",
+    "commonMistakes": [
+     "Dawanie komendy 'siad' od razu — nie daj mu czasu",
+     "Ruszanie z prawej nogi (myli psa)",
+     "Nagradzanie gdy pies siada krzywo lub daleko"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 6,
+    "name": "Zwroty i skręcanie",
+    "description": "Skręt w prawo / lewo / zawrót 180 stopni. Nie zaczynaj tego poziomu dopóki pies nie utrzymuje pozycji przez co najmniej 20 kroków w linii prostej. W zwrocie w prawo pies musi PRZYSPIESZYĆ. W zwrocie w lewo pies musi ZWOLNIĆ.",
+    "instructions": [
+     "OKRĄG W PRAWO: Chodź w okrąg (średnica ~6m) w prawo normalnym tempem — pies musi przyspieszyć, NIE zwalniaj za niego",
+     "ZWROT W PRAWO (90°): Krok prawą nogą w kierunku godziny 1:00, krok lewą w kierunku 2:00, krok prawą w kierunku 3:00",
+     "ZAWRÓT 180°: Krok prawą nogą w kierunku 1:00, lewa dogania prawą, prawa obraca się w kierunku 6:00, krok lewą do przodu",
+     "Trzy punkty kliknięcia przy zawrocie: krok 2 / krok 3 / krok 4",
+     "OKRĄG W LEWO: Chodź w okrąg w lewo — pies musi ZWOLNIĆ, używaj palki celowniczej",
+     "Kliknij gdy pies utrzymuje pozycję na łuku"
+    ],
+    "successCriteria": "Pies utrzymuje pozycję przy nodze podczas skręcania w prawo i zawracania o 180 stopni bez zostawania i bez wyprzedzania. Smycz przez cały czas luźna.",
+    "commonMistakes": [
+     "Zaczynanie zwrotów zanim pies chodzi pewnie przez 20 kroków",
+     "Zwalnianie przed zwrotem w prawo",
+     "Wymaganie siadu na łukach"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 7,
+    "name": "Miska — pierwsze rozproszenie",
+    "description": "Chodzenie wokół miski z jedzeniem. Zacznij od miski z mało atrakcyjnym jedzeniem (karma sucha). Dopiero gdy pies jest pewny — użyj lepszych smakołyków.",
+    "instructions": [
+     "Postaw miskę z kilkoma smakołykami na ziemi",
+     "Zacznij od odległości 4 metry od miski",
+     "Chodź z psem przy nodze WOKÓŁ miski dużymi kółkami",
+     "Gdy pies idzie przy nodze ignorując miskę — kliknij i nagrodź przy nodze",
+     "Gdy pies kieruje się w stronę miski — luz smyczy + zmiana kierunku",
+     "Stopniowo zmniejszaj promień kółek: 4m → 3m → 2m → 1m → tuż obok",
+     "Cel: przejście tuż obok miski z luźną smyczą"
+    ],
+    "successCriteria": "Pies chodzi przy nodze z luźną smyczą w promieniu 1 metra od miski, 3 okrążenia z rzędu bez zmiany kierunku.",
+    "commonMistakes": [
+     "Zbyt szybkie podchodzenie do miski",
+     "Brak klikera gdy pies dobrze ignoruje miskę",
+     "Miska z bardzo atrakcyjnym jedzeniem na początku"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 8,
+    "name": "Rzucany smakołyk — dynamiczne rozproszenie",
+    "description": "Rzucanie smaczka przed psem. Jeśli pies zje smakołyk z ziemi — cofnij się do poziomu 8. Zakaz jedzenia z ziemi musi być absolutny podczas ćwiczenia.",
+    "instructions": [
+     "Chodź z psem przy nodze",
+     "Rzuć jeden smakołyk PRZED PSEM na ziemię",
+     "Natychmiast po rzuceniu zmień kierunek na PRZECIWNY energicznym krokiem",
+     "Cmokij i zachęć psa do podążania za Tobą",
+     "Gdy pies ruszy z Tobą zamiast po smakołyk — kliknij i nagrodź przy nodze",
+     "Powtórz kilka razy — na placu zbiera się kilka smakołyków",
+     "Chodź między leżącymi smakołykami stosując techniki z poprzednich poziomów"
+    ],
+    "successCriteria": "Pies ignoruje rzucony smakołyk i zmienia kierunek razem z Tobą w ciągu 2 sekund od rzutu. Pies chodzi między leżącymi smakołykami z luźną smyczą.",
+    "commonMistakes": [
+     "Rzucanie smakołyka zbyt blisko psa",
+     "Zbyt wolna zmiana kierunku po rzucie",
+     "Pozwolenie psu na zjedzenie smakołyka z ziemi"
+    ],
+    "durationMinutes": 10,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 9,
+    "name": "Połączenie wszystkich technik",
+    "description": "Pełna sesja — miska + rzut. Na tym poziomie zacznij stopniowo wycofywać kliker. Nagradzaj co 2, potem co 3, potem co 5 dobrych kroków.",
+    "instructions": [
+     "Postaw miskę ze smakołykami",
+     "Chodź z psem stosując wszystkie wcześniejsze techniki",
+     "Co jakiś czas rzuć smakołyk przed psem i zmień kierunek",
+     "Chodź wokół miski i przez leżące smakołyki",
+     "Losowo zatrzymuj się — pies siada automatycznie",
+     "Losowo zmieniaj tempo: szybciej, wolniej, zatrzymanie",
+     "Klikaj i nagradzaj za utrzymanie pozycji, z przerwami co 2-3 minuty"
+    ],
+    "successCriteria": "Pies chodzi przy nodze przez 2 minuty z luźną smyczą w środowisku z miską i smakołykami bez żadnej korekty. Siada automatycznie przy każdym zatrzymaniu.",
+    "commonMistakes": [
+     "Przewidywalny schemat sesji",
+     "Zbyt mało przerw",
+     "Sesje za długie bez zabawy"
+    ],
+    "durationMinutes": 15,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 10,
+    "name": "Doodling — nieprzewidywalne prowadzenie",
+    "description": "Losowe manewry na małej przestrzeni. Doodling to test czy pies naprawdę śledzi przewodnika, czy tylko wykonuje wyuczone sekwencje. Jeśli gubi się przy nagłej zmianie — nie jest jeszcze gotowy na rozproszenia środowiskowe.",
+    "instructions": [
+     "Wybierz mały obszar ok. 6x6 metrów",
+     "Poruszaj się w całkowicie losowy sposób: do przodu, obroty w miejscu, okrągi, zawroty, zatrzymania, zmiana tempa",
+     "Zmiany kierunku powinny być SZYBKIE — pies musi być skupiony żeby nadążyć",
+     "Klikaj za szczególnie szybkie lub dokładne reakcje",
+     "Jeśli pies się pomyli — zatrzymaj się chwilę, nie mów nic, ruszaj od nowa",
+     "Sesja ma być ZABAWA — żadnych wyrzutów, żadnego napinania smyczy",
+     "Możesz dodać: cofanie się z psem przy nodze, skrzyżowania nóg w prawo i lewo"
+    ],
+    "successCriteria": "Pies podąża za przewodnikiem przez całą sesję bez odchodzenia, reagując na nieoczekiwane zmiany kierunku i tempa w ciągu 1-2 sekund. Smycz luźna przez cały czas.",
+    "commonMistakes": [
+     "Powtarzalny schemat — doodling traci sens gdy pies przewiduje ruchy",
+     "Karanie za pomyłki",
+     "Zbyt długie sesje"
+    ],
+    "durationMinutes": 7,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 3
+    }
+   },
+   {
+    "order": 11,
+    "name": "Rozproszenia środowiskowe",
+    "description": "Inne psy, ludzie, zapachy w terenie. W nowym środowisku zawsze cofnij wymagania o 2 poziomy. Jeśli w domu pies chodził świetnie — w parku zacznij od poziomu 4-5. To normalne i oczekiwane.",
+    "instructions": [
+     "Wybierz miejsce z naturalnymi rozproszeniami (park, ulica, plac)",
+     "Zacznij od krawędzi — daleko od rozproszenia",
+     "Chodź przy nodze stosując techniki z poprzednich poziomów",
+     "Stopniowo zbliżaj się do rozproszenia (inny pies, dzieci, ludzie)",
+     "Gdy pies zachowuje pozycję — kliknij i nagrodź hojnie",
+     "Gdy pies szarpie — luz smyczy + zmiana kierunku",
+     "Buduj odległość: zawsze zacznij tam gdzie pies może odnieść sukces"
+    ],
+    "successCriteria": "Pies chodzi przy nodze z luźną smyczą obok stojącego obcego psa (odległość 3 metry), 2 okrążenia bez korekty.",
+    "commonMistakes": [
+     "Zbyt szybkie wchodzenie w środek rozproszenia",
+     "Brak planu wycofania gdy pies jest zbyt pobudzony",
+     "Nagradzanie zbyt rzadko w nowym środowisku"
+    ],
+    "durationMinutes": 20,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 80,
+     "requiredDays": 5
+    }
+   },
+   {
+    "order": 12,
+    "name": "Chodzenie bez ciągłego nagradzania",
+    "description": "Zmienny schemat nagród. Jeśli pies zaczyna znów szarpać — nie wracaj od razu do klikera. Spróbuj zmian kierunku przez 2-3 spacery. Jeśli nie pomaga — wróć do poziomu 9-10 na kilka dni.",
+    "instructions": [
+     "Chodź z psem stosując wszystkie techniki",
+     "Nie klikaj co kilka kroków — poczekaj 10, 15, 20 kroków",
+     "Nagradzaj losowo: raz po 5 krokach, raz po 20, raz po 10",
+     "Zamiast klikera używaj coraz częściej pochwały głosem i głaskania",
+     "Zabawę po sesji traktuj jako główną nagrodę",
+     "Stopniowo wycofuj smakołyki z codziennego chodzenia"
+    ],
+    "successCriteria": "Pies chodzi na luźnej smyczy przez cały 20-minutowy spacer w parku z innymi psami i ludźmi bez napinania smyczy. Kliker i smakołyki używane tylko od czasu do czasu.",
+    "commonMistakes": [
+     "Zbyt szybkie wycofywanie nagród",
+     "Rezygnacja z klikera zanim pies jest naprawdę pewny",
+     "Brak zabawy jako nagrody alternatywnej"
+    ],
+    "durationMinutes": 20,
+    "vimeoId": "",
+    "progression": {
+     "successPct": 85,
+     "requiredDays": 7
+    }
+   }
+  ]
+ }
+]
