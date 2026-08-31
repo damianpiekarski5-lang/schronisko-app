@@ -14,6 +14,14 @@ function todayStr() {
   return new Intl.DateTimeFormat("sv-SE", { timeZone: POLAND_TZ }).format(new Date());
 }
 
+// Domyślny zakres importu to ostatni tydzień — harmonogram wgrywa się
+// zwykle na bieżąco, a sztywna data z przeszłości kazała ją poprawiać ręcznie.
+function daysAgoStr(days) {
+  const d = new Date();
+  d.setDate(d.getDate() - days);
+  return new Intl.DateTimeFormat("sv-SE", { timeZone: POLAND_TZ }).format(d);
+}
+
 // Odpowiedź /api/gs bywa stroną błędu (timeout), nie JSON-em — czytamy
 // tekst i zamieniamy na zrozumiały komunikat zamiast wyjątku parsera
 async function postGs(body, token) {
@@ -41,7 +49,7 @@ async function postGs(body, token) {
 // Tylko jednoznaczne oznaczenia; podgląd przed zapisem; deduplikacja
 // z arkuszem Spacery i z Firestore.
 export default function WalkImport({ dogs, currentUser, onRefreshDogs }) {
-  const [fromDate, setFromDate] = useState("2026-07-04");
+  const [fromDate, setFromDate] = useState(() => daysAgoStr(7));
   const [toDate, setToDate] = useState(() => todayStr());
   const [busy, setBusy] = useState(false);
   const [preview, setPreview] = useState(null);

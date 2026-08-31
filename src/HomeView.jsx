@@ -207,6 +207,7 @@ const HomeView = ({
   isAdmin,
   isBehavioryst,
   currentUser,
+  quarantineDogIds,
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const { role: userRole } = useUserRole();
@@ -239,9 +240,14 @@ const HomeView = ({
     );
   };
 
+  // Kwarantanna: pawilon KP/U albo ręczne oznaczenie z terminem "od-do"
+  const isQuarantined = (dog) =>
+    NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase())
+    || !!(quarantineDogIds && quarantineDogIds.has(String(dog.id)));
+
   const getDogsNeedingWalk = () => {
     return dogs
-      .filter((dog) => !NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase()))
+      .filter((dog) => !isQuarantined(dog))
       .filter((dog) => (getLastWalkPresentation(dog.lastWalk).daysSince ?? 999) >= 5)
       .sort((a, b) => (getLastWalkPresentation(b.lastWalk).daysSince ?? 999) - (getLastWalkPresentation(a.lastWalk).daysSince ?? 999));
   };
@@ -316,6 +322,7 @@ const HomeView = ({
             ) : (
               filteredDogs.map((dog) => (
                 <DogCard
+                  quarantined={isQuarantined(dog)}
                   key={dog.id}
                   dog={dog}
                   onClick={onDogClick}
@@ -342,6 +349,7 @@ const HomeView = ({
                 </div>
                 {urgentShown.map((dog) => (
                   <DogCard
+                    quarantined={isQuarantined(dog)}
                     key={dog.id}
                     dog={dog}
                     onClick={onDogClick}
@@ -385,6 +393,7 @@ const HomeView = ({
               </h2>
               {allDogsSorted.map((dog) => (
                 <DogCard
+                  quarantined={isQuarantined(dog)}
                   key={dog.id}
                   dog={dog}
                   onClick={onDogClick}
@@ -402,9 +411,10 @@ const HomeView = ({
   );
 };
 
-const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent }) => {
+const DogCard = ({ dog, onClick, hoveredCard, setHoveredCard, urgent, quarantined }) => {
   const walkPresentation = getLastWalkPresentation(dog.lastWalk);
-  const noWalks = NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase());
+  const noWalks = quarantined
+    || NO_WALK_PAVILIONS.has(String(dog.pavilion || "").toUpperCase());
 
   return (
     <div
