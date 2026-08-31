@@ -19,7 +19,7 @@ function parseFlag(f) {
   };
 }
 
-const EMPTY_RAW = { noFood: null, walkBlocked: null, próbkaKału: null, pobranieKrwi: null, zakropienieOczu: null, inne: null };
+const EMPTY_RAW = { noFood: null, walkBlocked: null, próbkaKału: null, pobranieKrwi: null, zakropienieOczu: null, inne: null, kwarantanna: null };
 
 export default function useMedicalFlags(dogId) {
   const [raw, setRaw] = useState(EMPTY_RAW);
@@ -68,6 +68,7 @@ export default function useMedicalFlags(dogId) {
     pobranieKrwi: parseFlag(raw.pobranieKrwi),
     zakropienieOczu: parseFlag(raw.zakropienieOczu),
     inne: parseFlag(raw.inne),
+    kwarantanna: parseFlag(raw.kwarantanna),
     loading,
     flagsError: error,
     refresh: fetchFlags,

@@ -38,7 +38,7 @@ const WalkReportView = lazy(() => import("./WalkReportView"));
 const MyHoursView = lazy(() => import("./MyHoursView"));
 import { RoleProvider, useUserRole } from "./hooks/useUserRole";
 import useMedicalFlags from "./hooks/useMedicalFlags";
-import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus } from "./lib/roles";
+import { canSetMedicalFlags, canMoveDog, canViewSector, canReleaseDog, canEditDiet, canCompleteTask, canEditStatus, canSetQuarantine } from "./lib/roles";
 import SectorView from "./SectorView";
 import { parseSpreadsheetDate, getLastWalkPresentation } from "./utils/dateTime";
 import {
@@ -1745,9 +1745,9 @@ const DogCardView = ({
   const [togglingOpiekun, setTogglingOpiekun] = useState(false);
 
   const { role } = useUserRole();
-  const { noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, flagsError, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
+  const { noFood, walkBlocked, próbkaKału, pobranieKrwi, zakropienieOczu, inne, kwarantanna, flagsError, refresh: refreshFlags } = useMedicalFlags(selectedDog?.id);
 
-  const ALL_FLAG_TYPES = ["no_food", "walk_blocked", "próbka_kału", "pobranie_krwi", "zakropienie_oczu", "inne"];
+  const ALL_FLAG_TYPES = ["no_food", "walk_blocked", "próbka_kału", "pobranie_krwi", "zakropienie_oczu", "inne", "kwarantanna"];
   const initFlagForm = { note: "", validFrom: "", validUntil: "" };
   const [flagForm, setFlagForm] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, initFlagForm])));
   const [savingFlag, setSavingFlag] = useState(Object.fromEntries(ALL_FLAG_TYPES.map((t) => [t, false])));
@@ -2361,9 +2361,10 @@ const DogCardView = ({
               </div>
             </div>
           )}
-          {(noFood.active || walkBlocked.active || próbkaKału.active || pobranieKrwi.active || zakropienieOczu.active || inne.active ||
-            noFood.pending || walkBlocked.pending || próbkaKału.pending || pobranieKrwi.pending || zakropienieOczu.pending || inne.pending) && (
+          {(noFood.active || walkBlocked.active || próbkaKału.active || pobranieKrwi.active || zakropienieOczu.active || inne.active || kwarantanna.active ||
+            noFood.pending || walkBlocked.pending || próbkaKału.pending || pobranieKrwi.pending || zakropienieOczu.pending || inne.pending || kwarantanna.pending) && (
             <div style={{ padding: "1rem 1.5rem 0" }}>
+              {kwarantanna.active && <MedicalAlert icon="🚧" title="KWARANTANNA — NIE WYPROWADZAMY" flag={kwarantanna} />}
               {noFood.active && <MedicalAlert icon="🔴" title="NIE KARMIĆ" flag={noFood} />}
               {walkBlocked.active && <MedicalAlert icon="🚫" title="ZAKAZ SPACERU" flag={walkBlocked} />}
               {[
@@ -3170,6 +3171,28 @@ const DogCardView = ({
                 </div>
               );
             })()}
+            {canSetQuarantine(role) && (
+              <div style={{ ...styles.infoBox, marginTop: "1rem" }}>
+                <p style={{ fontWeight: 700, fontSize: "15px", margin: "0 0 10px", color: "#92400e" }}>
+                  🚧 Kwarantanna
+                </p>
+                <p style={{ fontSize: "12px", color: "#6b7280", margin: "0 0 10px" }}>
+                  Dla psów odbywających kwarantannę poza pawilonami KP i U.
+                  Po upływie daty „do" oznaczenie znika samo.
+                </p>
+                <FlagBlock
+                  title="Kwarantanna — nie wyprowadzamy"
+                  flagType="kwarantanna"
+                  currentFlag={kwarantanna}
+                  form={flagForm.kwarantanna}
+                  setFlagForm={setFlagForm}
+                  saving={savingFlag.kwarantanna}
+                  msg={flagMsg.kwarantanna}
+                  onSave={handleSetFlag}
+                  onDeactivate={handleDeactivateFlag}
+                />
+              </div>
+            )}
             {canSetMedicalFlags(role) && (
               <AmbulatoriumPanel
                 noFood={noFood}
@@ -3384,11 +3407,31 @@ const [favoriteActionState, setFavoriteActionState] = useState({
   error: "",
 });
 const [behaviorystDogIds, setBehaviorystDogIds] = useState(new Set());
+// Psy z ręcznie oznaczoną kwarantanną (poza pawilonami KP/U)
+const [quarantineDogIds, setQuarantineDogIds] = useState(new Set());
 const [behaviorystActionState, setBehaviorystActionState] = useState({
   loading: false,
   dogId: "",
   error: "",
 });
+
+useEffect(() => {
+  let cancelled = false;
+  const load = async () => {
+    try {
+      const res = await fetch("/api/gs?action=getQuarantineDogs");
+      const result = await res.json();
+      if (!cancelled && result?.ok && Array.isArray(result.data)) {
+        setQuarantineDogIds(new Set(result.data.map(String)));
+      }
+    } catch {
+      // brak listy kwarantanny nie może blokować widoku psów
+    }
+  };
+  load();
+  const id = setInterval(load, 300000);
+  return () => { cancelled = true; clearInterval(id); };
+}, []);
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
@@ -3989,6 +4032,7 @@ const handleLogin = async () => {
           isAdmin={isAdminUser}
           isBehavioryst={isBehaviorystUser}
           currentUser={currentUser}
+          quarantineDogIds={quarantineDogIds}
         />
       )}
       {currentView === "walkTable" && (

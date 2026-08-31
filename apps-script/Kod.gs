@@ -92,6 +92,10 @@ function doGet(e) {
       return json({ ok: true, data: getWeightHistory_(safeStr(e?.parameter?.dogId)) });
     }
 
+    if (action === "getQuarantineDogs") {
+      return json({ ok: true, data: getQuarantineDogs_() });
+    }
+
     if (action === "getSectorDogs") {
       return json({ ok: true, data: getSectorDogs_() });
     }
@@ -1506,19 +1510,26 @@ function getMedicalFlags_(dogId) {
     pobranieKrwi: best["pobranie_krwi"] || null,
     zakropienieOczu: best["zakropienie_oczu"] || null,
     inne: best["inne"] || null,
+    kwarantanna: best["kwarantanna"] || null,
   };
 }
 
 function setMedicalFlag_(payload) {
   const userEmail = safeStr(payload?.user?.email);
   const role = getUserRole_(userEmail);
-  if (role !== "ambulatorium" && role !== "admin") {
-    throw new Error("Brak uprawnien: wymagana rola ambulatorium lub admin");
-  }
 
   const dogId = safeStr(payload?.dogId);
   const flagType = safeStr(payload?.flagType);
   if (!dogId || !flagType) throw new Error("Brakuje dogId lub flagType");
+
+  // Kwarantanna bywa zarzadzana przez obsluge boksow, nie tylko ambulatorium
+  if (flagType === "kwarantanna") {
+    if (["staff", "ambulatorium", "admin"].indexOf(role) === -1) {
+      throw new Error("Brak uprawnien: wymagana rola pracownik, ambulatorium lub admin");
+    }
+  } else if (role !== "ambulatorium" && role !== "admin") {
+    throw new Error("Brak uprawnien: wymagana rola ambulatorium lub admin");
+  }
 
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
   const sh = getOrCreateSheet(ss, MEDICAL_FLAGS_SHEET_NAME);
@@ -1555,7 +1566,7 @@ function deactivateMedicalFlag_(payload) {
 
   if (role === "ambulatorium" || role === "admin") {
     // ambulatorium i admin mogą odwoływać wszystko
-  } else if (role === "staff" && isTask) {
+  } else if (role === "staff" && (isTask || flagType === "kwarantanna")) {
     // pracownicy mogą odwoływać tylko zadania medyczne (nie flagi nie_karmić/zakaz_spaceru)
   } else {
     throw new Error("Brak uprawnień do odwołania tej flagi");
@@ -1768,6 +1779,32 @@ function getWeightHistory_(dogId) {
 // ===============================
 // SEKTOR – psy z obostrzeniami
 // ===============================
+// Psy z aktywna kwarantanna — lekka lista samych ID do oznaczenia na liscie
+// psow. Kwarantanna wygasa sama po dacie "do", wiec nic nie trzeba sprzatac.
+function getQuarantineDogs_() {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const sh = ss.getSheetByName(MEDICAL_FLAGS_SHEET_NAME);
+  if (!sh || sh.getLastRow() < 2) return [];
+
+  const values = sh.getDataRange().getValues();
+  const map = headerMap(values[0]);
+  const now = new Date();
+  const ids = {};
+
+  for (let i = 1; i < values.length; i++) {
+    const row = values[i];
+    if (safeStr(row[map["flag_type"]]) !== "kwarantanna") continue;
+    if (!toBoolean_(row[map["is_active"]])) continue;
+    const validFrom = row[map["valid_from"]] ? new Date(row[map["valid_from"]]) : null;
+    const validUntil = row[map["valid_until"]] ? new Date(row[map["valid_until"]]) : null;
+    if (validFrom && validFrom > now) continue;
+    if (validUntil && validUntil <= now) continue;
+    const dogId = safeStr(row[map["dog_id"]]);
+    if (dogId) ids[dogId] = true;
+  }
+  return Object.keys(ids);
+}
+
 function getSectorDogs_() {
   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
 
@@ -1799,6 +1836,10 @@ function getSectorDogs_() {
         activeFlags[dogId].walkBlocked = true;
         activeFlags[dogId].walkBlockedNote = note;
         activeFlags[dogId].walkBlockedUntil = until;
+      } else if (flagType === "kwarantanna") {
+        activeFlags[dogId].kwarantanna = true;
+        activeFlags[dogId].kwarantannaNote = note;
+        activeFlags[dogId].kwarantannaUntil = until;
       } else if (flagType === "próbka_kału") {
         activeFlags[dogId].próbkaKału = true;
         activeFlags[dogId].próbkaKałuNote = note;

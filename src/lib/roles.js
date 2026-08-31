@@ -46,3 +46,8 @@ export function canEditStatus(role) {
 export function canViewWalkReport(role) {
   return role === "staff" || role === "ambulatorium" || role === "admin";
 }
+
+// Kwarantanna bywa zarządzana przez obsługę boksów, nie tylko ambulatorium
+export function canSetQuarantine(role) {
+  return role === "staff" || role === "ambulatorium" || role === "admin";
+}
