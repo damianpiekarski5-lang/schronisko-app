@@ -6,9 +6,11 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 import ExerciseContent from "./components/ExerciseContent";
+import GuidedSession from "./components/GuidedSession";
 import {
   activeStage, fsSetCurrentStage, fsUpdateDogExercise,
-  importLibrarySeed, fsCopyLibraryExerciseToDog, LIBRARY_SIZE,
+  importLibrarySeed, LIBRARY_SIZE,
+  checkStageProgression, sessionSuccessRate, dayKey,
 } from "./lib/trainingStore";
 
 const S = {
@@ -274,71 +276,6 @@ function ProgressCard({ exercise, progress, onUpdate, onDelete, onChangeStage, o
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function AddSessionModal({ dog, exList, onClose, onSave }) {
-  const [results, setResults] = useState(() =>
-    exList.map(e => ({ exerciseId: e.id, exerciseName: e.name, result: "", notes: "" }))
-  );
-  const [sessionNotes, setSessionNotes] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  const setResult = (idx, result) => setResults(r => r.map((item, i) => i === idx ? { ...item, result } : item));
-  const setNotes = (idx, notes) => setResults(r => r.map((item, i) => i === idx ? { ...item, notes } : item));
-
-  const handleSave = async () => {
-    setSaving(true);
-    try {
-      await onSave({ exercises: results, notes: sessionNotes });
-      onClose();
-    } catch (e) {
-      console.error("Błąd zapisu sesji:", e);
-      alert("Nie udało się zapisać sesji — sprawdź połączenie i spróbuj ponownie.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(0,0,0,0.5)", zIndex: 200, display: "flex", alignItems: "flex-end" }}>
-      <div style={{ backgroundColor: "white", borderRadius: "1rem 1rem 0 0", width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "1.25rem" }}>
-        <div style={{ ...S.row, justifyContent: "space-between", marginBottom: "1rem" }}>
-          <h3 style={{ fontWeight: "700", fontSize: "1.1rem", margin: 0 }}>Nowa sesja — {dog.name}</h3>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", fontSize: "1.3rem", color: "#6b7280" }}>✕</button>
-        </div>
-
-        {exList.length === 0 ? (
-          <p style={{ color: "#6b7280", textAlign: "center", padding: "1rem" }}>Brak ćwiczeń dla tego psa. Zamknij okno i dodaj ćwiczenie w zakładce Postępy.</p>
-        ) : (
-          exList.map((ex, idx) => (
-            <div key={ex.id} style={{ ...S.card, marginBottom: "0.75rem" }}>
-              <div style={{ fontWeight: "600", marginBottom: "0.5rem" }}>{ex.name}</div>
-              <div style={{ display: "flex", gap: "0.4rem", marginBottom: "0.4rem" }}>
-                {RESULTS.map(r => (
-                  <button key={r.key} onClick={() => setResult(idx, r.key)}
-                    style={{ ...S.resultBtn, backgroundColor: results[idx].result === r.key ? r.color : "white", borderColor: results[idx].result === r.key ? r.border : "#e5e7eb" }}>
-                    {r.label}
-                  </button>
-                ))}
-              </div>
-              <input value={results[idx].notes} onChange={e => setNotes(idx, e.target.value)}
-                placeholder="Notatka (opcjonalnie)" style={{ ...S.input, fontSize: "0.82rem" }} />
-            </div>
-          ))
-        )}
-
-        <div style={{ marginTop: "0.75rem" }}>
-          <label style={S.label}>Notatki do sesji</label>
-          <textarea value={sessionNotes} onChange={e => setSessionNotes(e.target.value)}
-            style={S.textarea} placeholder="Ogólne uwagi..." />
-        </div>
-        <button onClick={handleSave} disabled={saving}
-          style={{ ...S.btn, ...S.btnPrimary, width: "100%", marginTop: "0.75rem", opacity: saving ? 0.6 : 1 }}>
-          {saving ? "Zapisuję..." : "Zapisz sesję"}
-        </button>
-      </div>
     </div>
   );
 }
@@ -656,8 +593,9 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       status: training?.status || "in_progress",
       ...(training?.startedAt ? {} : { startedAt: serverTimestamp() }),
     });
-    await fsAddDogExercise(dog.id, { ...data, createdBy: currentUser.uid });
+    const ref = await fsAddDogExercise(dog.id, { ...data, createdBy: currentUser.uid });
     await load();
+    return ref;
   };
 
   const handleChangeStage = async (exId, exName, stageIndex) => {
@@ -716,26 +654,54 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
     await load();
   };
 
+  // Zapis sesji + aktualizacja postępów. Dla ćwiczeń z poziomami sprawdzamy
+  // regułę awansu i zwracamy listę awansów do pokazania w podsumowaniu.
   const handleSaveSession = async (session) => {
     await fsAddSession(dog.id, session);
-    // Update progress success rate based on session results
-    for (const r of session.exercises) {
-      if (!r.result) continue;
-      const existing = progress.find(p => p.id === r.exerciseId);
-      const count = (existing?.sessionsCount || 0) + 1;
-      const prevSuccesses = Math.round(((existing?.successRate || 0) / 100) * (existing?.sessionsCount || 0));
-      const newSuccesses = prevSuccesses + (r.result === "sukces" ? 1 : r.result === "częściowo" ? 0.5 : 0);
-      const newRate = Math.round((newSuccesses / count) * 100);
-      await fsSaveProgress(dog.id, r.exerciseId, {
-        exerciseId: r.exerciseId,
-        exerciseName: r.exerciseName,
-        stage: existing?.stage || 1,
-        successRate: newRate,
-        sessionsCount: count,
+    const advanced = [];
+    const today = dayKey();
+
+    // Wyniki pogrupowane po ćwiczeniu — jedno ćwiczenie może mieć kilka ocen.
+    const byExercise = {};
+    (session.exercises || []).forEach((r) => {
+      if (!r.result) return;
+      (byExercise[r.exerciseId] = byExercise[r.exerciseId] || []).push(r);
+    });
+
+    for (const [exId, rows] of Object.entries(byExercise)) {
+      const ex = allExercises.find((e) => e.id === exId);
+      const existing = progress.find((p) => p.id === exId);
+      const rate = sessionSuccessRate(rows);
+
+      const patch = {
+        exerciseId: exId,
+        exerciseName: rows[0].exerciseName,
+        successRate: rate,
+        sessionsCount: (existing?.sessionsCount || 0) + rows.length,
         lastUpdated: serverTimestamp(),
-      });
+      };
+
+      const st = ex ? activeStage(ex, existing) : null;
+      if (st && ex.stages?.length) {
+        const check = checkStageProgression(st, rate, existing?.stageDaysMet, today);
+        const hasNext = ex.stages.length > st.index + 1;
+        if (check.advance && hasNext) {
+          patch.currentStage = st.index + 1;
+          patch.stageDaysMet = [];
+          advanced.push({ name: ex.name, from: st.index + 1, to: st.index + 2 });
+        } else {
+          patch.currentStage = st.index;
+          patch.stageDaysMet = check.daysMet;
+        }
+      } else {
+        patch.stage = existing?.stage || 1;
+      }
+
+      await fsSaveProgress(dog.id, exId, patch);
     }
+
     await load();
+    return { advanced };
   };
 
   const days = daysSince(training?.lastSessionDate);
@@ -917,11 +883,16 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       )}
 
       {showSession && (
-        <AddSessionModal
+        <GuidedSession
           dog={dog}
-          exList={allExercises}
-          onClose={() => setShowSession(false)}
-          onSave={handleSaveSession}
+          exercises={allExercises}
+          progressList={progress}
+          onClose={() => { setShowSession(false); load(); }}
+          onFinish={handleSaveSession}
+          onAddExercise={async (data) => {
+            const ref = await handleAddDogExercise(data);
+            return ref ? { id: ref.id, ...data, _own: true } : null;
+          }}
         />
       )}
 
