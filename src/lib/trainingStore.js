@@ -179,4 +179,52 @@ export async function fsCountLibrary() {
   return snap.size;
 }
 
+// ─── Awans między poziomami ──────────────────────────────────────────────────
+// Reguła jak w Doggycorp: pies awansuje, gdy osiągnął wymagany procent
+// sukcesu w wymaganej liczbie DNI treningowych. Dni nie muszą być pod rząd.
+// Drugi, gorszy trening tego samego dnia nie odbiera już zdobytego dnia.
+
+export function dayKey(d = new Date()) {
+  const off = d.getTimezoneOffset();
+  return new Date(d.getTime() - off * 60000).toISOString().slice(0, 10);
+}
+
+// Skuteczność sesji dla jednego ćwiczenia. W odróżnieniu od Doggycorp
+// "częściowo" liczymy jako pół sukcesu — inaczej byłoby traktowane
+// dokładnie tak samo jak porażka.
+export function sessionSuccessRate(results) {
+  const list = (results || []).filter((r) => r && r.result);
+  if (list.length === 0) return 0;
+  const score = list.reduce((sum, r) => {
+    if (r.result === "sukces") return sum + 1;
+    if (r.result === "częściowo") return sum + 0.5;
+    return sum;
+  }, 0);
+  return Math.round((score / list.length) * 100);
+}
+
+export function checkStageProgression(stage, successRate, daysMet, sessionDay) {
+  const prog = stage?.progression;
+  const days = Array.isArray(daysMet) ? daysMet : [];
+  if (!prog) return { advance: false, daysMet: days, requiredPct: null, requiredDays: null };
+
+  const requiredPct = Number(prog.successPct ?? 80);
+  const requiredDays = Number(prog.requiredDays ?? 3);
+  const today = sessionDay || dayKey();
+
+  const metToday = successRate >= requiredPct;
+  const alreadyCounted = days.includes(today);
+
+  let updated = days.filter((d) => d !== today);
+  if (metToday || alreadyCounted) updated = [...updated, today];
+  updated = updated.slice(-60);
+
+  return {
+    advance: updated.length >= requiredDays,
+    daysMet: updated,
+    requiredPct,
+    requiredDays,
+  };
+}
+
 export { LIBRARY_SEED };
