@@ -46,6 +46,7 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
   const [adding, setAdding] = useState(false);
   const [finishing, setFinishing] = useState(false);
   const [done, setDone] = useState(null);
+  const [error, setError] = useState("");
 
   const progressById = useMemo(
     () => Object.fromEntries((progressList || []).map((p) => [p.id, p])),
@@ -65,6 +66,8 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
     }]);
     setIdx((i) => i + 1);
   };
+
+  const skip = () => setIdx((i) => i + 1);
 
   const undo = () => {
     if (results.length === 0) return;
@@ -120,7 +123,14 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
       setDone(summary || { advanced: advancements });
     } catch (e) {
       console.error("Błąd zapisu sesji:", e);
-      alert("Nie udało się zapisać sesji — sprawdź połączenie.");
+      const code = e?.code || "";
+      setError(
+        code === "permission-denied"
+          ? "Baza odrzuciła zapis (brak uprawnień). Reguły Firestore dla treningów nie są wdrożone."
+          : code === "unavailable"
+            ? "Brak połączenia z bazą. Oceny nie przepadły — spróbuj ponownie za chwilę."
+            : "Nie udało się zapisać sesji." + (code ? ` (kod: ${code})` : "")
+      );
       setFinishing(false);
     }
   };
@@ -196,7 +206,15 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
       </div>
 
       <div style={S.body}>
-        {atEnd ? (
+        {list.length === 0 ? (
+          <div style={{ ...S.card, textAlign: "center" }}>
+            <div style={{ fontSize: "1.6rem", marginBottom: "0.4rem" }}>🐕</div>
+            <strong style={{ fontSize: "0.95rem" }}>Ten pies nie ma jeszcze ćwiczeń</strong>
+            <div style={{ ...S.sub, marginTop: "0.3rem" }}>
+              Dodaj pierwsze ćwiczenie poniżej — możesz je opisać teraz albo później.
+            </div>
+          </div>
+        ) : atEnd ? (
           <>
             <div style={S.card}>
               <strong style={{ fontSize: "0.95rem" }}>Wszystkie ćwiczenia ocenione</strong>
@@ -264,6 +282,11 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
       </div>
 
       <div style={S.footer}>
+        {error && (
+          <div style={{ fontSize: "0.8rem", color: "#dc2626", fontWeight: 600, marginBottom: "0.6rem" }}>
+            {error}
+          </div>
+        )}
         {atEnd ? (
           <button onClick={handleFinish} disabled={finishing || results.length === 0}
             style={{ ...S.btn, backgroundColor: "#16a34a", color: "white", width: "100%", opacity: finishing || results.length === 0 ? 0.5 : 1 }}>
@@ -279,11 +302,27 @@ export default function GuidedSession({ dog, exercises, progressList, onClose, o
                 </button>
               ))}
             </div>
-            {results.length > 0 && (
-              <button onClick={undo} style={{ ...S.ghost, margin: "0.6rem auto 0" }}>
-                <Undo2 size={14} /> Cofnij ostatnią ocenę
-              </button>
-            )}
+
+            {/* Sesji nie trzeba doprowadzać do końca listy — kończymy, kiedy
+                trening się kończy, a nie kiedy skończą się ćwiczenia. */}
+            <div style={{ display: "flex", gap: "0.5rem", marginTop: "0.6rem", alignItems: "center" }}>
+              {current && (
+                <button onClick={skip} style={{ ...S.ghost, flex: 1, justifyContent: "center" }}>
+                  Pomiń ćwiczenie
+                </button>
+              )}
+              {results.length > 0 && (
+                <button onClick={undo} style={{ ...S.ghost, flex: 1, justifyContent: "center" }}>
+                  <Undo2 size={14} /> Cofnij
+                </button>
+              )}
+              {results.length > 0 && (
+                <button onClick={handleFinish} disabled={finishing}
+                  style={{ ...S.btn, backgroundColor: "#16a34a", color: "white", flex: 2, opacity: finishing ? 0.5 : 1 }}>
+                  {finishing ? "Zapisuję..." : `Zakończ (${results.length})`}
+                </button>
+              )}
+            </div>
           </>
         )}
       </div>
