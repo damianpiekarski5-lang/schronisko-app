@@ -533,6 +533,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [showAddEx, setShowAddEx] = useState(false);
   const [showProgramPicker, setShowProgramPicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
+  const [showSettings, setShowSettings] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -705,6 +706,10 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   };
 
   const days = daysSince(training?.lastSessionDate);
+  const estimatedMinutes = allExercises.reduce((sum, ex) => {
+    const st = activeStage(ex, progress.find((p) => p.id === ex.id));
+    return sum + (st?.durationMinutes || ex.durationMinutes || 3);
+  }, 0);
 
   return (
     <div style={S.page}>
@@ -721,10 +726,6 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
               : " · Brak sesji"}
           </div>
         </div>
-        <button onClick={() => setShowSession(true)}
-          style={{ ...S.btn, ...S.btnPrimary, ...S.btnSmall, display: "flex", alignItems: "center", gap: "0.3rem" }}>
-          <Plus size={16} /> Sesja
-        </button>
         {onLogout && (
           <button onClick={onLogout} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem", flexShrink: 0 }}>
             <LogOut size={20} color="#6b7280" />
@@ -733,66 +734,72 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       </div>
 
       <div style={S.content}>
-        {/* Plan sesji + notatka */}
-        <div style={S.card}>
-          <div style={{ ...S.row, gap: "0.75rem", flexWrap: "wrap" }}>
-            <div style={{ flex: 1, minWidth: 150 }}>
-              <label style={S.label}>Następna sesja (plan)</label>
-              <input
-                type="date"
-                value={training?.nextSessionDate || ""}
-                onChange={async (e) => {
-                  const v = e.target.value;
-                  try {
-                    await fsSaveDogTraining(dog.id, { nextSessionDate: v || null });
-                    await load();
-                  } catch (err) {
-                    console.error("Błąd zapisu planu sesji:", err);
-                    alert("Nie udało się zapisać planu sesji.");
-                  }
-                }}
-                style={S.input}
-              />
-            </div>
-            <button
-              onClick={() => setShowNote(true)}
-              style={{ ...S.btn, ...S.btnSecondary, ...S.btnSmall, alignSelf: "flex-end" }}
-            >
-              📝 Notatka
-            </button>
+        {/* Dzisiejszy trening — to jest powód, dla którego tu wchodzisz */}
+        <div style={{ ...S.card, borderColor: "#c4b5fd", backgroundColor: "#faf5ff" }}>
+          <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#5b21b6" }}>
+            Dzisiejszy trening
           </div>
-          {training?.nextSessionDate && training.nextSessionDate < new Date().toISOString().slice(0, 10) && (
-            <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>
-              ⚠️ Zaplanowana sesja zaległa ({formatDate(training.nextSessionDate)})
-            </div>
-          )}
-
-          {/* Program jest opcjonalny — schowany, żeby nie sugerował, że trzeba go tworzyć */}
-          <div style={{ marginTop: "0.75rem", borderTop: "1px solid #f3f4f6", paddingTop: "0.6rem" }}>
-            {!showProgramPicker && !assignedProgram ? (
-              <button onClick={() => setShowProgramPicker(true)}
-                style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.8rem", color: "#7c3aed", fontWeight: 600 }}>
-                Użyj gotowego programu (opcjonalnie)
-              </button>
-            ) : (
-              <>
-                <label style={S.label}>Program treningowy (opcjonalnie)</label>
-                <select value={training?.assignedProgramId || ""} onChange={e => handleAssignProgram(e.target.value)}
-                  style={S.select} disabled={savingProgram}>
-                  <option value="">— bez programu —</option>
-                  {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-                {assignedProgram?.description && (
-                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.4rem" }}>{assignedProgram.description}</div>
+          {allExercises.length > 0 ? (
+            <>
+              <div style={{ fontSize: "0.8rem", color: "#6b7280", margin: "0.2rem 0 0.6rem" }}>
+                {allExercises.length} {allExercises.length === 1 ? "ćwiczenie" : "ćwiczeń"}
+                {estimatedMinutes > 0 ? ` · ~${estimatedMinutes} min` : ""}
+              </div>
+              <ol style={{ margin: "0 0 0.85rem", paddingLeft: "1.1rem" }}>
+                {allExercises.slice(0, 5).map((ex) => {
+                  const st = activeStage(ex, progress.find((p) => p.id === ex.id));
+                  return (
+                    <li key={ex.id} style={{ fontSize: "0.86rem", color: "#111827", marginBottom: "0.2rem" }}>
+                      {ex.name}
+                      {st && (
+                        <span style={{ color: "#7c3aed", fontWeight: 600 }}> · poz. {st.index + 1}/{st.total}</span>
+                      )}
+                    </li>
+                  );
+                })}
+                {allExercises.length > 5 && (
+                  <li style={{ fontSize: "0.82rem", color: "#6b7280" }}>i {allExercises.length - 5} więcej…</li>
                 )}
-              </>
-            )}
+              </ol>
+              <button onClick={() => setShowSession(true)}
+                style={{ ...S.btn, ...S.btnPrimary, width: "100%", fontSize: "1rem", padding: "0.85rem" }}>
+                ▶ Rozpocznij trening
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ fontSize: "0.85rem", color: "#6b7280", margin: "0.3rem 0 0.75rem" }}>
+                Ten pies nie ma jeszcze ćwiczeń. Dodaj pierwsze, a potem prowadź trening krok po kroku.
+              </div>
+              <button onClick={() => { setTab("progress"); setShowAddEx(true); }}
+                style={{ ...S.btn, ...S.btnPrimary, width: "100%" }}>
+                + Dodaj pierwsze ćwiczenie
+              </button>
+            </>
+          )}
+        </div>
+
+        {/* Krótkie podsumowanie zamiast rozbudowanych statystyk */}
+        <div style={{ ...S.card, ...S.row, justifyContent: "space-around", textAlign: "center" }}>
+          <div>
+            <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>{sessions.filter((x) => x.type !== "note").length}</div>
+            <div style={{ fontSize: "0.72rem", color: "#6b7280" }}>sesji</div>
+          </div>
+          <div>
+            <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>
+              {days === null ? "—" : days === 0 ? "dziś" : `${days} dni`}
+            </div>
+            <div style={{ fontSize: "0.72rem", color: "#6b7280" }}>ostatnia sesja</div>
+          </div>
+          <div>
+            <div style={{ fontSize: "1.15rem", fontWeight: 800 }}>{allExercises.length}</div>
+            <div style={{ fontSize: "0.72rem", color: "#6b7280" }}>ćwiczeń</div>
           </div>
         </div>
 
         {/* Tabs */}
         <div style={S.tabRow}>
-          {[["progress", "Postępy"], ["sessions", "Historia"]].map(([k, l]) => (
+          {[["progress", "Plan treningowy"], ["sessions", "Historia"]].map(([k, l]) => (
             <button key={k} onClick={() => setTab(k)}
               style={{ ...S.tab, ...(tab === k ? S.tabActive : {}) }}>{l}</button>
           ))}
@@ -871,6 +878,74 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
               ))
             )}
           </>
+        )}
+      </div>
+
+      {/* Planowanie, notatka i program — rzadziej używane, więc na dole i zwinięte */}
+      <div style={{ padding: "0 1rem 1rem" }}>
+        <button onClick={() => setShowSettings((v) => !v)}
+          style={{ ...S.btn, ...S.btnSecondary, width: "100%" }}>
+          {showSettings ? "Ukryj ustawienia psa ▲" : "Plan, notatka, program ▼"}
+        </button>
+        {showSettings && (
+          <div style={{ marginTop: "0.75rem" }}>
+        <div style={S.card}>
+          <div style={{ ...S.row, gap: "0.75rem", flexWrap: "wrap" }}>
+            <div style={{ flex: 1, minWidth: 150 }}>
+              <label style={S.label}>Następna sesja (plan)</label>
+              <input
+                type="date"
+                value={training?.nextSessionDate || ""}
+                onChange={async (e) => {
+                  const v = e.target.value;
+                  try {
+                    await fsSaveDogTraining(dog.id, { nextSessionDate: v || null });
+                    await load();
+                  } catch (err) {
+                    console.error("Błąd zapisu planu sesji:", err);
+                    alert("Nie udało się zapisać planu sesji.");
+                  }
+                }}
+                style={S.input}
+              />
+            </div>
+            <button
+              onClick={() => setShowNote(true)}
+              style={{ ...S.btn, ...S.btnSecondary, ...S.btnSmall, alignSelf: "flex-end" }}
+            >
+              📝 Notatka
+            </button>
+          </div>
+          {training?.nextSessionDate && training.nextSessionDate < new Date().toISOString().slice(0, 10) && (
+            <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#dc2626", fontWeight: 600 }}>
+              ⚠️ Zaplanowana sesja zaległa ({formatDate(training.nextSessionDate)})
+            </div>
+          )}
+
+          {/* Program jest opcjonalny — schowany, żeby nie sugerował, że trzeba go tworzyć */}
+          <div style={{ marginTop: "0.75rem", borderTop: "1px solid #f3f4f6", paddingTop: "0.6rem" }}>
+            {!showProgramPicker && !assignedProgram ? (
+              <button onClick={() => setShowProgramPicker(true)}
+                style={{ background: "none", border: "none", cursor: "pointer", padding: 0, fontSize: "0.8rem", color: "#7c3aed", fontWeight: 600 }}>
+                Użyj gotowego programu (opcjonalnie)
+              </button>
+            ) : (
+              <>
+                <label style={S.label}>Program treningowy (opcjonalnie)</label>
+                <select value={training?.assignedProgramId || ""} onChange={e => handleAssignProgram(e.target.value)}
+                  style={S.select} disabled={savingProgram}>
+                  <option value="">— bez programu —</option>
+                  {programs.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                </select>
+                {assignedProgram?.description && (
+                  <div style={{ fontSize: "0.8rem", color: "#6b7280", marginTop: "0.4rem" }}>{assignedProgram.description}</div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+
+          </div>
         )}
       </div>
 
