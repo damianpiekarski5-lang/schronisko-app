@@ -62,7 +62,6 @@ const RESULTS = [
 
 const PANEL_TABS = [
   { key: "dogs", label: "Psy", icon: "🐕" },
-  { key: "today", label: "Dziś", icon: "📅" },
   { key: "library", label: "Biblioteka", icon: "📚" },
   { key: "report", label: "Raport", icon: "📊" },
 ];
@@ -1418,6 +1417,12 @@ function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
         </button>
       </div>
 
+      {sorted.length > 0 && (
+        <div style={{ fontSize: "0.75rem", color: "#6b7280", marginBottom: "0.5rem" }}>
+          Od najdawniej trenowanych — te na górze czekają najdłużej
+        </div>
+      )}
+
       {sorted.length === 0 ? (
         <div style={S.emptyState}>
           <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🐕</div>
@@ -1460,74 +1465,6 @@ function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
           );
         })
       )}
-    </div>
-  );
-}
-
-// ─── Today Tab ────────────────────────────────────────────────────────────────
-
-function TodayTab({ dogs, trainings, onSelectDog }) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const todayStr = today.toISOString().slice(0, 10);
-
-  const dueDogs = dogs.filter(dog => {
-    const t = trainings[dog.id];
-    if (!t?.lastSessionDate) return true;
-    const last = t.lastSessionDate instanceof Timestamp ? t.lastSessionDate.toDate() : new Date(t.lastSessionDate);
-    return last < today;
-  });
-
-  // Psy z zaplanowaną sesją (na dziś lub zaległą) idą na górę listy.
-  const planRank = (dog) => {
-    const plan = trainings[dog.id]?.nextSessionDate;
-    if (!plan) return 2;
-    return plan <= todayStr ? 0 : 1;
-  };
-  dueDogs.sort((a, b) => planRank(a) - planRank(b));
-
-  if (dueDogs.length === 0) {
-    return (
-      <div style={{ ...S.content, ...S.emptyState }}>
-        <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>✅</div>
-        <div>Wszystkie psy miały dziś trening!</div>
-      </div>
-    );
-  }
-
-  return (
-    <div style={S.content}>
-      <p style={{ fontSize: "0.85rem", color: "#6b7280", marginBottom: "0.75rem" }}>
-        Psy bez sesji treningowej dzisiaj: <strong>{dueDogs.length}</strong>
-      </p>
-      {dueDogs.map(dog => {
-        const t = trainings[dog.id];
-        const days = t?.lastSessionDate ? daysSince(t.lastSessionDate) : null;
-        const plan = t?.nextSessionDate;
-        const planDue = plan && plan <= todayStr;
-        return (
-          <div key={dog.id} style={{ ...S.card, ...S.cardClickable, ...(planDue ? { borderLeft: "4px solid #7c3aed" } : {}) }} onClick={() => onSelectDog(dog)}>
-            <div style={{ ...S.row, justifyContent: "space-between" }}>
-              <div>
-                <div style={S.dogName}>{dog.name}</div>
-                <div style={S.dogSub}>{dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"}</div>
-                {plan && (
-                  <div style={{ fontSize: "0.78rem", marginTop: "0.2rem", fontWeight: 600, color: planDue ? "#7c3aed" : "#6b7280" }}>
-                    📅 {plan === todayStr ? "Zaplanowano na dziś" : planDue ? `Zaległa sesja (${formatDate(plan)})` : `Plan: ${formatDate(plan)}`}
-                  </div>
-                )}
-              </div>
-              <div>
-                {days === null ? (
-                  <span style={{ ...S.badge, backgroundColor: "#fee2e2", color: "#dc2626" }}>Brak sesji</span>
-                ) : (
-                  <span style={{ ...S.badge, backgroundColor: "#fff7ed", color: "#ea580c" }}>{days} dni temu</span>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      })}
     </div>
   );
 }
@@ -1843,14 +1780,6 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
     );
   }
 
-  const todayCount = (behaviorystDogs || []).filter(dog => {
-    const t = trainings[dog.id];
-    if (!t?.lastSessionDate) return true;
-    const today = new Date(); today.setHours(0, 0, 0, 0);
-    const last = t.lastSessionDate instanceof Timestamp ? t.lastSessionDate.toDate() : new Date(t.lastSessionDate);
-    return last < today;
-  }).length;
-
   return (
     <div style={S.page}>
       <div style={S.header}>
@@ -1903,7 +1832,6 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
               onManage={() => setShowManage(true)}
             />
           )}
-          {tab === "today" && <TodayTab dogs={behaviorystDogs || []} trainings={trainings} onSelectDog={setSelectedDog} />}
           {tab === "report" && (
             <ReportTab dogs={behaviorystDogs || []} programs={programs} currentUser={currentUser} />
           )}
@@ -1923,14 +1851,7 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
         {PANEL_TABS.map(t => (
           <button key={t.key} onClick={() => setTab(t.key)}
             style={{ ...S.navBtn, ...(tab === t.key ? S.navBtnActive : {}) }}>
-            <span style={{ fontSize: "1.3rem", position: "relative" }}>
-              {t.icon}
-              {t.key === "today" && todayCount > 0 && (
-                <span style={{ position: "absolute", top: "-4px", right: "-8px", backgroundColor: "#ef4444", color: "white", borderRadius: "999px", fontSize: "0.65rem", fontWeight: "700", padding: "1px 5px", minWidth: "16px", textAlign: "center" }}>
-                  {todayCount}
-                </span>
-              )}
-            </span>
+            <span style={{ fontSize: "1.3rem" }}>{t.icon}</span>
             {t.label}
           </button>
         ))}
