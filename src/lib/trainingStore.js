@@ -1,5 +1,5 @@
 import {
-  collection, doc, getDocs, addDoc, setDoc, updateDoc,
+  collection, doc, getDocs, addDoc, setDoc, updateDoc, deleteDoc, deleteField,
   serverTimestamp, writeBatch, query, where,
 } from "firebase/firestore";
 import { db } from "../firebase";
@@ -177,6 +177,63 @@ export async function fsCopyLibraryExerciseToDog(dogId, libraryExercise, current
 export async function fsCountLibrary() {
   const snap = await getDocs(query(collection(db, "exercises")));
   return snap.size;
+}
+
+// ─── Cele pracy z psem ───────────────────────────────────────────────────────
+// dogTraining/{dogId}/goals/{id} — nad czym pracujemy z tym psem.
+
+export async function fsGetGoals(dogId) {
+  const snap = await getDocs(collection(db, "dogTraining", dogId, "goals"));
+  return snap.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (a.done === b.done ? 0 : a.done ? 1 : -1));
+}
+
+export async function fsAddGoal(dogId, text, currentUser) {
+  return addDoc(collection(db, "dogTraining", dogId, "goals"), {
+    text: String(text || "").trim().slice(0, 300),
+    done: false,
+    createdBy: currentUser?.uid || "",
+    createdAt: serverTimestamp(),
+  });
+}
+
+export async function fsUpdateGoal(dogId, goalId, patch) {
+  return updateDoc(doc(db, "dogTraining", dogId, "goals", goalId), patch);
+}
+
+export async function fsDeleteGoal(dogId, goalId) {
+  return deleteDoc(doc(db, "dogTraining", dogId, "goals", goalId));
+}
+
+// ─── Okres pracy z psem ──────────────────────────────────────────────────────
+// startedAt zapisujemy przy dołączeniu psa, endedAt przy zakończeniu pracy.
+// Obie daty trafiają do raportu miesięcznego.
+
+export async function fsStartWork(dogId, dogName, currentUser) {
+  return setDoc(
+    doc(db, "dogTraining", dogId),
+    {
+      behavioristId: currentUser?.uid || "",
+      dogName: dogName || "",
+      status: "in_progress",
+      startedAt: serverTimestamp(),
+      endedAt: deleteField(),
+    },
+    { merge: true }
+  );
+}
+
+export async function fsFinishWork(dogId, summary) {
+  return setDoc(
+    doc(db, "dogTraining", dogId),
+    {
+      status: "finished",
+      endedAt: serverTimestamp(),
+      finishSummary: String(summary || "").trim().slice(0, 1000),
+    },
+    { merge: true }
+  );
 }
 
 // ─── Awans między poziomami ──────────────────────────────────────────────────

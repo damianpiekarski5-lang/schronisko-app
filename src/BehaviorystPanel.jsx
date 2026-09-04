@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw, Search, UserPlus, LogOut } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, ChevronDown, ChevronUp, ChevronRight, CheckCircle, XCircle, MinusCircle, BookOpen, Dog, Calendar, RefreshCw, Search, UserPlus, LogOut } from "lucide-react";
 import {
   collection, doc, getDocs, getDoc, setDoc, addDoc,
   updateDoc, deleteDoc, query, where, orderBy, serverTimestamp, Timestamp,
@@ -7,10 +7,12 @@ import {
 import { db } from "./firebase";
 import ExerciseContent from "./components/ExerciseContent";
 import GuidedSession from "./components/GuidedSession";
+import GoalsCard from "./components/GoalsCard";
 import {
   activeStage, fsSetCurrentStage, fsUpdateDogExercise,
   importLibrarySeed, LIBRARY_SIZE,
   checkStageProgression, sessionSuccessRate, dayKey,
+  fsGetGoals, fsAddGoal, fsUpdateGoal, fsDeleteGoal, fsFinishWork, fsStartWork,
 } from "./lib/trainingStore";
 
 const S = {
@@ -517,7 +519,7 @@ function EditDogExerciseModal({ exercise, onClose, onSave }) {
 
 // ─── Dog Training View ────────────────────────────────────────────────────────
 
-function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate, onLogout }) {
+function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavigate, onLogout, onFinishWork }) {
   const [training, setTraining] = useState(null);
   const [progress, setProgress] = useState([]);
   const [sessions, setSessions] = useState([]);
@@ -534,6 +536,8 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
   const [showProgramPicker, setShowProgramPicker] = useState(false);
   const [editingExercise, setEditingExercise] = useState(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [goals, setGoals] = useState([]);
+  const [finishing, setFinishing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -543,6 +547,7 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       fsGetDogProgress(dog.id),
       fsGetDogSessions(dog.id),
       fsGetDogExercises(dog.id),
+      fsGetGoals(dog.id),
     ]);
     try {
       let result;
@@ -553,11 +558,12 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
         await new Promise(r => setTimeout(r, 1500));
         result = await doFetch();
       }
-      const [t, pr, ss, dex] = result;
+      const [t, pr, ss, dex, gl] = result;
       setTraining(t);
       setProgress(pr);
       setSessions(ss);
       setDogExercises(dex);
+      setGoals(gl || []);
     } catch (e) {
       console.error("Błąd ładowania danych psa:", e);
       setLoadError(e?.code || e?.message || "Nieznany błąd");
@@ -597,6 +603,29 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
     const ref = await fsAddDogExercise(dog.id, { ...data, createdBy: currentUser.uid });
     await load();
     return ref;
+  };
+
+  // Zakończenie pracy z psem: data trafia do raportu, pies znika z listy
+  // aktywnych, ale historia sesji i postępów zostaje.
+  const handleFinishWork = async () => {
+    const summary = window.prompt(
+      `Zakończyć pracę z psem ${dog.name}?\n\n`
+      + "Data zakończenia trafi do raportu. Historia sesji zostaje.\n"
+      + "Możesz dopisać krótkie podsumowanie (opcjonalnie):",
+      ""
+    );
+    if (summary === null) return;
+
+    setFinishing(true);
+    try {
+      await fsFinishWork(dog.id, summary);
+      if (onFinishWork) await onFinishWork(dog.id);
+      onBack();
+    } catch (e) {
+      console.error("Błąd zakończenia pracy z psem:", e);
+      alert("Nie udało się zakończyć pracy: " + (e?.code || e?.message || "nieznany błąd"));
+      setFinishing(false);
+    }
   };
 
   const handleChangeStage = async (exId, exName, stageIndex) => {
@@ -717,13 +746,15 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
         <button onClick={onBack} style={{ background: "none", border: "none", cursor: "pointer", padding: "0.25rem" }}>
           <ArrowLeft size={22} color="#374151" />
         </button>
-        <div style={{ flex: 1 }}>
+        <DogAvatar photo={dog.photo} size={44} />
+        <div style={{ flex: 1, minWidth: 0 }}>
           <div style={S.headerTitle}>{dog.name}</div>
           <div style={{ fontSize: "0.78rem", color: "#6b7280" }}>
             {dog.breed || dog.rasa || ""}{dog.pavilion ? ` · Paw. ${dog.pavilion}` : ""}
-            {training?.lastSessionDate
-              ? ` · Ostatnia sesja: ${days === 0 ? "dziś" : `${days} dni temu`}`
-              : " · Brak sesji"}
+          </div>
+          <div style={{ fontSize: "0.75rem", color: "#7c3aed", fontWeight: 600 }}>
+            {training?.startedAt ? `Pracujemy od ${formatDate(training.startedAt)}` : "Praca jeszcze nierozpoczęta"}
+            {training?.endedAt ? ` · zakończona ${formatDate(training.endedAt)}` : ""}
           </div>
         </div>
         {onLogout && (
@@ -734,6 +765,14 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
       </div>
 
       <div style={S.content}>
+        <GoalsCard
+          goals={goals}
+          onAdd={async (text) => { await fsAddGoal(dog.id, text, currentUser); setGoals(await fsGetGoals(dog.id)); }}
+          onToggle={async (id, done) => { await fsUpdateGoal(dog.id, id, { done }); setGoals(await fsGetGoals(dog.id)); }}
+          onEdit={async (id, text) => { await fsUpdateGoal(dog.id, id, { text }); setGoals(await fsGetGoals(dog.id)); }}
+          onDelete={async (id) => { await fsDeleteGoal(dog.id, id); setGoals(await fsGetGoals(dog.id)); }}
+        />
+
         {/* Dzisiejszy trening — to jest powód, dla którego tu wchodzisz */}
         <div style={{ ...S.card, borderColor: "#c4b5fd", backgroundColor: "#faf5ff" }}>
           <div style={{ fontSize: "1.05rem", fontWeight: 800, color: "#5b21b6" }}>
@@ -889,6 +928,10 @@ function DogTrainingView({ dog, programs, exercises, currentUser, onBack, onNavi
         </button>
         {showSettings && (
           <div style={{ marginTop: "0.75rem" }}>
+            <button onClick={handleFinishWork} disabled={finishing}
+              style={{ ...S.btn, ...S.btnDanger, width: "100%", marginBottom: "0.75rem", opacity: finishing ? 0.6 : 1 }}>
+              {finishing ? "Kończę..." : "🏁 Zakończ pracę z tym psem"}
+            </button>
         <div style={S.card}>
           <div style={{ ...S.row, gap: "0.75rem", flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
@@ -1322,61 +1365,97 @@ function ManageDogsModal({ allDogs, behaviorystDogs, onToggle, onClose }) {
   );
 }
 
+// Miniatura psa — zdjęcie z arkusza albo łapka, gdy zdjęcia brak.
+function DogAvatar({ photo, size = 52 }) {
+  const ok = typeof photo === "string" && photo.trim().length > 5;
+  const base = {
+    width: size, height: size, borderRadius: "50%", flexShrink: 0,
+    objectFit: "cover", backgroundColor: "#ede9fe",
+  };
+  if (!ok) {
+    return (
+      <div style={{ ...base, display: "flex", alignItems: "center", justifyContent: "center", fontSize: size * 0.45 }}>
+        🐾
+      </div>
+    );
+  }
+  return <img src={photo} alt="" style={base} onError={(e) => { e.target.style.display = "none"; }} />;
+}
+
 // ─── Dogs Tab ─────────────────────────────────────────────────────────────────
 
 function DogsTab({ dogs, trainings, onSelectDog, onManage }) {
+  const [search, setSearch] = useState("");
+
+  const term = search.trim().toLowerCase();
+  const visible = (dogs || []).filter((d) =>
+    !term
+    || String(d.name || "").toLowerCase().includes(term)
+    || String(d.id || "").toLowerCase().includes(term)
+    || String(d.pavilion || "").toLowerCase().includes(term)
+  );
+
+  const sorted = [...visible].sort((a, b) => {
+    const ta = trainings[a.id]?.lastSessionDate;
+    const tb = trainings[b.id]?.lastSessionDate;
+    const da = ta ? (ta instanceof Timestamp ? ta.toDate() : new Date(ta)) : new Date(0);
+    const db2 = tb ? (tb instanceof Timestamp ? tb.toDate() : new Date(tb)) : new Date(0);
+    return da - db2;
+  });
+
   return (
     <div style={S.content}>
-      <button
-        onClick={onManage}
-        style={{ ...S.btn, ...S.btnSecondary, width: "100%", marginBottom: "1rem", display: "flex", alignItems: "center", justifyContent: "center", gap: "0.5rem" }}
-      >
-        <UserPlus size={16} /> Zarządzaj psami w pracy ({dogs.length})
-      </button>
-      {dogs.length === 0 ? (
+      <div style={{ ...S.row, marginBottom: "0.75rem", gap: "0.5rem" }}>
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Szukaj psa..."
+          style={{ ...S.input, flex: 1 }}
+        />
+        <button onClick={onManage}
+          style={{ ...S.btn, ...S.btnPrimary, display: "flex", alignItems: "center", gap: "0.3rem", whiteSpace: "nowrap" }}>
+          <Plus size={16} /> Pies
+        </button>
+      </div>
+
+      {sorted.length === 0 ? (
         <div style={S.emptyState}>
           <div style={{ fontSize: "2rem", marginBottom: "0.5rem" }}>🐕</div>
-          <div>Brak psów w pracy</div>
-          <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>Naciśnij przycisk powyżej żeby dodać psy</div>
+          <div>{term ? "Brak psów pasujących do wyszukiwania" : "Brak psów w pracy"}</div>
+          {!term && (
+            <div style={{ fontSize: "0.82rem", marginTop: "0.25rem" }}>
+              Naciśnij „Pies", żeby dodać pierwszego
+            </div>
+          )}
         </div>
       ) : (
-        [...dogs].sort((a, b) => {
-          const ta = trainings[a.id];
-          const tb = trainings[b.id];
-          const da = ta?.lastSessionDate ? (ta.lastSessionDate instanceof Timestamp ? ta.lastSessionDate.toDate() : new Date(ta.lastSessionDate)) : new Date(0);
-          const db2 = tb?.lastSessionDate ? (tb.lastSessionDate instanceof Timestamp ? tb.lastSessionDate.toDate() : new Date(tb.lastSessionDate)) : new Date(0);
-          return da - db2;
-        }).map(dog => {
+        sorted.map((dog) => {
           const t = trainings[dog.id];
           const days = t?.lastSessionDate ? daysSince(t.lastSessionDate) : null;
           const urgent = days === null || days >= 7;
           return (
-            <div key={dog.id} style={{ ...S.card, ...S.cardClickable, borderLeft: `4px solid ${urgent ? "#f97316" : "#7c3aed"}` }}
+            <div key={dog.id}
+              style={{ ...S.card, ...S.cardClickable, borderLeft: `4px solid ${urgent ? "#f97316" : "#7c3aed"}`, display: "flex", alignItems: "center", gap: "0.75rem" }}
               onClick={() => onSelectDog(dog)}>
-              <div style={{ ...S.row, justifyContent: "space-between" }}>
-                <div style={{ flex: 1 }}>
-                  <div style={S.dogName}>{dog.name}</div>
-                  <div style={S.dogSub}>
-                    {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.box || "?"}
-                  </div>
-                  {t?.assignedProgramId && (
-                    <div style={{ fontSize: "0.78rem", color: "#7c3aed", marginTop: "0.2rem", fontWeight: "600" }}>
-                      📋 Program przypisany
-                    </div>
-                  )}
+              <DogAvatar photo={dog.photo} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={S.dogName}>{dog.name}</div>
+                <div style={S.dogSub}>
+                  {dog.breed || dog.rasa || "—"} · Paw. {dog.pavilion || "?"} Boks {dog.box || "?"}
                 </div>
-                <div style={{ textAlign: "right" }}>
+                <div style={{ marginTop: "0.3rem" }}>
                   {days === null ? (
                     <span style={{ ...S.badge, backgroundColor: "#fee2e2", color: "#dc2626" }}>Brak sesji</span>
                   ) : days === 0 ? (
-                    <span style={{ ...S.badge, backgroundColor: "#dcfce7", color: "#16a34a" }}>Dziś</span>
+                    <span style={{ ...S.badge, backgroundColor: "#dcfce7", color: "#16a34a" }}>Trening dziś</span>
                   ) : (
                     <span style={{ ...S.badge, backgroundColor: urgent ? "#fff7ed" : "#f3e8ff", color: urgent ? "#ea580c" : "#7c3aed" }}>
-                      {days} dni temu
+                      Nie ćwiczy od {days} dni
                     </span>
                   )}
                 </div>
               </div>
+              <ChevronRight size={20} color="#d1d5db" />
             </div>
           );
         })
@@ -1496,11 +1575,17 @@ function ReportTab({ dogs, programs, currentUser }) {
         }).sort((a, b) => a._d - b._d);
         const firstEver = dated.length ? dated.reduce((a, b) => (a._d < b._d ? a : b))._d : null;
         const startedAt = tsToDate(training?.startedAt) || firstEver;
+        const endedAt = tsToDate(training?.endedAt);
+        let goals = [];
+        try { goals = await fsGetGoals(dog.id); } catch { goals = []; }
         const program = programs.find((pr) => pr.id === training?.assignedProgramId);
         rows.push({
           dog,
           program,
           startedAt,
+          endedAt,
+          goals,
+          finishSummary: training?.finishSummary || "",
           progress: progress || [],
           sessionsInMonth: inMonth,
           totalSessions: dated.length,
@@ -1577,7 +1662,7 @@ function ReportTab({ dogs, programs, currentUser }) {
               </div>
             </div>
 
-            {report.rows.map(({ dog, program, startedAt, progress, sessionsInMonth, totalSessions }) => (
+            {report.rows.map(({ dog, program, startedAt, endedAt, goals, finishSummary, progress, sessionsInMonth, totalSessions }) => (
               <div key={dog.id} className="report-dog" style={{ marginBottom: "1.5rem", paddingBottom: "1rem", borderBottom: "1px solid #e5e7eb" }}>
                 <div style={{ fontSize: "1rem", fontWeight: 700, color: "#111827" }}>
                   {dog.name}
@@ -1586,10 +1671,31 @@ function ReportTab({ dogs, programs, currentUser }) {
                   </span>
                 </div>
                 <div style={{ fontSize: "0.82rem", color: "#374151", margin: "0.35rem 0 0.6rem" }}>
-                  Początek pracy: <strong>{startedAt ? startedAt.toLocaleDateString("pl-PL") : "—"}</strong>
-                  {" · "}Program: <strong>{program?.name || "brak"}</strong>
+                  Okres pracy: <strong>{startedAt ? startedAt.toLocaleDateString("pl-PL") : "—"}</strong>
+                  {" – "}
+                  <strong>{endedAt ? endedAt.toLocaleDateString("pl-PL") : "nadal w pracy"}</strong>
+                  {program?.name ? <>{" · "}Program: <strong>{program.name}</strong></> : null}
                   {" · "}Sesje w miesiącu: <strong>{sessionsInMonth.length}</strong> (łącznie: {totalSessions})
                 </div>
+
+                {goals?.length > 0 && (
+                  <div style={{ fontSize: "0.8rem", color: "#374151", marginBottom: "0.6rem" }}>
+                    <strong>Cele:</strong>
+                    <ul style={{ margin: "0.2rem 0 0", paddingLeft: "1.1rem" }}>
+                      {goals.map((g) => (
+                        <li key={g.id} style={{ color: g.done ? "#16a34a" : "#374151" }}>
+                          {g.done ? "✓ " : "• "}{g.text}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {finishSummary && (
+                  <div style={{ fontSize: "0.8rem", color: "#374151", marginBottom: "0.6rem", fontStyle: "italic" }}>
+                    Podsumowanie zakończenia: {finishSummary}
+                  </div>
+                )}
 
                 {progress.length > 0 && (
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.78rem", marginBottom: "0.6rem" }}>
@@ -1729,6 +1835,10 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
         onBack={() => { setSelectedDog(null); loadTrainings().catch(() => {}); }}
         onNavigate={handleNavigate}
         onLogout={onLogout}
+        onFinishWork={async (dogId) => {
+          // Odpięcie z arkusza — pies znika z listy aktywnych treningów.
+          if (onToggleBehaviorystDog) await onToggleBehaviorystDog(dogId);
+        }}
       />
     );
   }
@@ -1830,7 +1940,21 @@ export default function BehaviorystPanel({ currentUser, behaviorystDogs, dogs, o
         <ManageDogsModal
           allDogs={dogs || []}
           behaviorystDogs={behaviorystDogs || []}
-          onToggle={onToggleBehaviorystDog}
+          onToggle={async (dogId) => {
+            const isAdding = !(behaviorystDogs || []).some((d) => d.id === dogId);
+            await onToggleBehaviorystDog(dogId);
+            // Data rozpoczęcia pracy — potrzebna w raporcie, więc zapisujemy
+            // ją w chwili dodania psa, a nie dopiero przy pierwszym ćwiczeniu.
+            if (isAdding) {
+              const dogName = (dogs || []).find((d) => d.id === dogId)?.name || "";
+              try {
+                await fsStartWork(dogId, dogName, currentUser);
+              } catch (e) {
+                console.error("Nie udało się zapisać daty rozpoczęcia pracy:", e);
+              }
+            }
+            await loadTrainings().catch(() => {});
+          }}
           onClose={() => setShowManage(false)}
         />
       )}
