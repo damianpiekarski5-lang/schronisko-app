@@ -72,10 +72,16 @@ function formatDate(ts) {
   return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-function daysSince(ts) {
+// Różnica w DNIACH KALENDARZOWYCH, nie w upływie 24 godzin. Liczenie
+// (teraz - data)/24h pokazywało wczorajszą wieczorną sesję jako "dziś",
+// bo od 18:00 do 10:00 następnego dnia nie mija pełna doba.
+// round, nie floor — doba przy zmianie czasu letniego ma 23 lub 25 godzin.
+function daysSince(ts, now = new Date()) {
   if (!ts) return null;
   const d = ts instanceof Timestamp ? ts.toDate() : new Date(ts);
-  return Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (isNaN(d.getTime())) return null;
+  const startOfDay = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate());
+  return Math.round((startOfDay(now) - startOfDay(d)) / 86400000);
 }
 
 // ─── Firestore helpers ───────────────────────────────────────────────────────
