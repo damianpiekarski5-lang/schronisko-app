@@ -57,13 +57,11 @@ import {
 
 // Mobile-optimized styles
 
-const FALLBACK_ADMIN_EMAILS = ["damian.piekarski5@gmail.com"]; // TODO: utrzymuj listę adminów przez zmienną środowiskową ADMIN_EMAILS
-
+// Adresy administratorów i behawiorysty pochodzą z konfiguracji, a nie
+// z kodu — inaczej zmiana osoby albo przeniesienie aplikacji na inne konto
+// wymaga edycji źródeł i ponownego wdrożenia.
 function getAdminEmails() {
-  const fromEnv = process.env.REACT_APP_ADMIN_EMAILS || "";
-  const source = fromEnv || FALLBACK_ADMIN_EMAILS.join(",");
-
-  return source
+  return String(process.env.REACT_APP_ADMIN_EMAILS || "")
     .split(",")
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean);
@@ -74,7 +72,7 @@ function isAdminEmail(email) {
   return getAdminEmails().includes(String(email).trim().toLowerCase());
 }
 
-const BEHAVIORYST_ASSIGN_EMAIL = "damian.piekarski5@gmail.com";
+const BEHAVIORYST_ASSIGN_EMAIL = String(process.env.REACT_APP_BEHAVIORYST_EMAIL || "").trim().toLowerCase();
 
 const styles = {
   // Layout
@@ -2268,8 +2266,8 @@ const DogCardView = ({
   const isFavorite = favoriteDogIds.has(selectedDog.id);
   const isFavoriteToggleInProgress =
     favoriteActionState?.loading && favoriteActionState?.dogId === selectedDog.id;
-  const isBehaviorystOwner =
-    String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
+  const isBehaviorystOwner = !!BEHAVIORYST_ASSIGN_EMAIL
+    && String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
   const behaviorystIds = behaviorystDogIds instanceof Set ? behaviorystDogIds : new Set();
   const behaviorystState = behaviorystActionState || { loading: false, dogId: "", error: "" };
   const isBehaviorystDog = behaviorystIds.has(selectedDog.id);
@@ -3435,7 +3433,10 @@ useEffect(() => {
 
 const isAuthEnabled = hasFirebaseConfig && !firebaseInitError && !!auth;
 const isAdminUser = isAdminEmail(currentUser?.email);
-const isBehaviorystUser = String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
+// Bez skonfigurowanego adresu nikt nie jest behawiorystą — inaczej pusta
+// zmienna zrównałaby się z pustym e-mailem i otworzyła panel.
+const isBehaviorystUser = !!BEHAVIORYST_ASSIGN_EMAIL
+  && String(currentUser?.email || "").toLowerCase() === BEHAVIORYST_ASSIGN_EMAIL;
 
 // Przywrócony widok wymagający uprawnień, których użytkownik nie ma,
 // renderowałby pustą stronę bez nawigacji (np. po zmianie konta)

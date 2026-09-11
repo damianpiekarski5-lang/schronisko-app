@@ -1,8 +1,10 @@
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
 
-const APPS_SCRIPT_URL =
-  "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
+// Adres wdrożenia Apps Script zmienia się przy każdym nowym wdrożeniu
+// i przy przeniesieniu skryptu na inne konto — dlatego z konfiguracji.
+const APPS_SCRIPT_URL = process.env.APPS_SCRIPT_URL
+  || "https://script.google.com/macros/s/AKfycbzBGx3FjEbJq8yz7wCNJF_GAPsKeclfkRFLt-kDVpxcesN8cKGxwz789DiDsOBnjeh1/exec";
 
 const ALLOWED_ORIGIN = "*";
 
